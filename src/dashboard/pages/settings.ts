@@ -120,7 +120,7 @@ export default class SettingsPage implements Page {
             <div class="settings-section-header">
               <div class="settings-section-icon">${ICONS.ban}</div>
               <div>
-                <h2 class="settings-section-title">Blocklist <span style="color: #737373;">(Disabled Sites)</span></h2>
+                <h2 class="settings-section-title">${t('settings.blocklist')} <span style="color: #737373;">(Disabled Sites)</span></h2>
                 <p class="settings-section-desc">SOTE will be completely disabled on these domains</p>
               </div>
               <span class="blocklist-header-badge" id="blocklist-count">0 domains</span>
@@ -176,13 +176,13 @@ export default class SettingsPage implements Page {
 
               <div class="divider"></div>
 
-              <p class="settings-label">Data Management</p>
+              <p class="settings-label">${t('dashboard.dataManagement')}</p>
               <div class="data-management-actions">
                 <button class="btn-secondary" id="btn-export">
-                  ${ICONS.download} Export Data (.json)
+                  ${ICONS.download} ${t('button.export')}
                 </button>
                 <button class="btn-secondary" id="btn-import">
-                  ${ICONS.upload} Import Data
+                  ${ICONS.upload} ${t('button.import')}
                 </button>
                 <input type="file" id="file-import" accept=".json" style="display: none;" />
               </div>

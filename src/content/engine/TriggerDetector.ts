@@ -137,24 +137,52 @@ export class TriggerDetector {
           if (rule.operator === 'equals') passed = hostname === rule.value;
           else if (rule.operator === 'contains') passed = hostname.includes(rule.value);
           break;
-        case 'weekday':
-          // value expected as comma separated days "1,3,5"
-          passed = rule.value.split(',').includes(now.getDay().toString());
+        case 'weekday': {
+          // New format: JSON { op: 'is'|'is_not', days: ['Mon','Tue',...] }
+          // Legacy format: comma-separated indices "0,1,2"
+          const dayMap = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+          const today = dayMap[now.getDay()];
+          let weekdayParsed: { op: string; days: string[] } | null = null;
+          try { weekdayParsed = JSON.parse(rule.value); } catch { /* */ }
+          if (weekdayParsed && Array.isArray(weekdayParsed.days)) {
+            const included = weekdayParsed.days.includes(today);
+            passed = weekdayParsed.op === 'is_not' ? !included : included;
+          } else {
+            // Legacy: comma-separated day indices
+            passed = rule.value.split(',').includes(now.getDay().toString());
+          }
           break;
-        case 'time':
-          // value expected as "08:00,18:00"
-          const [startStr, endStr] = rule.value.split(',');
-          if (startStr && endStr) {
-            const startMins = parseInt(startStr.split(':')[0]) * 60 + parseInt(startStr.split(':')[1]);
-            const endMins = parseInt(endStr.split(':')[0]) * 60 + parseInt(endStr.split(':')[1]);
-            const nowMins = now.getHours() * 60 + now.getMinutes();
-            if (startMins <= endMins) {
-              passed = nowMins >= startMins && nowMins <= endMins;
-            } else {
-              passed = nowMins >= startMins || nowMins <= endMins;
+        }
+        case 'time': {
+          // New format: JSON { op: 'between'|'before'|'after', from?, to?, at? }
+          // Legacy format: "08:00,18:00"
+          const toMin = (s: string) => { const [h, m] = s.split(':').map(Number); return h * 60 + m; };
+          const nowMins = now.getHours() * 60 + now.getMinutes();
+          let timeParsed: { op: string; from?: string; to?: string; at?: string } | null = null;
+          try { timeParsed = JSON.parse(rule.value); } catch { /* */ }
+          if (timeParsed && timeParsed.op) {
+            if (timeParsed.op === 'between' && timeParsed.from && timeParsed.to) {
+              const f = toMin(timeParsed.from), t = toMin(timeParsed.to);
+              passed = f <= t ? nowMins >= f && nowMins <= t : nowMins >= f || nowMins <= t;
+            } else if (timeParsed.op === 'before' && timeParsed.at) {
+              passed = nowMins < toMin(timeParsed.at);
+            } else if (timeParsed.op === 'after' && timeParsed.at) {
+              passed = nowMins > toMin(timeParsed.at);
+            }
+          } else {
+            // Legacy: "08:00,18:00"
+            const [startStr, endStr] = rule.value.split(',');
+            if (startStr && endStr) {
+              const startMins = toMin(startStr), endMins = toMin(endStr);
+              if (startMins <= endMins) {
+                passed = nowMins >= startMins && nowMins <= endMins;
+              } else {
+                passed = nowMins >= startMins || nowMins <= endMins;
+              }
             }
           }
           break;
+        }
         case 'date':
           // value expected as "2024-12-25"
           const todayDate = now.toISOString().split('T')[0];

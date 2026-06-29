@@ -4,6 +4,7 @@
 import type { Page } from './index.js';
 import { storage } from '../../shared/storage/StorageService.js';
 import type { Template, Flow, ActionBlock } from '../../shared/types/index.js';
+import { t } from '../../shared/i18n/index.js';
 import './templates.css';
 
 const ICONS = {
@@ -74,8 +75,25 @@ export default class TemplatesPage implements Page {
   }
 
   async mount() {
-    this.templates = await storage.getTemplates();
-    this.flows = await storage.getFlows();
+    const rawTemplates = await storage.getTemplates();
+    // Normalize: ensure content is never undefined (Bug 3 guard)
+    this.templates = rawTemplates.map(tpl => ({
+      ...tpl,
+      content: tpl.content ?? '',
+      format: (tpl as any).format ?? 'plaintext',
+    }));
+    const rawFlows = await storage.getFlows();
+    // Normalize flows: ensure action blocks have content
+    this.flows = rawFlows.map(flow => ({
+      ...flow,
+      blocks: flow.blocks.map(block => {
+        if (block.type === 'action') {
+          const d = block.data as ActionBlock;
+          return { ...block, data: { ...d, content: d.content ?? '', tokens: d.tokens ?? [] } };
+        }
+        return block;
+      })
+    }));
     this.applySearch();
 
     this.el.querySelector('#tpl-search-input')?.addEventListener('input', (e) => {
@@ -192,12 +210,15 @@ export default class TemplatesPage implements Page {
   }
 
   private countTemplateUsage(tag: string): Flow[] {
+    if (!tag) return [];
     const tokenStr = `{{modelo:${tag}}}`;
     const affectedFlows: Flow[] = [];
     for (const flow of this.flows) {
       for (const block of flow.blocks) {
         if (block.type === 'action') {
-          if ((block as ActionBlock).content.includes(tokenStr)) {
+          // Bug 3 fix: use optional chaining to never access .includes on undefined
+          const content = (block.data as ActionBlock)?.content ?? '';
+          if (content.includes(tokenStr)) {
             affectedFlows.push(flow);
             break;
           }

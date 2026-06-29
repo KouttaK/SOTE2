@@ -218,7 +218,7 @@ export class Shell {
           id="dash-search-input"
           type="text"
           class="dash-search-input"
-          placeholder="Search shortcuts, flows, keywords..."
+          placeholder="${t('search.placeholder')}"
           autocomplete="off"
           spellcheck="false"
         />
@@ -226,6 +226,11 @@ export class Shell {
       </div>
 
       <div class="dash-header-actions">
+        <!-- Sync -->
+        <button class="dash-icon-btn" title="${t('sync.tooltip')}">
+          ${ICONS.globe}
+        </button>
+
         <!-- Sort -->
         <div class="dash-header-btn" id="dash-sort-btn">
           <span class="dash-header-btn-icon">${ICONS.sortDesc}</span>

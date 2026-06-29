@@ -4,6 +4,7 @@
 import type { Page } from './index.js';
 import { storage } from '../../shared/storage/StorageService.js';
 import type { Variable, Flow, Block, ActionBlock } from '../../shared/types/index.js';
+import { t } from '../../shared/i18n/index.js';
 import './variables.css';
 
 const ICONS = {
@@ -46,7 +47,7 @@ export default class VariablesPage implements Page {
           <div class="vars-divider"></div>
           <button class="btn-primary" id="btn-create-var">
             ${ICONS.plus}
-            Create Variable
+            ${t('modal.createVariable')}
           </button>
         </div>
       </header>
@@ -145,7 +146,9 @@ export default class VariablesPage implements Page {
       let flowUsed = false;
       for (const block of flow.blocks) {
         if (block.type === 'action') {
-          if ((block as ActionBlock).content.includes(tokenStr)) {
+          // Bug 1/2 null guard: content may be undefined in older flows
+          const content = (block as ActionBlock)?.content ?? '';
+          if (content.includes(tokenStr)) {
             flowUsed = true;
           }
         }
@@ -297,17 +300,18 @@ export default class VariablesPage implements Page {
         updatedAt: Date.now(),
       };
 
-      await storage.saveVariable(newVar);
-      // Wait, we need to refresh local list since onChanged doesn't auto-refresh our dashboard variables instance yet, or we just manually update it.
-      if (isEdit) {
-        const idx = this.variables.findIndex(v => v.id === newVar.id);
-        if (idx !== -1) this.variables[idx] = newVar;
-      } else {
-        this.variables.push(newVar);
+      try {
+        await storage.saveVariable(newVar);
+        // Remove from DOM immediately
+        modal.remove();
+
+        // Refresh local cache and list
+        this.variables = await storage.getVariables();
+        this.applySearch();
+      } catch (err) {
+        console.error('Failed to save variable:', err);
+        alert('Failed to save variable. Please try again.');
       }
-      
-      this.applySearch();
-      modal.remove();
     });
   }
 
@@ -317,9 +321,12 @@ export default class VariablesPage implements Page {
     const affectedFlows: Flow[] = [];
     for (const flow of this.flows) {
       for (const block of flow.blocks) {
-        if (block.type === 'action' && (block as ActionBlock).content.includes(tokenStr)) {
-          affectedFlows.push(flow);
-          break; // once per flow
+        if (block.type === 'action') {
+          const content = (block as ActionBlock)?.content ?? '';
+          if (content.includes(tokenStr)) {
+            affectedFlows.push(flow);
+            break; // once per flow
+          }
         }
       }
     }

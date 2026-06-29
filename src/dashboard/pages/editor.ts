@@ -6,6 +6,7 @@ import type { Page } from './index.js';
 import { storage } from '../../shared/storage/StorageService.js';
 import type { Flow, Block, TriggerBlock as ITriggerBlock, ConditionBlock as IConditionBlock, ActionBlock as IActionBlock } from '../../shared/types/index.js';
 import { router } from '../router.js';
+import { t } from '../../shared/i18n/index.js';
 import { TriggerBlock } from '../components/blocks/TriggerBlock.js';
 import { ConditionBlock } from '../components/blocks/ConditionBlock.js';
 import { ActionBlock } from '../components/blocks/ActionBlock.js';
@@ -54,7 +55,7 @@ export default class FlowEditorPage implements Page {
         
         <div class="editor-actions">
           <button class="btn-preview">${ICONS.eye} Preview</button>
-          <button class="btn-save" id="btn-save-flow">${ICONS.save} <span id="save-label">Save Flow</span></button>
+          <button class="btn-save" id="btn-save-flow">${ICONS.save} <span id="save-label">${t('editor.saveFlow')}</span></button>
         </div>
       </div>
 
@@ -158,7 +159,7 @@ export default class FlowEditorPage implements Page {
   private markDirty() {
     this.isDirty = true;
     const saveLabel = this.el.querySelector('#save-label')!;
-    saveLabel.textContent = 'Save Flow *';
+    saveLabel.textContent = t('editor.saveFlow') + ' *';
     const btn = this.el.querySelector('#btn-save-flow')!;
     btn.classList.add('dirty');
   }
@@ -168,7 +169,7 @@ export default class FlowEditorPage implements Page {
     const saveLabel = this.el.querySelector('#save-label')!;
     saveLabel.textContent = 'Saved';
     setTimeout(() => {
-      if (!this.isDirty) saveLabel.textContent = 'Save Flow';
+      if (!this.isDirty) saveLabel.textContent = t('editor.saveFlow');
     }, 2000);
   }
 
