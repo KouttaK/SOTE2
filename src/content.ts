@@ -17,6 +17,7 @@ export default defineContentScript({
   matches: ['<all_urls>'],
   async main() {
     console.log('[SOTE] Content Script Loaded');
+    try {
 
     const detector = new TriggerDetector();
     const choicePopup = new ChoicePopup();
@@ -199,5 +200,8 @@ export default defineContentScript({
         );
       }
     }, true);
+    } catch (e) {
+      console.error('[SOTE] Content script init failed:', e);
+    }
   }
 });

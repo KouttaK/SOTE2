@@ -138,10 +138,28 @@ export class TriggerDetector {
           else if (rule.operator === 'contains') passed = hostname.includes(rule.value);
           break;
         case 'weekday':
-          // value expected as 0-6 (Sun-Sat) or something similar
-          passed = now.getDay().toString() === rule.value;
+          // value expected as comma separated days "1,3,5"
+          passed = rule.value.split(',').includes(now.getDay().toString());
           break;
-        // ... Add more condition evaluations as needed
+        case 'time':
+          // value expected as "08:00,18:00"
+          const [startStr, endStr] = rule.value.split(',');
+          if (startStr && endStr) {
+            const startMins = parseInt(startStr.split(':')[0]) * 60 + parseInt(startStr.split(':')[1]);
+            const endMins = parseInt(endStr.split(':')[0]) * 60 + parseInt(endStr.split(':')[1]);
+            const nowMins = now.getHours() * 60 + now.getMinutes();
+            if (startMins <= endMins) {
+              passed = nowMins >= startMins && nowMins <= endMins;
+            } else {
+              passed = nowMins >= startMins || nowMins <= endMins;
+            }
+          }
+          break;
+        case 'date':
+          // value expected as "2024-12-25"
+          const todayDate = now.toISOString().split('T')[0];
+          passed = todayDate === rule.value;
+          break;
         default:
           passed = true; // Fallback for unimplemented types
       }

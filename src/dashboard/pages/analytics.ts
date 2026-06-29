@@ -14,7 +14,7 @@ const ICONS = {
   fire: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor"><path d="M153.6 29.9l16-21.3C173.6 3.2 180 0 186.7 0C198.4 0 208 9.6 208 21.3V43.5c0 13.1 5.4 25.7 14.9 34.7L307.6 159C356.4 205.6 384 270.2 384 336c0 114.9-93.1 208-208 208S-8 450.9-8 336c0-41.8 12.1-81.5 34.1-115.1l74.9-114.1c7.4-11.2 22.3-14.3 33.4-6.9s14.3 22.3 6.9 33.4l-74.9 114.1c-14.4 21.9-22 47.9-22 74.6c0 79.5 64.5 144 144 144s144-64.5 144-144c0-43-18.1-83.6-49.9-112.5l-84.7-76.9c-29.3-27.6-46.4-66.9-46.4-107.5V21.3c0-4.6-2-8.9-5.5-11.8l16 21.3c-2.3 3-5.9 4.8-9.8 4.8c-6.8 0-12.3-5.5-12.3-12.3c0-3.3 1.3-6.4 3.7-8.6z"/></svg>`,
 };
 
-class AnalyticsPage implements Page {
+export default class AnalyticsPage implements Page {
   private el: HTMLElement;
   private flows: Flow[] = [];
   private settings: Settings = {} as Settings;
@@ -341,4 +341,4 @@ class AnalyticsPage implements Page {
   }
 }
 
-export const page = new AnalyticsPage();
+

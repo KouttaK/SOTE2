@@ -353,10 +353,10 @@ class StorageService {
     try {
       const area = await this.getArea();
       const raw = await area.get(KEYS.settings);
-      const stored = raw[KEYS.settings] as Partial<Settings> | undefined;
+      const stored = raw ? (raw[KEYS.settings] as Partial<Settings> | undefined) : undefined;
 
       // Deep-merge stored settings with defaults so new keys always have a value.
-      return { ...DEFAULT_SETTINGS, ...stored };
+      return stored ? { ...DEFAULT_SETTINGS, ...stored } : { ...DEFAULT_SETTINGS };
     } catch (err) {
       console.error('[SOTE] getSettings failed:', err);
       return { ...DEFAULT_SETTINGS };

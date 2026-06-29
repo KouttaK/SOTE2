@@ -19,7 +19,7 @@ const ICONS = {
   network: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512" aria-hidden="true" fill="currentColor"><path d="M312 32c-13.3 0-24 10.7-24 24s10.7 24 24 24h16c61.9 0 112 50.1 112 112v16H344c-13.3 0-24 10.7-24 24v128c0 13.3 10.7 24 24 24h96c13.3 0 24-10.7 24-24V232c0-13.3-10.7-24-24-24h-96v-16c0-44.2-35.8-80-80-80h-16c-13.3 0-24-10.7-24-24s10.7-24 24-24h16c79.5 0 144 64.5 144 144v16h24c13.3 0 24 10.7 24 24v128c0 13.3-10.7 24-24 24H344c-13.3 0-24-10.7-24-24V232c0-13.3 10.7-24 24-24h24v-16c0-61.9-50.1-112-112-112h-16zm-88 0c-13.3 0-24 10.7-24 24s10.7 24 24 24h16c61.9 0 112 50.1 112 112v16h-96c-13.3 0-24 10.7-24 24v128c0 13.3 10.7 24 24 24h96c13.3 0 24-10.7 24-24V232c0-13.3-10.7-24-24-24h-96v-16c0-44.2 35.8-80 80-80h16c13.3 0 24-10.7 24-24s-10.7-24-24-24h-16C156.5 32 92 96.5 92 176v16H68c-13.3 0-24 10.7-24 24v128c0 13.3 10.7 24 24 24h96c13.3 0 24-10.7 24-24V232c0-13.3-10.7-24-24-24H140v-16c0-61.9 50.1-112 112-112h16z"/></svg>`,
 };
 
-class VariablesPage implements Page {
+export default class VariablesPage implements Page {
   private el: HTMLElement;
   private variables: Variable[] = [];
   private filteredVars: Variable[] = [];
@@ -381,4 +381,4 @@ class VariablesPage implements Page {
   }
 }
 
-export const page = new VariablesPage();
+

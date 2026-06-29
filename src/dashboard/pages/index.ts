@@ -33,31 +33,25 @@ export interface Page {
 // Page loader — dynamic import map keyed by route pattern
 // ---------------------------------------------------------------------------
 
-/**
- * Dynamically imports the correct page module for a given route pattern.
- * Each page module must export a `page` named export of type Page.
- */
 export async function loadPage(pattern: string): Promise<Page> {
+  let module;
   switch (pattern) {
     case '/flows':
-      return (await import('./flows.js')).page;
-
+      module = await import('./flows.js'); break;
     case '/editor/:id':
-      return (await import('./editor.js')).page;
-
+      module = await import('./editor.js'); break;
     case '/variables':
-      return (await import('./variables.js')).page;
-
+      module = await import('./variables.js'); break;
     case '/templates':
-      return (await import('./templates.js')).page;
-
+      module = await import('./templates.js'); break;
     case '/settings':
-      return (await import('./settings.js')).page;
-
+      module = await import('./settings.js'); break;
     case '/analytics':
-      return (await import('./analytics.js')).page;
-
+      module = await import('./analytics.js'); break;
     default:
-      return (await import('./flows.js')).page;
+      module = await import('./flows.js'); break;
   }
+  
+  const PageClass = module.default;
+  return new PageClass();
 }

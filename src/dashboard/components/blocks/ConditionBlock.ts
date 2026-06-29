@@ -79,6 +79,28 @@ export class ConditionBlock {
     this.data.rules.forEach((rule, idx) => {
       const row = document.createElement('div');
       row.style.marginBottom = '1rem';
+          let valueInputHtml = '';
+          if (rule.type === 'domain') {
+            valueInputHtml = `<input type="text" class="rule-value input-field" value="${rule.value}" placeholder="e.g. gmail.com" style="flex:1;" />`;
+          } else if (rule.type === 'weekday') {
+            valueInputHtml = `
+              <div class="rule-weekday-group" style="flex:1; display:flex; gap:0.5rem; align-items:center;">
+                ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => `
+                  <label style="color:#a3a3a3; font-size:0.75rem;"><input type="checkbox" value="${i}" ${rule.value.split(',').includes(i.toString()) ? 'checked' : ''} /> ${d}</label>
+                `).join('')}
+              </div>
+            `;
+          } else if (rule.type === 'time') {
+            const parts = rule.value.split(',');
+            valueInputHtml = `
+              <input type="time" class="rule-time-start input-field" value="${parts[0] || ''}" style="width: 100px; background:#0a0a0a; color:#fff; border:1px solid #404040; padding:0.5rem; border-radius:0.5rem;" />
+              <span style="color:#a3a3a3;">to</span>
+              <input type="time" class="rule-time-end input-field" value="${parts[1] || ''}" style="width: 100px; background:#0a0a0a; color:#fff; border:1px solid #404040; padding:0.5rem; border-radius:0.5rem;" />
+            `;
+          } else if (rule.type === 'date') {
+            valueInputHtml = `<input type="date" class="rule-value input-field" value="${rule.value}" style="flex:1; background:#0a0a0a; color:#fff; border:1px solid #404040; padding:0.5rem; border-radius:0.5rem;" />`;
+          }
+
       row.innerHTML = /* html */ `
         <label class="form-label">Condition Rule ${idx + 1}</label>
         <div class="input-wrap">
@@ -93,7 +115,7 @@ export class ConditionBlock {
             <option value="equals" ${rule.operator === 'equals' ? 'selected' : ''}>Equals</option>
             <option value="matches" ${rule.operator === 'matches' ? 'selected' : ''}>Matches</option>
           </select>
-          <input type="text" class="rule-value input-field" value="${rule.value}" placeholder="e.g. gmail.com" style="flex:1;" />
+          ${valueInputHtml}
           ${this.data.rules.length > 1 ? `<button class="btn-remove-rule" style="background:transparent; border:none; color:#ef4444; cursor:pointer;" title="Remove Rule">${ICONS.trash}</button>` : ''}
         </div>
       `;
@@ -101,16 +123,43 @@ export class ConditionBlock {
       // Events
       row.querySelector('.rule-type')!.addEventListener('change', (e) => {
         rule.type = (e.target as HTMLSelectElement).value as any;
+        rule.value = ''; // clear value on type change
+        this.renderRules();
         this.onChange();
       });
       row.querySelector('.rule-operator')!.addEventListener('change', (e) => {
         rule.operator = (e.target as HTMLSelectElement).value as any;
         this.onChange();
       });
-      row.querySelector('.rule-value')!.addEventListener('input', (e) => {
-        rule.value = (e.target as HTMLInputElement).value;
-        this.onChange();
-      });
+
+      if (rule.type === 'domain' || rule.type === 'date') {
+        const valInput = row.querySelector('.rule-value');
+        if (valInput) {
+          valInput.addEventListener('input', (e) => {
+            rule.value = (e.target as HTMLInputElement).value;
+            this.onChange();
+          });
+        }
+      } else if (rule.type === 'weekday') {
+        const checkboxes = row.querySelectorAll('.rule-weekday-group input[type="checkbox"]');
+        checkboxes.forEach(cb => {
+          cb.addEventListener('change', () => {
+            const vals: string[] = [];
+            checkboxes.forEach((c: any) => { if (c.checked) vals.push(c.value); });
+            rule.value = vals.join(',');
+            this.onChange();
+          });
+        });
+      } else if (rule.type === 'time') {
+        const start = row.querySelector('.rule-time-start') as HTMLInputElement;
+        const end = row.querySelector('.rule-time-end') as HTMLInputElement;
+        const updateTime = () => {
+          rule.value = `${start.value},${end.value}`;
+          this.onChange();
+        };
+        start?.addEventListener('input', updateTime);
+        end?.addEventListener('input', updateTime);
+      }
       const removeBtn = row.querySelector('.btn-remove-rule');
       if (removeBtn) {
         removeBtn.addEventListener('click', () => {

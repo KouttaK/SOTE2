@@ -13,6 +13,7 @@
 
 import { router, type ResolvedRoute } from './router.js';
 import { loadPage, type Page } from './pages/index.js';
+import { t } from '../shared/i18n/index.js';
 
 
 // ---------------------------------------------------------------------------
@@ -46,14 +47,14 @@ interface NavItem {
 }
 
 const PRIMARY_NAV: NavItem[] = [
-  { label: 'My Flows',         path: '/flows',     pattern: '/flows',      icon: ICONS.bolt },
-  { label: 'Global Variables', path: '/variables', pattern: '/variables',  icon: ICONS.globe },
-  { label: 'Settings',         path: '/settings',  pattern: '/settings',   icon: ICONS.gear },
+  { label: 'sidebar.flows',         path: '/flows',     pattern: '/flows',      icon: ICONS.bolt },
+  { label: 'sidebar.variables', path: '/variables', pattern: '/variables',  icon: ICONS.globe },
+  { label: 'sidebar.settings',         path: '/settings',  pattern: '/settings',   icon: ICONS.gear },
 ];
 
 const WORKSPACE_NAV: NavItem[] = [
-  { label: 'Templates',  path: '/templates',  pattern: '/templates',  icon: ICONS.folderOpen },
-  { label: 'Analytics',  path: '/analytics',  pattern: '/analytics',  icon: ICONS.chartBar },
+  { label: 'sidebar.templates',  path: '/templates',  pattern: '/templates',  icon: ICONS.folderOpen },
+  { label: 'sidebar.analytics',  path: '/analytics',  pattern: '/analytics',  icon: ICONS.chartBar },
 ];
 
 // ---------------------------------------------------------------------------
@@ -155,19 +156,7 @@ export class Shell {
 
     aside.appendChild(nav);
 
-    // User block — px-4 py-4 border-t border-neutral-800
-    aside.innerHTML += /* html */ `
-      <div class="dash-sidebar-user">
-        <div class="dash-user-row">
-          <div class="dash-user-avatar"></div>
-          <div class="dash-user-info">
-            <p class="dash-user-name">SOTE User</p>
-            <p class="dash-user-plan">Pro Plan</p>
-          </div>
-          <div class="dash-user-menu-icon">${ICONS.ellipsisV}</div>
-        </div>
-      </div>
-    `;
+    // Removed user block as requested
 
     // Re-append nav after innerHTML reset trick (use proper DOM)
     aside.innerHTML = '';
@@ -181,19 +170,7 @@ export class Shell {
     aside.appendChild(logoBlock);
     aside.appendChild(nav);
 
-    const userBlock = document.createElement('div');
-    userBlock.className = 'dash-sidebar-user';
-    userBlock.innerHTML = /* html */ `
-      <div class="dash-user-row">
-        <div class="dash-user-avatar"></div>
-        <div class="dash-user-info">
-          <p class="dash-user-name">SOTE User</p>
-          <p class="dash-user-plan">Pro Plan</p>
-        </div>
-        <div class="dash-user-menu-icon">${ICONS.ellipsisV}</div>
-      </div>
-    `;
-    aside.appendChild(userBlock);
+    // Removed user block as requested
 
     return aside;
   }
@@ -207,11 +184,9 @@ export class Shell {
     a.setAttribute('role', 'menuitem');
 
     a.innerHTML = /* html */ `
-      <span class="dash-nav-icon">${item.icon}</span>
-      <span class="dash-nav-label">${item.label}</span>
-      ${item.badge !== undefined
-        ? `<span class="dash-nav-badge" data-badge-pattern="${item.pattern}">${item.badge}</span>`
-        : ''}
+      <div class="dash-nav-icon">${item.icon}</div>
+      <span class="dash-nav-label">${t(item.label)}</span>
+      ${item.badge ? `<span class="dash-nav-badge">${item.badge}</span>` : ''}
     `;
 
     // Store badge ref for /flows

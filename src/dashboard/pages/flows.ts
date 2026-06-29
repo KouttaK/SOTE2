@@ -25,7 +25,7 @@ const ICONS_LOCAL = {
 // ---------------------------------------------------------------------------
 // Page Class
 // ---------------------------------------------------------------------------
-class FlowsPage implements Page {
+export default class FlowsPage implements Page {
   private el!: HTMLElement;
   private allFlows: Flow[] = [];
   private allFolders: Folder[] = [];
@@ -34,6 +34,8 @@ class FlowsPage implements Page {
 
   private searchInput: HTMLInputElement | null = null;
   private searchHandler!: (e: Event) => void;
+  private sortHandler!: (e: Event) => void;
+  private currentSort: 'Category' | 'Name' | 'Usage' = 'Category';
 
   render(): HTMLElement {
     this.el = document.createElement('div');
@@ -101,6 +103,21 @@ class FlowsPage implements Page {
       this.searchInput.value = ''; // clear on mount
     }
 
+    const sortBtn = document.getElementById('dash-sort-btn');
+    if (sortBtn) {
+      this.sortHandler = () => {
+        if (this.currentSort === 'Category') this.currentSort = 'Name';
+        else if (this.currentSort === 'Name') this.currentSort = 'Usage';
+        else this.currentSort = 'Category';
+        
+        const label = sortBtn.querySelector('.dash-header-btn-label');
+        if (label) label.textContent = `Sort by: ${this.currentSort}`;
+        
+        this.renderList();
+      };
+      sortBtn.addEventListener('click', this.sortHandler);
+    }
+
     // 3. Render everything
     this.renderStats();
     this.renderFolders();
@@ -110,6 +127,10 @@ class FlowsPage implements Page {
   unmount(): void {
     if (this.searchInput && this.searchHandler) {
       this.searchInput.removeEventListener('input', this.searchHandler);
+    }
+    const sortBtn = document.getElementById('dash-sort-btn');
+    if (sortBtn && this.sortHandler) {
+      sortBtn.removeEventListener('click', this.sortHandler);
     }
   }
 
@@ -264,6 +285,25 @@ class FlowsPage implements Page {
       });
     }
 
+    // Sort
+    filtered.sort((a, b) => {
+      if (this.currentSort === 'Usage') {
+        const usageA = a.stats.usageCount || 0;
+        const usageB = b.stats.usageCount || 0;
+        return usageB - usageA;
+      } else if (this.currentSort === 'Name') {
+        return a.name.localeCompare(b.name);
+      } else {
+        // Category
+        const folderA = this.allFolders.find(f => f.id === a.folderId)?.name || 'Uncategorised';
+        const folderB = this.allFolders.find(f => f.id === b.folderId)?.name || 'Uncategorised';
+        if (folderA === folderB) {
+          return a.name.localeCompare(b.name);
+        }
+        return folderA.localeCompare(folderB);
+      }
+    });
+
     if (filtered.length === 0) {
       tbody.innerHTML = /* html */ `
         <div class="flows-empty">
@@ -310,7 +350,7 @@ class FlowsPage implements Page {
         </div>
         <!-- Category (Folder/Tags) -->
         <div>
-          <span class="row-tag">
+          <span class="row-tag" style="cursor:pointer;" data-folder="${flow.folderId || 'uncategorised'}">
             ${ICONS_LOCAL.folder}
             ${folderName}
           </span>
@@ -357,9 +397,16 @@ class FlowsPage implements Page {
         }
       });
 
+      const tag = row.querySelector('.row-tag')!;
+      tag.addEventListener('click', () => {
+        this.currentFolderFilter = (tag as HTMLElement).dataset.folder!;
+        this.renderFolders();
+        this.renderList();
+      });
+
       tbody.appendChild(row);
     });
   }
 }
 
-export const page = new FlowsPage();
+

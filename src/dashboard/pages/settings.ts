@@ -5,6 +5,7 @@ import type { Page } from './index.js';
 import { storage } from '../../shared/storage/StorageService.js';
 import type { Settings, StorageSchema } from '../../shared/types/index.js';
 import { browser } from 'wxt/browser';
+import { t, setLanguage } from '../../shared/i18n/index.js';
 import './settings.css';
 
 const ICONS = {
@@ -21,7 +22,7 @@ const ICONS = {
   upload: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor"><path d="M64 0C28.7 0 0 28.7 0 64V448c0 35.3 28.7 64 64 64H320c35.3 0 64-28.7 64-64V160H256c-17.7 0-32-14.3-32-32V0H64zM256 0V128H384L256 0zM216 408c0 13.3-10.7 24-24 24s-24-10.7-24-24V305.9l-31 31c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9l72-72c9.4-9.4 24.6-9.4 33.9 0l72 72c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0l-31-31V408z"/></svg>`
 };
 
-class SettingsPage implements Page {
+export default class SettingsPage implements Page {
   private el: HTMLElement;
   private settings: Settings = {} as Settings;
   private syncEnabled = false;
@@ -34,8 +35,8 @@ class SettingsPage implements Page {
   render(): HTMLElement {
     this.el.innerHTML = /* html */ `
       <header class="settings-header">
-        <h1 class="settings-header-title">Settings</h1>
-        <p class="settings-header-subtitle">Configure SOTE behavior, sync, and data.</p>
+        <h1 class="settings-header-title">${t('settings.title')}</h1>
+        <p class="settings-header-subtitle">${t('settings.subtitle')}</p>
       </header>
 
       <main class="settings-main">
@@ -58,8 +59,15 @@ class SettingsPage implements Page {
                   <input type="text" id="setting-palette" class="settings-input" readonly placeholder="Press keys..." />
                 </div>
                 <div class="settings-input-group" style="width: 8rem;">
-                  <label class="settings-label">Exact Match Char</label>
+                  <label class="settings-label">${t('settings.exactMatchChar')}</label>
                   <input type="text" id="setting-exact" class="settings-input" maxlength="1" />
+                </div>
+                <div class="settings-input-group" style="width: 10rem;">
+                  <label class="settings-label">${t('settings.language')}</label>
+                  <select id="setting-language" class="settings-input">
+                    <option value="en">English</option>
+                    <option value="pt-BR">Português (BR)</option>
+                  </select>
                 </div>
               </div>
 
@@ -217,6 +225,15 @@ class SettingsPage implements Page {
 
   async mount() {
     this.settings = await storage.getSettings();
+    setLanguage(this.settings.language || 'en');
+    
+    // Re-render UI after language load
+    this.render();
+    const parent = this.el.parentNode;
+    if (parent) {
+      parent.replaceChild(this.el, this.el);
+    }
+    
     const localRaw = await browser.storage.local.get(['__sote_sync_enabled__', '__sote_last_sync_time__']);
     this.syncEnabled = localRaw['__sote_sync_enabled__'] === true;
 
@@ -228,7 +245,7 @@ class SettingsPage implements Page {
       }
       const mins = Math.floor((Date.now() - lastSync) / 60000);
       const syncText = this.el.querySelector('#sync-status-text');
-      if (syncText) syncText.textContent = `Sincronizado há ${mins} min`;
+      if (syncText) syncText.textContent = t('settings.sync.lastSync', { mins });
     }
 
     this.bindInputs();
@@ -244,10 +261,20 @@ class SettingsPage implements Page {
 
   private bindInputs() {
     // Exact Match Char
-    const exactInput = this.el.querySelector<HTMLInputElement>('#setting-exact')!;
-    exactInput.value = this.settings.exactMatchChar;
-    exactInput.addEventListener('input', () => {
-      this.updateSetting('exactMatchChar', exactInput.value || '/');
+    const extMatch = this.el.querySelector('#setting-exact') as HTMLInputElement;
+    extMatch.value = this.settings.exactMatchChar;
+    extMatch.addEventListener('change', (e) => {
+      this.settings.exactMatchChar = (e.target as HTMLInputElement).value || '/';
+      this.updateSetting('exactMatchChar', this.settings.exactMatchChar);
+    });
+
+    const langSelect = this.el.querySelector('#setting-language') as HTMLSelectElement;
+    langSelect.value = this.settings.language || 'en';
+    langSelect.addEventListener('change', (e) => {
+      this.settings.language = (e.target as HTMLSelectElement).value;
+      this.updateSetting('language', this.settings.language);
+      // Reload page to apply language
+      window.location.reload();
     });
 
     // Palette Shortcut
@@ -518,4 +545,4 @@ class SettingsPage implements Page {
   }
 }
 
-export const page = new SettingsPage();
+

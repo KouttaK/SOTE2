@@ -19,7 +19,7 @@ const ICONS = {
   plus: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z"/></svg>`,
 };
 
-class FlowEditorPage implements Page {
+export default class FlowEditorPage implements Page {
   private el!: HTMLElement;
   private currentFlow!: Flow;
   private isDirty = false;
@@ -44,6 +44,13 @@ class FlowEditorPage implements Page {
           <div class="status-toggle" id="flow-status-toggle"></div>
           <span class="status-label" style="color: #d4d4d4;">Active</span>
         </div>
+
+        <div class="editor-folder-select" style="margin-left: 20px; display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 13px; color: var(--neutral-400);">Folder:</span>
+          <select id="flow-folder" style="background: var(--neutral-800); color: white; border: 1px solid var(--neutral-700); border-radius: 4px; padding: 4px 8px; font-size: 13px; outline: none;">
+            <option value="">Uncategorised</option>
+          </select>
+        </div>
         
         <div class="editor-actions">
           <button class="btn-preview">${ICONS.eye} Preview</button>
@@ -54,12 +61,6 @@ class FlowEditorPage implements Page {
       <div class="editor-canvas-bg">
         <div class="dot-grid"></div>
         
-        <!-- Zoom / Controls (visual only for now) -->
-        <div class="canvas-controls">
-          <button class="canvas-ctrl-btn" title="Zoom In">+</button>
-          <button class="canvas-ctrl-btn" title="Zoom Out">-</button>
-          <button class="canvas-ctrl-btn" title="Fit to Screen">[]</button>
-        </div>
 
         <div class="node-flow" id="node-flow-container">
           <!-- Blocks injected here -->
@@ -88,6 +89,20 @@ class FlowEditorPage implements Page {
     this.isDirty = false;
     this.renderFlow();
     this.updateStatusToggle();
+
+    // Populate folders
+    const folders = await storage.getFolders();
+    const folderSelect = this.el.querySelector('#flow-folder') as HTMLSelectElement;
+    folders.forEach(f => {
+      const opt = document.createElement('option');
+      opt.value = f.id;
+      opt.textContent = f.name;
+      folderSelect.appendChild(opt);
+    });
+    if (this.currentFlow.folderId) {
+      folderSelect.value = this.currentFlow.folderId;
+    }
+    folderSelect.addEventListener('change', () => this.markDirty());
 
     // Event listeners
     this.el.querySelector('#flow-status-toggle')!.addEventListener('click', () => {
@@ -170,6 +185,10 @@ class FlowEditorPage implements Page {
 
     // Name is just the shortcut
     this.currentFlow.name = `/${triggerData.shortcut}`;
+    
+    // Folder
+    const folderSelect = this.el.querySelector('#flow-folder') as HTMLSelectElement;
+    this.currentFlow.folderId = folderSelect.value || undefined;
 
     const blocks: Block[] = [];
     blocks.push({ id: crypto.randomUUID(), type: 'trigger', data: triggerData });
@@ -281,4 +300,4 @@ class FlowEditorPage implements Page {
   }
 }
 
-export const page = new FlowEditorPage();
+

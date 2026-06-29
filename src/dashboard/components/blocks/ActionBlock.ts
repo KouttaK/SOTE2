@@ -26,6 +26,7 @@ export class ActionBlock {
   private editorEl!: HTMLDivElement;
   private tokenMenu!: TokenMenu;
   private mutationObserver!: MutationObserver;
+  private savedRange: Range | null = null;
 
   constructor(data: IActionBlock | undefined, onChange: () => void) {
     this.data = data || {
@@ -98,6 +99,32 @@ export class ActionBlock {
     this.setupObserver();
   }
 
+  private saveRange() {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && this.editorEl.contains(sel.anchorNode)) {
+      this.savedRange = sel.getRangeAt(0).cloneRange();
+    }
+  }
+
+  private restoreRange() {
+    if (this.savedRange) {
+      const sel = window.getSelection();
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(this.savedRange);
+      }
+    } else {
+      const range = document.createRange();
+      range.selectNodeContents(this.editorEl);
+      range.collapse(false);
+      const sel = window.getSelection();
+      if (sel) {
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    }
+  }
+
   private setupObserver() {
     this.mutationObserver = new MutationObserver((mutations) => {
       let tokensRemoved = false;
@@ -160,9 +187,9 @@ export class ActionBlock {
     });
 
     this.editorEl.addEventListener('input', () => this.onChange());
-    this.editorEl.addEventListener('keyup', () => this.updateToolbarState());
-    this.editorEl.addEventListener('mouseup', () => this.updateToolbarState());
-    this.editorEl.addEventListener('mouseleave', () => this.updateToolbarState());
+    this.editorEl.addEventListener('keyup', () => { this.updateToolbarState(); this.saveRange(); });
+    this.editorEl.addEventListener('mouseup', () => { this.updateToolbarState(); this.saveRange(); });
+    this.editorEl.addEventListener('mouseleave', () => { this.updateToolbarState(); this.saveRange(); });
 
     // Token Menu
     this.tokenMenu = new TokenMenu((type) => this.insertToken(type));
@@ -193,6 +220,7 @@ export class ActionBlock {
 
   private insertToken(type: Token['type']) {
     this.editorEl.focus();
+    this.restoreRange();
     
     // Default config if needed
     let config: any = {};

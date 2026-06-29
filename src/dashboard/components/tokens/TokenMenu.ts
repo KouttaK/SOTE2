@@ -57,7 +57,8 @@ export class TokenMenu {
     this.el.innerHTML = html;
 
     this.el.querySelectorAll('.token-menu-item').forEach(el => {
-      el.addEventListener('click', () => {
+      el.addEventListener('mousedown', (e) => {
+        e.preventDefault(); // Prevent losing focus from contenteditable
         const type = (el as HTMLElement).dataset.type as Token['type'];
         this.onSelect(type);
         this.hide();
