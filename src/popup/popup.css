@@ -1,0 +1,512 @@
+/*
+ * popup.css — SOTE Popup Styles
+ * Replicação pixel a pixel de ref_pages/SOTE/popup.htm
+ * Importa variables.css para acesso aos tokens do design system.
+ */
+
+@import url('../assets/styles/variables.css');
+
+/* ── Reset base ──────────────────────────────────────────────────────────── */
+
+*,
+::before,
+::after {
+  box-sizing: border-box;
+  border-width: 0;
+  border-style: solid;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  font-family: var(--font-family-base);
+  line-height: var(--line-height-base);
+  -webkit-text-size-adjust: 100%;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 100%;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+}
+
+input {
+  font-family: inherit;
+  font-size: 100%;
+  color: inherit;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0;
+  margin: 0;
+}
+
+a { color: inherit; text-decoration: none; }
+p, span, div { margin: 0; }
+ol, ul { list-style: none; margin: 0; padding: 0; }
+
+svg { display: block; }
+
+/* ── Popup card container ─────────────────────────────────────────────────── */
+/* Exactamente: bg-white rounded-2xl shadow-2xl border border-neutral-200 overflow-hidden width:350px */
+
+#popup-card {
+  width: 350px;
+  background-color: #ffffff;
+  border-radius: 1rem;               /* rounded-2xl */
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25); /* shadow-2xl */
+  border: 1px solid #e5e5e5;        /* border-neutral-200 */
+  overflow: hidden;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+/* px-4 pt-4 pb-3 border-b border-neutral-100 flex items-center justify-between */
+
+#popup-header {
+  padding: 1rem 1rem 0.75rem;
+  border-bottom: 1px solid #f5f5f5; /* border-neutral-100 */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Logo group: flex items-center gap-2.5 */
+.popup-logo-group {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+/* Logo icon: w-7 h-7 bg-neutral-900 rounded-lg flex items-center justify-center */
+.popup-logo-icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  background-color: #171717;   /* neutral-900 */
+  border-radius: 0.5rem;       /* rounded-lg */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.popup-logo-icon span {
+  color: #ffffff;
+  font-size: 0.75rem;
+  letter-spacing: -0.025em; /* tracking-tight */
+}
+
+/* SOTE wordmark: text-neutral-900 text-base tracking-widest */
+.popup-wordmark {
+  color: #171717;
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+}
+
+/* Version badge: inline-flex items-center px-1.5 py-0.5 rounded-full bg-neutral-100 border border-neutral-200 text-neutral-500 text-xs */
+.popup-version-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.375rem;
+  border-radius: 9999px;
+  background-color: #f5f5f5;   /* neutral-100 */
+  border: 1px solid #e5e5e5;   /* neutral-200 */
+  color: #737373;               /* neutral-500 */
+  font-size: 0.75rem;
+}
+
+/* Toggle row: flex items-center gap-2 */
+.popup-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.popup-toggle-label {
+  font-size: 0.75rem;
+  color: #737373; /* neutral-500 */
+}
+
+/* Toggle track: relative w-11 h-6 rounded-full cursor-pointer flex items-center px-0.5 */
+/* OFF state: bg-neutral-200; ON state: bg-neutral-900 */
+
+.popup-toggle-track {
+  position: relative;
+  width: 2.75rem;    /* w-11 */
+  height: 1.5rem;    /* h-6 */
+  border-radius: 9999px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0 0.125rem;
+  background-color: #e5e5e5;   /* neutral-200 — OFF */
+  transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.popup-toggle-track.is-on {
+  background-color: #171717;   /* neutral-900 — ON */
+}
+
+/* Toggle knob: w-5 h-5 bg-white rounded-full shadow-md */
+.popup-toggle-knob {
+  width: 1.25rem;    /* w-5 */
+  height: 1.25rem;   /* h-5 */
+  background-color: #ffffff;
+  border-radius: 9999px;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); /* shadow-md */
+  transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1),
+              margin-left 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  /* OFF: pushed left */
+  margin-left: 0;
+}
+
+.popup-toggle-track.is-on .popup-toggle-knob {
+  /* ON: pushed to right — track is 44px, padding 2px each side, knob 20px → shift 20px */
+  margin-left: 1.25rem;
+}
+
+/* ── Body ─────────────────────────────────────────────────────────────────── */
+/* px-4 py-3 space-y-4 */
+
+#popup-body {
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem; /* space-y-4 */
+}
+
+/* ── Section label ─────────────────────────────────────────────────────────── */
+/* text-xs text-neutral-400 uppercase tracking-widest mb-2 */
+
+.popup-section-label {
+  font-size: 0.75rem;
+  color: #a3a3a3;             /* neutral-400 */
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.5rem;
+}
+
+/* ── Quick Pause grid ─────────────────────────────────────────────────────── */
+/* grid grid-cols-3 gap-2 */
+
+#popup-quick-pause .pause-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+/* Pause button base: flex flex-col items-center gap-1.5 px-2 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 hover:border-neutral-300 transition-colors */
+
+.pause-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.625rem 0.5rem;
+  border-radius: 0.75rem;    /* rounded-xl */
+  border: 1px solid #e5e5e5; /* neutral-200 */
+  background-color: #fafafa; /* neutral-50 */
+  transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+              border-color    150ms cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  width: 100%;
+}
+
+.pause-btn:hover {
+  background-color: #f5f5f5; /* neutral-100 */
+  border-color: #d4d4d4;     /* neutral-300 */
+}
+
+/* Active/snooze state: darker to give visual feedback */
+.pause-btn.is-active {
+  background-color: #f5f5f5;
+  border-color: #a3a3a3; /* neutral-400 */
+}
+
+.pause-btn svg {
+  color: #525252; /* neutral-600 — text-neutral-600 text-sm → 14px */
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.pause-btn span {
+  font-size: 0.75rem;
+  color: #404040;       /* neutral-700 */
+  text-align: center;
+  line-height: 1.25;
+}
+
+/* ── Snooze banner (not in ref, but required by spec) ─────────────────────── */
+/* Shown when snooze is active — replaces the grid */
+
+#popup-snooze-banner {
+  display: none;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+#popup-snooze-banner.is-visible {
+  display: flex;
+}
+
+.snooze-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e5e5;
+  background-color: #fafafa;
+}
+
+.snooze-info-text {
+  font-size: 0.75rem;
+  color: #737373;  /* neutral-500 */
+}
+
+/* Cancel snooze — same visual as dashboard link but smaller */
+.snooze-cancel-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e5e5;
+  background-color: #fafafa;
+  transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+              border-color    150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.snooze-cancel-btn:hover {
+  background-color: #f5f5f5;
+  border-color: #d4d4d4;
+}
+
+.snooze-cancel-btn span {
+  font-size: 0.75rem;
+  color: #404040;
+}
+
+/* ── Search bar ───────────────────────────────────────────────────────────── */
+/* flex items-center gap-2 border border-neutral-200 rounded-xl px-3 py-2 bg-neutral-50 */
+
+#popup-search .search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid #e5e5e5;
+  border-radius: 0.75rem;    /* rounded-xl */
+  padding: 0.5rem 0.75rem;
+  background-color: #fafafa;
+}
+
+#popup-search svg {
+  color: #a3a3a3;    /* neutral-400 */
+  width: 0.75rem;
+  height: 0.75rem;
+  flex-shrink: 0;
+}
+
+#popup-search input {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.875rem;
+  color: #404040;    /* neutral-700 */
+}
+
+#popup-search input::placeholder {
+  color: #a3a3a3;    /* neutral-400 */
+}
+
+/* kbd: text-xs text-neutral-400 border border-neutral-200 rounded px-1 py-0.5 bg-white */
+
+#popup-search kbd {
+  font-size: 0.75rem;
+  color: #a3a3a3;
+  border: 1px solid #e5e5e5;
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.25rem;
+  background-color: #ffffff;
+  flex-shrink: 0;
+  font-family: var(--font-family-base);
+}
+
+/* ── Recent snippets ──────────────────────────────────────────────────────── */
+
+#popup-recent .snippets-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem; /* space-y-1.5 */
+}
+
+/* Snippet row: flex items-center gap-3 px-3 py-2 rounded-xl border border-neutral-100 bg-white hover:border-neutral-200 hover:bg-neutral-50 transition-colors group */
+
+.snippet-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;    /* rounded-xl */
+  border: 1px solid #f5f5f5; /* border-neutral-100 */
+  background-color: #ffffff;
+  transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+              border-color    150ms cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: default;
+}
+
+.snippet-row:hover {
+  border-color: #e5e5e5;    /* neutral-200 */
+  background-color: #fafafa; /* neutral-50 */
+}
+
+/* Icon box: w-7 h-7 bg-neutral-100 rounded-lg flex items-center justify-center flex-shrink-0 */
+
+.snippet-icon-box {
+  width: 1.75rem;
+  height: 1.75rem;
+  background-color: #f5f5f5;  /* neutral-100 */
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.snippet-icon-box svg {
+  color: #737373;   /* neutral-500 */
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+/* Text block */
+.snippet-text-block {
+  flex: 1;
+  min-width: 0;
+}
+
+.snippet-shortcut {
+  font-size: 0.875rem;
+  color: #262626;    /* neutral-800 */
+  margin: 0;
+}
+
+.snippet-preview {
+  font-size: 0.75rem;
+  color: #a3a3a3;    /* neutral-400 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0;
+}
+
+/* Copy button: w-6 h-6 flex items-center justify-center rounded-lg border border-neutral-200 bg-neutral-50 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors flex-shrink-0 */
+
+.snippet-copy-btn {
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e5e5;
+  background-color: #fafafa;
+  color: #a3a3a3;    /* neutral-400 */
+  flex-shrink: 0;
+  transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+              color            150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.snippet-copy-btn:hover {
+  color: #404040;             /* neutral-700 */
+  background-color: #f5f5f5; /* neutral-100 */
+}
+
+.snippet-copy-btn svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+/* ── Footer ───────────────────────────────────────────────────────────────── */
+/* px-4 pt-2 pb-4 border-t border-neutral-100 mt-1 */
+
+#popup-footer {
+  padding: 0.5rem 1rem 1rem;
+  border-top: 1px solid #f5f5f5; /* border-neutral-100 */
+  margin-top: 0.25rem;
+}
+
+/* Dashboard link: flex items-center justify-center gap-2 w-full py-2 rounded-xl border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 hover:border-neutral-300 transition-colors */
+
+#btn-open-dashboard {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0;
+  border-radius: 0.75rem;     /* rounded-xl */
+  border: 1px solid #e5e5e5;  /* neutral-200 */
+  background-color: #fafafa;  /* neutral-50 */
+  transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+              border-color    150ms cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+#btn-open-dashboard:hover {
+  background-color: #f5f5f5; /* neutral-100 */
+  border-color: #d4d4d4;     /* neutral-300 */
+}
+
+#btn-open-dashboard span {
+  font-size: 0.875rem;
+  color: #404040;  /* neutral-700 */
+}
+
+#btn-open-dashboard svg {
+  color: #737373;  /* neutral-500 */
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+/* ── Block-site feedback toast ─────────────────────────────────────────────── */
+
+.feedback-toast {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #171717;
+  color: #ffffff;
+  font-size: 0.75rem;
+  padding: 0.375rem 0.875rem;
+  border-radius: 9999px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+  z-index: 10;
+}
+
+.feedback-toast.is-visible {
+  opacity: 1;
+}
+
+/* ── Snooze elapsed bar on pause grid ──────────────────────────────────────── */
+/* When snooze is active, the snooze grid is hidden and the banner is shown.
+   The active snooze button gets a subtle indicator. */
+
+.pause-btn.snooze-active-indicator {
+  border-color: #a3a3a3;
+  background-color: #f5f5f5;
+}
+
+/* ── Mute-site row (no in original but required by spec) ─────────────────── */
+/* Style identical to pause-btn, inheriting from existing selector above */

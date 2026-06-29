@@ -1,0 +1,149 @@
+/*
+ * variables.css — SOTE Design System Tokens
+ *
+ * Extraído das ref_pages/SOTE/*.htm (TailwindCSS neutral palette + Font Awesome 6).
+ * Todas as cores, espaçamentos, radii e sombras são mapeados 1:1 das classes
+ * Tailwind observadas nos arquivos de referência.
+ *
+ * Compatível com Shadow DOM: usar :host em vez de :root no content script.
+ */
+
+/* --------------------------------------------------------------------------
+   Paleta de cores — extraída de ref_pages/SOTE/*.htm
+   (Tailwind neutral scale, conforme tailwind.config primary = neutral)
+   -------------------------------------------------------------------------- */
+
+:host,
+:root {
+  /* Superfícies — backgrounds */
+  --color-bg-base:      #0a0a0a; /* neutral-950 — fundo do dashboard */
+  --color-bg-raised:    #171717; /* neutral-900 — sidebar, header, cards */
+  --color-bg-elevated:  #262626; /* neutral-800 — items ativos, hover states */
+  --color-bg-overlay:   #404040; /* neutral-700 — badges, toggles, chips */
+
+  /* Popup (tema claro) — extraído de ref_pages/SOTE/popup.htm */
+  --color-bg-popup:         #ffffff; /* white  — card do popup */
+  --color-bg-popup-muted:   #fafafa; /* neutral-50  — fundo de itens */
+  --color-bg-popup-subtle:  #f5f5f5; /* neutral-100 — hover em itens leves */
+
+  /* Bordas */
+  --color-border-strong:  #525252; /* neutral-600 */
+  --color-border-default: #404040; /* neutral-700 */
+  --color-border-subtle:  #262626; /* neutral-800 */
+  --color-border-faint:   #171717; /* neutral-900 */
+
+  /* Bordas claras (popup) */
+  --color-border-light-strong:  #d4d4d4; /* neutral-300 */
+  --color-border-light-default: #e5e5e5; /* neutral-200 */
+  --color-border-light-subtle:  #f5f5f5; /* neutral-100 */
+
+  /* Texto — escala escura (dashboard) */
+  --color-text-primary:   #ffffff; /* white */
+  --color-text-secondary: #f5f5f5; /* neutral-100 */
+  --color-text-tertiary:  #d4d4d4; /* neutral-300 */
+  --color-text-muted:     #a3a3a3; /* neutral-400 */
+  --color-text-faint:     #737373; /* neutral-500 */
+  --color-text-disabled:  #525252; /* neutral-600 */
+
+  /* Texto — escala clara (popup) */
+  --color-text-popup-primary:   #171717; /* neutral-900 */
+  --color-text-popup-secondary: #262626; /* neutral-800 */
+  --color-text-popup-tertiary:  #404040; /* neutral-700 */
+  --color-text-popup-muted:     #737373; /* neutral-500 */
+  --color-text-popup-faint:     #a3a3a3; /* neutral-400 */
+
+  /* Acento / CTA — extraído de home.htm: botão "Create New Flow" */
+  --color-cta-bg:      #ffffff; /* white */
+  --color-cta-bg-hover: #f5f5f5; /* neutral-100 */
+  --color-cta-text:    #171717; /* neutral-900 */
+
+  /* Estado: cursor piscante (palletcomand.htm) */
+  --color-cursor: #ffffff;
+
+  /* --------------------------------------------------------------------------
+     Tipografia — extraída de todos os .htm
+     Font: ui-sans-serif, system-ui (Tailwind default — sem Google Fonts)
+     -------------------------------------------------------------------------- */
+  --font-family-base: ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+
+  --font-size-xs:   0.75rem;   /* 12px — text-xs  */
+  --font-size-sm:   0.875rem;  /* 14px — text-sm  */
+  --font-size-base: 1rem;      /* 16px — text-base */
+  --font-size-xl:   1.25rem;   /* 20px — text-xl  */
+  --font-size-2xl:  1.5rem;    /* 24px — text-2xl */
+
+  --line-height-tight:   1.25;
+  --line-height-base:    1.5;
+  --line-height-relaxed: 1.625;
+
+  --letter-spacing-tight:   -0.025em; /* tracking-tight   */
+  --letter-spacing-widest:   0.1em;   /* tracking-widest  */
+
+  /* --------------------------------------------------------------------------
+     Espaçamentos — extraídos dos utilitários Tailwind observados
+     -------------------------------------------------------------------------- */
+  --spacing-0-5: 0.125rem; /* 2px  */
+  --spacing-1:   0.25rem;  /* 4px  */
+  --spacing-1-5: 0.375rem; /* 6px  */
+  --spacing-2:   0.5rem;   /* 8px  */
+  --spacing-2-5: 0.625rem; /* 10px */
+  --spacing-3:   0.75rem;  /* 12px */
+  --spacing-4:   1rem;     /* 16px */
+  --spacing-5:   1.25rem;  /* 20px */
+  --spacing-6:   1.5rem;   /* 24px */
+  --spacing-8:   2rem;     /* 32px */
+  --spacing-10:  2.5rem;   /* 40px */
+
+  /* --------------------------------------------------------------------------
+     Border-radius — extraídos dos rounded-* observados
+     -------------------------------------------------------------------------- */
+  --radius-sm:    0.25rem;  /* rounded    */
+  --radius-md:    0.375rem; /* rounded-md */
+  --radius-lg:    0.5rem;   /* rounded-lg */
+  --radius-xl:    0.75rem;  /* rounded-xl */
+  --radius-2xl:   1rem;     /* rounded-2xl (popup card, palette modal) */
+  --radius-full:  9999px;   /* rounded-full (badges, toggles) */
+
+  /* --------------------------------------------------------------------------
+     Sombras — extraídas das shadow-* observadas
+     -------------------------------------------------------------------------- */
+  --shadow-sm:  0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md:  0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+
+  /* --------------------------------------------------------------------------
+     Transições — extraídas das transition-* observadas (duration: 150ms)
+     -------------------------------------------------------------------------- */
+  --transition-duration:        150ms;
+  --transition-easing:          cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-colors-props:    color, background-color, border-color,
+                                text-decoration-color, fill, stroke;
+  --transition-opacity-props:   opacity;
+
+  /* --------------------------------------------------------------------------
+     Dimensões fixas de componentes — extraídas das ref_pages
+     -------------------------------------------------------------------------- */
+  --sidebar-width:        16rem;    /* w-64 */
+  --popup-width:          350px;    /* width do popup card */
+  --palette-max-width:    32rem;    /* max-w-lg ≈ 512px; usamos 32rem para safe */
+  --palette-height:       420px;    /* height do container preview */
+
+  /* Icon sizes (usados em múltiplos componentes) */
+  --icon-size-xs: 1rem;    /* w-4 h-4 */
+  --icon-size-sm: 1.25rem; /* w-5 h-5 */
+  --icon-size-md: 1.75rem; /* w-7 h-7 */
+  --icon-size-lg: 2rem;    /* w-8 h-8 */
+  --icon-size-xl: 2.25rem; /* w-9 h-9 */
+
+  /* Toggle (popup master toggle) */
+  --toggle-width:  2.75rem; /* w-11 */
+  --toggle-height: 1.5rem;  /* h-6  */
+  --toggle-knob:   1.25rem; /* w-5 h-5 */
+
+  /* Z-index layers */
+  --z-header:  10; /* z-10 — header */
+  --z-sidebar: 20; /* z-20 — sidebar */
+}

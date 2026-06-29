@@ -1,0 +1,286 @@
+/**
+ * src/content/palette/CommandPalette.css
+ * Injected into the Shadow DOM for the Command Palette overlay.
+ */
+
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647; /* Maximum possible z-index */
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  pointer-events: auto;
+}
+
+/* Backdrop */
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(10, 10, 10, 0.72);
+  backdrop-filter: blur(4px);
+  z-index: -1;
+  animation: fadeIn 0.15s ease-out;
+}
+
+/* Modal Container */
+.modal {
+  position: relative;
+  width: 100%;
+  max-width: 32rem; /* 512px */
+  background-color: #171717; /* neutral-900 */
+  border: 1px solid #404040; /* neutral-700 */
+  border-radius: 1rem; /* rounded-2xl */
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); /* shadow-2xl */
+  overflow: hidden;
+  animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Search Header */
+.search-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem; /* gap-3 */
+  padding: 1rem 1.25rem; /* py-4 px-5 */
+  border-bottom: 1px solid #262626; /* border-neutral-800 */
+}
+
+.search-icon-box {
+  width: 2rem;
+  height: 2rem;
+  background-color: #262626; /* neutral-800 */
+  border: 1px solid #404040; /* neutral-700 */
+  border-radius: 0.5rem; /* rounded-lg */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.search-icon-box span {
+  color: #ffffff;
+  font-size: 0.75rem; /* text-xs */
+  letter-spacing: 0.05em; /* tracking-wider */
+}
+
+.search-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+.search-input-wrapper svg {
+  color: #737373; /* neutral-500 */
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font-size: 1rem; /* text-base */
+}
+.search-input::placeholder {
+  color: #525252; /* neutral-600 */
+}
+
+kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.75rem; /* text-xs */
+  color: #737373; /* neutral-500 */
+  background-color: #262626; /* neutral-800 */
+  border: 1px solid #404040; /* border-neutral-700 */
+  border-radius: 0.25rem; /* rounded */
+  padding: 0.125rem 0.375rem; /* py-0.5 px-1.5 */
+}
+
+/* Results List */
+.results-list {
+  padding: 0.5rem 0;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.result-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin: 0 0.5rem 2px 0.5rem;
+  border-radius: 0.75rem; /* rounded-xl */
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.1s ease;
+  border: 1px solid transparent;
+}
+
+.result-item:hover, .result-item.active {
+  background-color: #262626; /* neutral-800 */
+}
+.result-item.active {
+  border-color: #404040; /* neutral-700 */
+}
+
+.active-indicator {
+  position: absolute;
+  left: 0;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  width: 0.125rem;
+  background-color: #ffffff;
+  border-radius: 9999px;
+  margin-left: 0.5rem;
+  display: none;
+}
+.result-item.active .active-indicator {
+  display: block;
+}
+
+.result-content {
+  padding-left: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.result-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem; /* py-1 px-2.5 */
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+}
+.result-badge.active {
+  background-color: #404040; /* neutral-700 */
+  border: 1px solid #525252; /* neutral-600 */
+  color: #ffffff;
+}
+.result-badge.inactive {
+  background-color: #262626; /* neutral-800 */
+  border: 1px solid #404040; /* neutral-700 */
+  color: #d4d4d4; /* neutral-300 */
+}
+
+.result-text {
+  font-size: 0.875rem; /* text-sm */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+.result-item.active .result-text {
+  color: #a3a3a3; /* neutral-400 */
+}
+.result-item:not(.active) .result-text {
+  color: #525252; /* neutral-600 */
+}
+
+.result-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-shrink: 0;
+  margin-left: 0.5rem;
+}
+.result-hint span {
+  font-size: 0.75rem;
+  color: #737373; /* neutral-500 */
+}
+.result-hint kbd {
+  color: #d4d4d4; /* neutral-300 */
+  background-color: #404040; /* neutral-700 */
+  border-color: #525252; /* neutral-600 */
+}
+
+.result-item:not(.active) .result-hint {
+  display: none;
+}
+.result-item:not(.active) .result-hint-alt {
+  display: block;
+}
+.result-item.active .result-hint-alt {
+  display: none;
+}
+.result-hint-alt kbd {
+  color: #525252; /* neutral-600 */
+  background-color: #171717; /* neutral-900 */
+  border-color: #262626; /* neutral-800 */
+}
+
+/* Footer */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem 1.25rem; /* py-2.5 px-5 */
+  border-top: 1px solid #262626; /* neutral-800 */
+  background-color: #0a0a0a; /* neutral-950 */
+}
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.footer-shortcut {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: #525252; /* neutral-600 */
+}
+.footer-shortcut kbd {
+  background-color: #171717;
+  border-color: #262626;
+  color: #737373;
+  padding: 0.125rem 0.25rem;
+}
+.footer-divider {
+  width: 1px;
+  height: 0.75rem;
+  background-color: #262626; /* neutral-800 */
+}
+.footer-right {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem; /* gap-1.5 */
+}
+.footer-right span {
+  font-size: 0.75rem;
+  color: #525252;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #525252;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-0.5rem) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}

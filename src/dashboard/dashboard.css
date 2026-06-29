@@ -1,0 +1,493 @@
+/*
+ * dashboard.css — SOTE Dashboard Shell Styles
+ *
+ * Replicação pixel-perfeita de ref_pages/SOTE/home.htm
+ * Todas as cores, espaçamentos e tipografias extraídos do arquivo de referência.
+ *
+ * Paleta: dark mode — fundo neutral-950 (#0a0a0a), superfícies neutral-900 (#171717)
+ * Bordas: neutral-800 (#262626)
+ * Sidebar: w-64 fixo = 16rem
+ */
+
+@import url('../assets/styles/variables.css');
+
+/* ── Reset base ─────────────────────────────────────────────────────────── */
+
+*, ::before, ::after {
+  box-sizing: border-box;
+  border-width: 0;
+  border-style: solid;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background-color: #0a0a0a;  /* neutral-950 */
+  color: #ffffff;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+}
+
+#app {
+  height: 100%;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
+}
+
+input {
+  font-family: inherit;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: inherit;
+}
+
+a { color: inherit; text-decoration: none; }
+p, span { margin: 0; }
+ul, ol { list-style: none; margin: 0; padding: 0; }
+svg { display: block; }
+
+/* ── Root layout: sidebar + main column ─────────────────────────────────── */
+/* Mirrors: div.flex.min-h-screen.bg-neutral-950 from home.htm */
+
+.dash-root {
+  display: flex;
+  min-height: 100vh;
+  background-color: #0a0a0a;
+}
+
+/* ── Sidebar ────────────────────────────────────────────────────────────── */
+/* w-64 fixed left-0 top-0 h-full bg-neutral-900 border-r border-neutral-800 flex flex-col */
+
+#dash-sidebar {
+  width: 16rem;           /* w-64 */
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  background-color: #171717; /* neutral-900 */
+  border-right: 1px solid #262626; /* border-neutral-800 */
+  display: flex;
+  flex-direction: column;
+  z-index: 20;
+}
+
+/* Logo block: px-6 py-5 border-b border-neutral-800 flex items-center gap-3 */
+.dash-sidebar-logo {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #262626;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+/* w-8 h-8 bg-neutral-800 rounded-xl flex items-center justify-center */
+.dash-logo-icon {
+  width: 2rem;
+  height: 2rem;
+  background-color: #262626; /* neutral-800 */
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dash-logo-icon span {
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+/* text-white tracking-widest font-medium */
+.dash-logo-wordmark {
+  color: #ffffff;
+  letter-spacing: 0.1em;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+/* ── Sidebar nav ────────────────────────────────────────────────────────── */
+/* flex-1 px-3 py-4 space-y-1 overflow-y-auto */
+
+.dash-sidebar-nav {
+  flex: 1;
+  padding: 1rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow-y: auto;
+}
+
+/* Section divider label */
+.dash-nav-divider {
+  padding: 1rem 0.75rem 0.5rem;
+}
+
+.dash-nav-section-label {
+  font-size: 0.625rem;
+  color: #525252;         /* neutral-600 */
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 500;
+}
+
+/* Nav link: flex items-center gap-3 px-3 py-2 rounded-xl text-neutral-400 hover:bg-neutral-800 hover:text-white transition-colors text-sm */
+.dash-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  color: #a3a3a3;         /* neutral-400 */
+  font-size: 0.875rem;
+  transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+              color            150ms cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.dash-nav-link:hover {
+  background-color: #262626; /* neutral-800 */
+  color: #ffffff;
+}
+
+/* Active state: bg-neutral-800 text-white */
+.dash-nav-link.is-active {
+  background-color: #262626;
+  color: #ffffff;
+}
+
+.dash-nav-icon {
+  width: 1rem;
+  height: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.dash-nav-icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.dash-nav-label {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Badge (flow count pill) */
+.dash-nav-badge {
+  font-size: 0.625rem;
+  color: #737373;        /* neutral-500 */
+  background-color: #262626;
+  border: 1px solid #404040; /* neutral-700 */
+  border-radius: 9999px;
+  padding: 0.125rem 0.5rem;
+  flex-shrink: 0;
+}
+
+/* ── Sidebar user block ─────────────────────────────────────────────────── */
+/* px-4 py-4 border-t border-neutral-800 */
+
+.dash-sidebar-user {
+  padding: 1rem;
+  border-top: 1px solid #262626;
+  flex-shrink: 0;
+}
+
+.dash-user-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dash-user-row:hover {
+  background-color: #262626;
+}
+
+/* w-8 h-8 bg-neutral-700 rounded-full */
+.dash-user-avatar {
+  width: 2rem;
+  height: 2rem;
+  background-color: #404040; /* neutral-700 */
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+.dash-user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.dash-user-name {
+  font-size: 0.875rem;
+  color: #ffffff;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dash-user-plan {
+  font-size: 0.75rem;
+  color: #737373; /* neutral-500 */
+}
+
+.dash-user-menu-icon {
+  color: #525252; /* neutral-600 */
+  width: 1rem;
+  height: 1rem;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.dash-user-menu-icon svg {
+  width: 0.25rem;
+  height: 1rem;
+}
+
+/* ── Main column ────────────────────────────────────────────────────────── */
+/* ml-64 flex-1 flex flex-col */
+
+.dash-main-col {
+  margin-left: 16rem;  /* ml-64 */
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+/* sticky top-0 z-10 bg-neutral-900 border-b border-neutral-800 px-8 py-4 flex items-center justify-between */
+
+#dash-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: #171717; /* neutral-900 */
+  border-bottom: 1px solid #262626;
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+/* Search bar: flex items-center gap-2 flex-1 max-w-md border border-neutral-700 rounded-xl px-3 py-2 bg-neutral-800 */
+.dash-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  max-width: 28rem;
+  border: 1px solid #404040; /* neutral-700 */
+  border-radius: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background-color: #262626; /* neutral-800 */
+  transition: border-color 150ms ease;
+}
+
+.dash-search-bar:focus-within {
+  border-color: #737373; /* neutral-500 */
+}
+
+.dash-search-icon {
+  color: #525252; /* neutral-600 */
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.dash-search-icon svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.dash-search-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.875rem;
+  color: #ffffff;
+  background: transparent;
+}
+
+.dash-search-input::placeholder {
+  color: #525252; /* neutral-600 */
+}
+
+.dash-search-kbd {
+  font-size: 0.75rem;
+  color: #525252;
+  border: 1px solid #404040;
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.375rem;
+  background-color: #171717;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+
+/* Header actions group */
+.dash-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Generic pill button: flex items-center gap-1.5 px-3 py-2 rounded-xl border border-neutral-700 bg-neutral-800 text-sm text-neutral-400 hover:border-neutral-600 hover:text-white transition-colors */
+.dash-header-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid #404040; /* neutral-700 */
+  background-color: #262626; /* neutral-800 */
+  font-size: 0.875rem;
+  color: #a3a3a3;             /* neutral-400 */
+  cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease;
+  user-select: none;
+}
+
+.dash-header-btn:hover {
+  border-color: #525252; /* neutral-600 */
+  color: #ffffff;
+}
+
+.dash-header-btn-icon svg,
+.dash-header-btn-icon-sm svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.dash-header-btn-icon-sm svg {
+  width: 0.75rem;
+  height: 0.75rem;
+  color: #525252;
+}
+
+.dash-header-divider {
+  width: 1px;
+  height: 1.5rem;
+  background-color: #262626; /* neutral-800 */
+  margin: 0 0.25rem;
+}
+
+/* CTA button: flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-neutral-900 text-sm font-medium hover:bg-neutral-100 transition-colors */
+.dash-cta-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  background-color: #ffffff;
+  color: #171717;             /* neutral-900 */
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 150ms ease;
+  cursor: pointer;
+}
+
+.dash-cta-btn:hover {
+  background-color: #f5f5f5; /* neutral-100 */
+}
+
+.dash-cta-icon {
+  display: flex;
+  align-items: center;
+}
+
+.dash-cta-icon svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+/* ── Content area ───────────────────────────────────────────────────────── */
+/* flex-1 px-8 py-6 overflow-auto */
+
+.dash-content {
+  flex: 1;
+  padding: 1.5rem 2rem;
+  overflow-y: auto;
+  position: relative;
+  min-height: 0;
+}
+
+/* ── Skeleton loader ─────────────────────────────────────────────────────── */
+
+.dash-skeleton-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dash-skeleton-header {
+  margin-bottom: 1rem;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.8; }
+}
+
+.dash-skeleton-block,
+.dash-skeleton-row {
+  background-color: #262626; /* neutral-800 */
+  border-radius: 0.5rem;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.dash-skeleton-row {
+  height: 3.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid #262626;
+}
+
+/* ── Error state ────────────────────────────────────────────────────────── */
+
+.dash-error {
+  color: #a3a3a3;
+  font-size: 0.875rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+/* ── Page placeholder (stubs) ────────────────────────────────────────────── */
+
+.page-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  color: #525252;
+  font-size: 0.875rem;
+}
+
+/* ── Scrollbar styling (matches dark theme) ─────────────────────────────── */
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background-color: #404040;  /* neutral-700 */
+  border-radius: 9999px;
+}
