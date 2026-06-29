@@ -13,6 +13,7 @@
 
 import { storage } from '../shared/storage/StorageService.js';
 import type { Flow, Settings } from '../shared/types/index.js';
+import { sendMessage } from '../shared/messaging/client.js';
 
 // ---------------------------------------------------------------------------
 // DOM references (asserted non-null — element IDs are guaranteed by index.html)
@@ -259,26 +260,31 @@ toggleTrack.addEventListener('keydown', (e) => {
 
 /** Snooze 1 hour */
 btnSnooze1h.addEventListener('click', async () => {
-  const snoozeUntil = Date.now() + 60 * 60 * 1000;
-  currentSettings.snoozeUntil = snoozeUntil;
-  await storage.saveSettings({ snoozeUntil });
-  renderSnooze(snoozeUntil);
-  showToast('Snoozed for 1 hour');
+  const res = await sendMessage({ type: 'SNOOZE', payload: { duration: 60 * 60 * 1000 } });
+  if (res && res.success) {
+    currentSettings.snoozeUntil = res.snoozeUntil;
+    renderSnooze(res.snoozeUntil);
+    showToast('Snoozed for 1 hour');
+  }
 });
 
 /** Snooze 4 hours */
 btnSnooze4h.addEventListener('click', async () => {
-  const snoozeUntil = Date.now() + 4 * 60 * 60 * 1000;
-  currentSettings.snoozeUntil = snoozeUntil;
-  await storage.saveSettings({ snoozeUntil });
-  renderSnooze(snoozeUntil);
-  showToast('Snoozed for 4 hours');
+  const res = await sendMessage({ type: 'SNOOZE', payload: { duration: 4 * 60 * 60 * 1000 } });
+  if (res && res.success) {
+    currentSettings.snoozeUntil = res.snoozeUntil;
+    renderSnooze(res.snoozeUntil);
+    showToast('Snoozed for 4 hours');
+  }
 });
 
 /** Cancel snooze */
 btnCancelSnooze.addEventListener('click', async () => {
+  // We can just use the SNOOZE message with 0 duration, or handle it via storage since it cancels.
+  // Using SNOOZE with negative duration or 0 can work. Let's send 0.
+  const res = await sendMessage({ type: 'SNOOZE', payload: { duration: 0 } });
   currentSettings.snoozeUntil = undefined;
-  await storage.saveSettings({ snoozeUntil: undefined });
+  await storage.saveSettings({ snoozeUntil: undefined }); // Also do it directly to be safe
   renderSnooze(undefined);
   showToast('Pause cancelled');
 });
@@ -294,17 +300,17 @@ btnBlockSite.addEventListener('click', async () => {
   const idx = blocklist.indexOf(currentDomain);
 
   if (idx >= 0) {
-    // Already blocked — unblock.
+    // Already blocked — unblock. We can just do this via storage.
     blocklist.splice(idx, 1);
     currentSettings.blocklist = blocklist;
     await storage.saveSettings({ blocklist });
     renderBlockSiteBtn(currentDomain, blocklist);
     showToast(`${currentDomain} unblocked`);
   } else {
-    // Block it.
+    // Block it via messaging.
+    await sendMessage({ type: 'BLOCKLIST_ADD', payload: { domain: currentDomain } });
     blocklist.push(currentDomain);
     currentSettings.blocklist = blocklist;
-    await storage.saveSettings({ blocklist });
     renderBlockSiteBtn(currentDomain, blocklist);
     showToast(`${currentDomain} muted`);
   }

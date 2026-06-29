@@ -10,8 +10,8 @@ import { ChoicePopup } from './content/engine/ChoicePopup.js';
 import { CommandPalette } from './content/palette/CommandPalette.js';
 import { applyCasing } from './content/engine/SmartCase.js';
 import { expandToken, ExpansionContext } from './content/engine/tokenExpander.js';
-import { storage } from './shared/storage/StorageService.js';
-import type { ActionBlock, Token, Flow, Block } from './shared/types/index.js';
+import { sendMessage, onMessage } from './shared/messaging/client.js';
+import type { ActionBlock, Token, Flow, Block, Settings } from './shared/types/index.js';
 
 export default defineContentScript({
   matches: ['<all_urls>'],
@@ -34,39 +34,37 @@ export default defineContentScript({
       return false;
     };
 
-    // 1. Initial Load of Data
-    const flows = await storage.getFlows();
-    let settings = await storage.getSettings();
-    let variables = await storage.getVariables();
-    let templates = await storage.getTemplates();
+    // 1. Initial Load of Data via Messaging
+    let flows: Flow[] = await sendMessage({ type: 'GET_FLOWS' });
+    let settings: Settings = await sendMessage({ type: 'GET_SETTINGS' });
     
-    if (isBlocked(window.location.hostname, settings.blocklist) || !settings.globalEnabled) {
+    if (isBlocked(window.location.hostname, settings.blocklist || []) || !settings.globalEnabled) {
       console.log('[SOTE] Disabled on this site by blocklist or global settings.');
-      return; // Do not initialize
+      // Do not initialize monitor, but we still need to listen for settings updates
+      // in case it gets unblocked or re-enabled.
     }
 
     detector.updateData(flows, settings);
     commandPalette.updateFlows(flows);
 
-    // 2. Listen for Storage Changes
-    browser.storage.onChanged.addListener(async () => {
-      const updatedFlows = await storage.getFlows();
-      settings = await storage.getSettings();
-      variables = await storage.getVariables();
-      templates = await storage.getTemplates();
-
-      if (isBlocked(window.location.hostname, settings.blocklist) || !settings.globalEnabled) {
-        monitor.pause();
-      } else {
-        monitor.resume();
+    // 2. Listen for Broadcasts from Background
+    onMessage((msg) => {
+      if (msg.type === 'SETTINGS_UPDATED') {
+        settings = msg.payload as Settings;
+        if (isBlocked(window.location.hostname, settings.blocklist || []) || !settings.globalEnabled) {
+          monitor.pause();
+        } else {
+          monitor.resume();
+        }
+        detector.updateData(flows, settings);
+        monitor.triggerKeys = settings.triggerKeys;
       }
-
-      detector.updateData(updatedFlows, settings);
-      commandPalette.updateFlows(updatedFlows);
-      monitor.triggerKeys = settings.triggerKeys;
       
-      // Update expander context cache
-      // The expander logic will use variables and templates later
+      if (msg.type === 'FLOWS_UPDATED') {
+        flows = msg.payload as Flow[];
+        detector.updateData(flows, settings);
+        commandPalette.updateFlows(flows);
+      }
     });
 
     // 3. Orchestrator Logic
@@ -141,7 +139,7 @@ export default defineContentScript({
         // Track stats
         const plainTextLength = isRichText ? expandedContent.replace(/<[^>]+>/g, '').length : expandedContent.length;
         const keysSaved = Math.max(0, plainTextLength - shortcutTyped.length);
-        await storage.incrementFlowStats(flow.id, keysSaved);
+        sendMessage({ type: 'FLOW_USED', payload: { flowId: flow.id, keysSaved } });
         
       } catch (e) {
         console.error('[SOTE] Expansion Error:', e);
