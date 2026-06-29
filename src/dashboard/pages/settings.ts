@@ -126,6 +126,9 @@ class SettingsPage implements Page {
                 <button class="btn-secondary" id="btn-add-domain">
                   ${ICONS.plus} Add Domain
                 </button>
+                <button class="btn-secondary" id="btn-add-current-site">
+                  Add Current Site
+                </button>
               </div>
               
               <div class="blocklist-list" id="blocklist-container">
@@ -155,7 +158,7 @@ class SettingsPage implements Page {
                   <div class="settings-row-icon" style="color: #fca5a5;">${ICONS.cloud}</div>
                   <div>
                     <p class="settings-row-title">Enable Firefox Sync</p>
-                    <p class="settings-row-desc">Sync all flows and variables across your Firefox devices automatically</p>
+                    <p class="settings-row-desc" id="sync-status-text">Sync all flows and variables across your Firefox devices automatically</p>
                   </div>
                 </div>
                 <div class="settings-toggle" id="toggle-sync">
@@ -214,8 +217,19 @@ class SettingsPage implements Page {
 
   async mount() {
     this.settings = await storage.getSettings();
-    const localRaw = await browser.storage.local.get('__sote_sync_enabled__');
+    const localRaw = await browser.storage.local.get(['__sote_sync_enabled__', '__sote_last_sync_time__']);
     this.syncEnabled = localRaw['__sote_sync_enabled__'] === true;
+
+    if (this.syncEnabled) {
+      let lastSync = localRaw['__sote_last_sync_time__'];
+      if (!lastSync) {
+        lastSync = Date.now();
+        browser.storage.local.set({ '__sote_last_sync_time__': lastSync });
+      }
+      const mins = Math.floor((Date.now() - lastSync) / 60000);
+      const syncText = this.el.querySelector('#sync-status-text');
+      if (syncText) syncText.textContent = `Sincronizado há ${mins} min`;
+    }
 
     this.bindInputs();
     this.renderBlocklist();
@@ -283,23 +297,48 @@ class SettingsPage implements Page {
     toggleSync.addEventListener('click', async () => {
       this.syncEnabled = !this.syncEnabled;
       toggleSync.classList.toggle('active', this.syncEnabled);
+      const syncText = this.el.querySelector('#sync-status-text');
       if (this.syncEnabled) {
         await storage.enableSync();
+        browser.storage.local.set({ '__sote_last_sync_time__': Date.now() });
+        if (syncText) syncText.textContent = `Sincronizado há 0 min`;
       } else {
         await storage.disableSync();
+        if (syncText) syncText.textContent = 'Sync all flows and variables across your Firefox devices automatically';
       }
     });
 
     // Blocklist
     const btnAddDomain = this.el.querySelector('#btn-add-domain')!;
     const inputDomain = this.el.querySelector<HTMLInputElement>('#blocklist-input')!;
-    btnAddDomain.addEventListener('click', () => {
-      const domain = inputDomain.value.trim().toLowerCase();
+    const btnAddCurrentSite = this.el.querySelector('#btn-add-current-site')!;
+
+    const addDomain = (domain: string) => {
+      domain = domain.trim().toLowerCase();
       if (domain && !this.settings.blocklist.includes(domain)) {
         this.settings.blocklist.push(domain);
         this.updateSetting('blocklist', this.settings.blocklist);
-        inputDomain.value = '';
         this.renderBlocklist();
+      }
+    };
+
+    btnAddDomain.addEventListener('click', () => {
+      addDomain(inputDomain.value);
+      inputDomain.value = '';
+    });
+
+    btnAddCurrentSite.addEventListener('click', async () => {
+      try {
+        const tabs = await browser.tabs.query({ active: true, lastFocusedWindow: true });
+        const urlStr = tabs[0]?.url;
+        if (urlStr && urlStr.startsWith('http')) {
+          const url = new URL(urlStr);
+          addDomain(url.hostname);
+        } else {
+          alert('No valid website found in the active tab.');
+        }
+      } catch (err) {
+        console.error('Failed to get current tab', err);
       }
     });
 

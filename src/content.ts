@@ -22,12 +22,29 @@ export default defineContentScript({
     const choicePopup = new ChoicePopup();
     const commandPalette = new CommandPalette();
 
+    const isBlocked = (hostname: string, blocklist: string[]): boolean => {
+      for (const b of blocklist) {
+        if (b.startsWith('*.')) {
+          const domain = b.slice(2);
+          if (hostname === domain || hostname.endsWith('.' + domain)) return true;
+        } else {
+          if (hostname === b) return true;
+        }
+      }
+      return false;
+    };
+
     // 1. Initial Load of Data
     const flows = await storage.getFlows();
     let settings = await storage.getSettings();
     let variables = await storage.getVariables();
     let templates = await storage.getTemplates();
     
+    if (isBlocked(window.location.hostname, settings.blocklist) || !settings.globalEnabled) {
+      console.log('[SOTE] Disabled on this site by blocklist or global settings.');
+      return; // Do not initialize
+    }
+
     detector.updateData(flows, settings);
     commandPalette.updateFlows(flows);
 
@@ -37,6 +54,12 @@ export default defineContentScript({
       settings = await storage.getSettings();
       variables = await storage.getVariables();
       templates = await storage.getTemplates();
+
+      if (isBlocked(window.location.hostname, settings.blocklist) || !settings.globalEnabled) {
+        monitor.pause();
+      } else {
+        monitor.resume();
+      }
 
       detector.updateData(updatedFlows, settings);
       commandPalette.updateFlows(updatedFlows);
