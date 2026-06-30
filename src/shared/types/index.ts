@@ -14,8 +14,6 @@ export interface Block {
 
 export interface TriggerBlock {
   shortcut: string;
-  mode: TriggerMode;
-  exactMatchChar?: string;
   smartCase: boolean;
   forceCapitalize: boolean;
 }
@@ -81,13 +79,17 @@ export interface Folder {
 }
 
 export interface Settings {
-  triggerKeys: ('Space' | 'Tab' | 'Enter')[];
+  triggerMode: TriggerMode;
+  triggerKeys: string[];
   exactMatchChar: string;
+  exactMatchDelay?: number;
   globalEnabled: boolean;
   snoozeUntil?: number;
   blocklist: string[];
   commandPaletteShortcut: string;
   analytics: Record<string, number>;
+  language?: string;
+  theme?: string;
 }
 
 export interface StorageSchema {

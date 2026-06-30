@@ -25,6 +25,7 @@ export class TriggerDetector {
    */
   public detectTriggerMode(buffer: string): TriggerMatch | null {
     if (!this.canTrigger()) return null;
+    if (this.settings.triggerMode !== 'trigger') return null;
 
     // Extract word before cursor (basic implementation: characters since last space/newline)
     const match = buffer.match(/(\S+)$/);
@@ -35,7 +36,7 @@ export class TriggerDetector {
       if (!flow.enabled) continue;
       
       const trigger = this.getTriggerBlock(flow);
-      if (!trigger || trigger.mode !== 'trigger') continue;
+      if (!trigger) continue;
 
       // Check case-insensitive if smartCase is on, else exact
       const isMatch = trigger.smartCase
@@ -56,14 +57,15 @@ export class TriggerDetector {
    */
   public detectExactMatchMode(buffer: string): TriggerMatch | null {
     if (!this.canTrigger()) return null;
+    if (this.settings.triggerMode !== 'exact_match') return null;
 
     for (const flow of this.flows) {
       if (!flow.enabled) continue;
       
       const trigger = this.getTriggerBlock(flow);
-      if (!trigger || trigger.mode !== 'exact_match') continue;
+      if (!trigger) continue;
 
-      const prefix = trigger.exactMatchChar || this.settings.exactMatchChar;
+      const prefix = this.settings.exactMatchChar;
       const expected = prefix + trigger.shortcut;
 
       if (buffer.length < expected.length) continue;

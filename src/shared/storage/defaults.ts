@@ -1,8 +1,10 @@
 import type { Settings } from '../types/index.js';
 
 export const DEFAULT_SETTINGS: Settings = {
+  triggerMode: 'trigger',
   triggerKeys: ['Space', 'Tab', 'Enter'],
   exactMatchChar: '/',
+  exactMatchDelay: 0,
   globalEnabled: true,
   snoozeUntil: undefined,
   blocklist: [],

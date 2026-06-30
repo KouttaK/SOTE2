@@ -17,7 +17,6 @@ export class TriggerBlock {
   constructor(data: ITriggerBlock | undefined, onChange: () => void) {
     this.data = data || {
       shortcut: '',
-      mode: 'trigger',
       smartCase: true,
       forceCapitalize: false,
     };
@@ -62,21 +61,8 @@ export class TriggerBlock {
           </div>
         </div>
 
-        <!-- Mode Select -->
-        <div style="margin-bottom: 1.25rem;">
-          <label class="form-label">Trigger Mode</label>
-          <select id="trigger-mode" class="input-field" style="width:100%; border:1px solid #404040; background:#0a0a0a; color:#fff; padding:0.625rem; border-radius:0.5rem; outline:none;">
-            <option value="trigger" ${this.data.mode === 'trigger' ? 'selected' : ''}>Trigger (Space/Tab/Enter)</option>
-            <option value="exact_match" ${this.data.mode === 'exact_match' ? 'selected' : ''}>Exact Match (Custom char)</option>
-          </select>
-        </div>
-
-        <div id="trigger-exact-char" style="margin-bottom: 1.25rem; display: ${this.data.mode === 'exact_match' ? 'block' : 'none'};">
-          <label class="form-label">Exact Match Trigger Character</label>
-          <div class="input-field">
-            <input type="text" id="trigger-char" value="${this.data.exactMatchChar || '/'}" maxlength="1" />
-          </div>
-        </div>
+        <!-- Mode Select Removed -->
+        <!-- Exact Match Character Removed -->
 
         <!-- Toggles -->
         <div class="toggle-row">
@@ -107,19 +93,6 @@ export class TriggerBlock {
       this.onChange();
     });
 
-    const mode = this.el.querySelector<HTMLSelectElement>('#trigger-mode')!;
-    const exactCharContainer = this.el.querySelector<HTMLElement>('#trigger-exact-char')!;
-    mode.addEventListener('change', (e) => {
-      this.data.mode = (e.target as HTMLSelectElement).value as TriggerMode;
-      exactCharContainer.style.display = this.data.mode === 'exact_match' ? 'block' : 'none';
-      this.onChange();
-    });
-
-    const charInput = this.el.querySelector<HTMLInputElement>('#trigger-char')!;
-    charInput.addEventListener('input', (e) => {
-      this.data.exactMatchChar = (e.target as HTMLInputElement).value;
-      this.onChange();
-    });
 
     const smartCase = this.el.querySelector<HTMLElement>('#trigger-smartcase')!;
     smartCase.addEventListener('click', () => {

@@ -99,7 +99,7 @@ export class TextMonitor {
     if (e.key === 'Tab') codeName = 'Tab';
     if (e.key === 'Enter') codeName = 'Enter';
 
-    if (this.triggerKeys.includes(codeName)) {
+    if (this.triggerKeys.includes(codeName) || this.triggerKeys.includes(e.key)) {
       // Usar timeout para permitir que a Command Palette aja se necessário,
       // ou apenas disparar imediatamente
       this.onTriggerKeyPressed(e, codeName, this.buffer, target);

@@ -14,8 +14,8 @@ describe('TriggerDetector', () => {
       exactMatchChar: '/',
       blocklist: [],
       snoozeUntil: undefined,
+      triggerMode: 'trigger',
       theme: 'system',
-      exportFormat: 'json',
       commandPaletteShortcut: 'Ctrl+Shift+Space',
       analytics: {}
     };
@@ -83,6 +83,7 @@ describe('TriggerDetector', () => {
 
   it('Buffer "/obg" em exact match com char "/": detecta sem tecla adicional', () => {
     const flow = createMockFlow('f1', 'exact_match', 'obg');
+    mockSettings.triggerMode = 'exact_match';
     detector.updateData([flow], mockSettings);
     
     const match = detector.detectExactMatchMode('/obg');

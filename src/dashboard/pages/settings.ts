@@ -52,17 +52,79 @@ export default class SettingsPage implements Page {
               </div>
             </div>
             <div class="settings-section-content">
-              
-              <div style="display: flex; gap: 1.5rem;">
-                <div class="settings-input-group" style="flex: 1;">
+
+              <!-- ── Card: Trigger Key ──────────────────────────────────────── -->
+              <div class="exp-card" id="exp-card-trigger">
+                <label class="exp-card-radio-label">
+                  <input type="radio" name="exp-mode" value="trigger_key" id="radio-trigger" />
+                  <div class="exp-card-body">
+                    <span class="exp-card-title">Tecla de Gatilho</span>
+                    <span class="exp-card-desc">
+                      Digite o atalho e pressione a tecla configurada para expandir.
+                    </span>
+                  </div>
+                </label>
+
+                <div class="exp-card-config" id="cfg-trigger">
+                  <div class="exp-cfg-row">
+                    <div>
+                      <p class="exp-cfg-label">Tecla de Gatilho</p>
+                      <p class="exp-cfg-hint">Qualquer tecla exceto Enter.</p>
+                    </div>
+                    <div class="exp-key-area">
+                      <div class="exp-key-badge" id="trigger-key-badge">···</div>
+                      <button class="btn-secondary btn-sm" id="btn-capture">Capturar tecla</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ── Card: Exact Match ──────────────────────────────────────── -->
+              <div class="exp-card" id="exp-card-exact">
+                <label class="exp-card-radio-label">
+                  <input type="radio" name="exp-mode" value="exact_match" id="radio-exact" />
+                  <div class="exp-card-body">
+                    <span class="exp-card-title">Correspondência Exata</span>
+                    <span class="exp-card-desc">
+                      Expande automaticamente ao completar o atalho, sem precisar pressionar outra tecla.
+                    </span>
+                  </div>
+                </label>
+
+                <div class="exp-card-config" id="cfg-exact">
+                  <div style="display:flex; gap:1.5rem; flex-wrap:wrap;">
+                    <div class="settings-input-group" style="flex:1; min-width:130px;">
+                      <label class="settings-label">Prefixo (opcional)</label>
+                      <input type="text" id="exact-char-input" class="settings-input"
+                        maxlength="1"
+                        style="text-align:center; font-size:1.125rem; letter-spacing:.1em;"
+                        placeholder="/" />
+                      <p class="exp-cfg-hint">Vazio = expandir sem prefixo.</p>
+                    </div>
+                    <div class="settings-input-group" style="width:160px;">
+                      <label class="settings-label">Delay de segurança (ms)</label>
+                      <div style="display:flex; align-items:center; gap:.5rem;">
+                        <input type="number" id="delay-input" class="settings-input"
+                          min="0" max="2000" step="50"
+                          style="width:80px;" />
+                        <span style="color:#737373; font-size:.8125rem;">ms</span>
+                      </div>
+                      <p class="exp-cfg-hint">0 = instantâneo. Esc cancela durante o delay.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="divider"></div>
+
+              <!-- ── Command Palette + Language (mantidos) ─────────────────── -->
+              <div style="display:flex; gap:1.5rem; flex-wrap:wrap;">
+                <div class="settings-input-group" style="flex:1;">
                   <label class="settings-label">Command Palette Shortcut</label>
-                  <input type="text" id="setting-palette" class="settings-input" readonly placeholder="Press keys..." />
+                  <input type="text" id="setting-palette" class="settings-input"
+                    readonly placeholder="Press keys..." />
                 </div>
-                <div class="settings-input-group" style="width: 8rem;">
-                  <label class="settings-label">${t('settings.exactMatchChar')}</label>
-                  <input type="text" id="setting-exact" class="settings-input" maxlength="1" />
-                </div>
-                <div class="settings-input-group" style="width: 10rem;">
+                <div class="settings-input-group" style="width:10rem;">
                   <label class="settings-label">${t('settings.language')}</label>
                   <select id="setting-language" class="settings-input">
                     <option value="en">English</option>
@@ -71,47 +133,6 @@ export default class SettingsPage implements Page {
                 </div>
               </div>
 
-              <div class="divider"></div>
-              <p class="settings-label">Trigger Keys</p>
-              
-              <div class="settings-row">
-                <div class="settings-row-left">
-                  <div class="settings-row-icon" style="background: transparent; border: none; font-weight: bold; color: #a3a3a3; font-size: 0.75rem;">SPC</div>
-                  <div>
-                    <p class="settings-row-title">Expand on Space</p>
-                    <p class="settings-row-desc">Trigger expansion when pressing the Spacebar</p>
-                  </div>
-                </div>
-                <div class="settings-toggle" id="toggle-space">
-                  <div class="settings-toggle-knob"></div>
-                </div>
-              </div>
-
-              <div class="settings-row">
-                <div class="settings-row-left">
-                  <div class="settings-row-icon" style="background: transparent; border: none; font-weight: bold; color: #a3a3a3; font-size: 0.75rem;">TAB</div>
-                  <div>
-                    <p class="settings-row-title">Expand on Tab</p>
-                    <p class="settings-row-desc">Trigger expansion when pressing the Tab key</p>
-                  </div>
-                </div>
-                <div class="settings-toggle" id="toggle-tab">
-                  <div class="settings-toggle-knob"></div>
-                </div>
-              </div>
-
-              <div class="settings-row">
-                <div class="settings-row-left">
-                  <div class="settings-row-icon" style="background: transparent; border: none; font-weight: bold; color: #a3a3a3; font-size: 0.75rem;">ENT</div>
-                  <div>
-                    <p class="settings-row-title">Expand on Enter</p>
-                    <p class="settings-row-desc">Trigger expansion when pressing the Enter key</p>
-                  </div>
-                </div>
-                <div class="settings-toggle" id="toggle-enter">
-                  <div class="settings-toggle-knob"></div>
-                </div>
-              </div>
             </div>
           </section>
 
@@ -249,6 +270,7 @@ export default class SettingsPage implements Page {
     }
 
     this.bindInputs();
+    this.bindExpansionMode();
     this.renderBlocklist();
   }
 
@@ -260,13 +282,7 @@ export default class SettingsPage implements Page {
   }
 
   private bindInputs() {
-    // Exact Match Char
-    const extMatch = this.el.querySelector('#setting-exact') as HTMLInputElement;
-    extMatch.value = this.settings.exactMatchChar;
-    extMatch.addEventListener('change', (e) => {
-      this.settings.exactMatchChar = (e.target as HTMLInputElement).value || '/';
-      this.updateSetting('exactMatchChar', this.settings.exactMatchChar);
-    });
+
 
     const langSelect = this.el.querySelector('#setting-language') as HTMLSelectElement;
     langSelect.value = this.settings.language || 'en';
@@ -295,28 +311,7 @@ export default class SettingsPage implements Page {
       }
     });
 
-    // Toggles
-    const toggleSpace = this.el.querySelector('#toggle-space')!;
-    const toggleTab = this.el.querySelector('#toggle-tab')!;
-    const toggleEnter = this.el.querySelector('#toggle-enter')!;
 
-    const updateTriggers = () => {
-      toggleSpace.classList.toggle('active', this.settings.triggerKeys.includes('Space'));
-      toggleTab.classList.toggle('active', this.settings.triggerKeys.includes('Tab'));
-      toggleEnter.classList.toggle('active', this.settings.triggerKeys.includes('Enter'));
-    };
-    updateTriggers();
-
-    const toggleTrigger = (key: 'Space'|'Tab'|'Enter') => {
-      const keys = new Set(this.settings.triggerKeys);
-      if (keys.has(key)) keys.delete(key);
-      else keys.add(key);
-      this.updateSetting('triggerKeys', Array.from(keys));
-      updateTriggers();
-    };
-    toggleSpace.addEventListener('click', () => toggleTrigger('Space'));
-    toggleTab.addEventListener('click', () => toggleTrigger('Tab'));
-    toggleEnter.addEventListener('click', () => toggleTrigger('Enter'));
 
     // Sync Toggle
     const toggleSync = this.el.querySelector('#toggle-sync')!;
@@ -542,6 +537,130 @@ export default class SettingsPage implements Page {
           '"': '&quot;'
         }[tag] || tag)
     );
+  }
+
+  private bindExpansionMode(): void {
+    const radioTrigger  = this.el.querySelector<HTMLInputElement>('#radio-trigger')!;
+    const radioExact    = this.el.querySelector<HTMLInputElement>('#radio-exact')!;
+    const cardTrigger   = this.el.querySelector<HTMLElement>('#exp-card-trigger')!;
+    const cardExact     = this.el.querySelector<HTMLElement>('#exp-card-exact')!;
+    const cfgTrigger    = this.el.querySelector<HTMLElement>('#cfg-trigger')!;
+    const cfgExact      = this.el.querySelector<HTMLElement>('#cfg-exact')!;
+
+    const keyBadge      = this.el.querySelector<HTMLElement>('#trigger-key-badge')!;
+    const btnCapture    = this.el.querySelector<HTMLButtonElement>('#btn-capture')!;
+    const exactCharInp  = this.el.querySelector<HTMLInputElement>('#exact-char-input')!;
+    const delayInp      = this.el.querySelector<HTMLInputElement>('#delay-input')!;
+
+    // ── Inicializar valores ────────────────────────────────────────────────────
+    const mode = (this.settings as any).expansionMode ?? 'trigger_key';
+    radioTrigger.checked = mode === 'trigger_key';
+    radioExact.checked   = mode === 'exact_match';
+    this.applyModeUI(mode, cardTrigger, cardExact, cfgTrigger, cfgExact);
+
+    keyBadge.textContent = this.formatKey((this.settings as any).triggerKey ?? ' ');
+    exactCharInp.value   = (this.settings as any).exactMatchChar ?? '/';
+    delayInp.value       = String((this.settings as any).expansionDelay ?? 0);
+
+    // ── Troca de modo ─────────────────────────────────────────────────────────
+    radioTrigger.addEventListener('change', () => {
+      this.updateSetting('expansionMode' as any, 'trigger_key');
+      this.applyModeUI('trigger_key', cardTrigger, cardExact, cfgTrigger, cfgExact);
+    });
+    radioExact.addEventListener('change', () => {
+      this.updateSetting('expansionMode' as any, 'exact_match');
+      this.applyModeUI('exact_match', cardTrigger, cardExact, cfgTrigger, cfgExact);
+    });
+
+    // ── Captura de tecla ───────────────────────────────────────────────────────
+    let capturing = false;
+    let captureHandler: ((e: KeyboardEvent) => void) | null = null;
+
+    const stopCapture = (key?: string) => {
+      capturing = false;
+      keyBadge.classList.remove('exp-key-badge--capturing');
+      btnCapture.disabled = false;
+      btnCapture.textContent = 'Capturar tecla';
+      if (key !== undefined) keyBadge.textContent = this.formatKey(key);
+      if (captureHandler) {
+        document.removeEventListener('keydown', captureHandler, true);
+        captureHandler = null;
+      }
+    };
+
+    btnCapture.addEventListener('click', () => {
+      if (capturing) return;
+      capturing = true;
+      keyBadge.textContent = 'Pressione…';
+      keyBadge.classList.add('exp-key-badge--capturing');
+      btnCapture.disabled = true;
+      btnCapture.textContent = 'Aguardando…';
+
+      captureHandler = (e: KeyboardEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Ignorar teclas modificadoras isoladas
+        if (['Control','Shift','Alt','Meta','CapsLock'].includes(e.key)) return;
+
+        // Enter: proibido
+        if (e.key === 'Enter') {
+          keyBadge.textContent = '⚠ Enter proibido';
+          keyBadge.style.color = '#ef4444';
+          setTimeout(() => {
+            keyBadge.style.color = '';
+            stopCapture((this.settings as any).triggerKey ?? ' ');
+          }, 1500);
+          return;
+        }
+
+        // Escape: cancelar captura sem mudar
+        if (e.key === 'Escape') {
+          stopCapture((this.settings as any).triggerKey ?? ' ');
+          return;
+        }
+
+        // Tecla válida
+        this.updateSetting('triggerKey' as any, e.key);
+        (this.settings as any).triggerKey = e.key;
+        stopCapture(e.key);
+      };
+
+      document.addEventListener('keydown', captureHandler, true);
+    });
+
+    // ── Prefixo de Exact Match ─────────────────────────────────────────────────
+    exactCharInp.addEventListener('change', (e) => {
+      const val = (e.target as HTMLInputElement).value;
+      this.updateSetting('exactMatchChar' as any, val);
+    });
+
+    // ── Delay ─────────────────────────────────────────────────────────────────
+    delayInp.addEventListener('change', (e) => {
+      const val = Math.max(0, Math.min(2000, parseInt((e.target as HTMLInputElement).value, 10) || 0));
+      (e.target as HTMLInputElement).value = String(val);
+      this.updateSetting('expansionDelay' as any, val);
+    });
+  }
+
+  private applyModeUI(
+    mode: string,
+    cardT: HTMLElement, cardE: HTMLElement,
+    cfgT: HTMLElement,  cfgE: HTMLElement,
+  ): void {
+    const isTrigger = mode === 'trigger_key';
+    cardT.classList.toggle('exp-card--selected', isTrigger);
+    cardE.classList.toggle('exp-card--selected', !isTrigger);
+    cfgT.style.display = isTrigger  ? 'block' : 'none';
+    cfgE.style.display = !isTrigger ? 'block' : 'none';
+  }
+
+  private formatKey(key: string): string {
+    const map: Record<string, string> = {
+      ' ':   'Espaço',
+      'Tab': 'Tab',
+    };
+    return map[key] ?? key.toUpperCase();
   }
 }
 
