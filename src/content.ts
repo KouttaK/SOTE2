@@ -150,11 +150,32 @@ export default defineContentScript({
     };
 
     // 4. Setup Text Monitor
+    let exactMatchTimeout: any = null;
+
     const monitor = new TextMonitor(
       (e, buffer, element) => {
+        if (exactMatchTimeout) {
+          clearTimeout(exactMatchTimeout);
+          exactMatchTimeout = null;
+        }
+
         const match = detector.detectExactMatchMode(buffer);
         if (match) {
-          handleTrigger(match.flow, match.shortcutTyped, element);
+          const delay = settings.exactMatchDelay || 0;
+          if (delay > 0) {
+            exactMatchTimeout = setTimeout(() => {
+              exactMatchTimeout = null;
+              if (document.activeElement !== element) return;
+              
+              const currentBuffer = monitor.getBuffer();
+              const reMatch = detector.detectExactMatchMode(currentBuffer);
+              if (reMatch && reMatch.shortcutTyped === match.shortcutTyped && reMatch.flow.id === match.flow.id) {
+                handleTrigger(reMatch.flow, reMatch.shortcutTyped, element);
+              }
+            }, delay);
+          } else {
+            handleTrigger(match.flow, match.shortcutTyped, element);
+          }
         }
       },
       (e, keyName, buffer, element) => {
@@ -170,6 +191,11 @@ export default defineContentScript({
 
     // 5. Command Palette Global Listener
     document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && exactMatchTimeout) {
+        clearTimeout(exactMatchTimeout);
+        exactMatchTimeout = null;
+      }
+
       // Check shortcut. Default: Ctrl+Shift+Space
       const conf = settings.commandPaletteShortcut || 'Ctrl+Shift+Space';
       

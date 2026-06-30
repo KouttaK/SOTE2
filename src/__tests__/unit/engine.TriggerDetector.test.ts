@@ -150,3 +150,39 @@ describe('TriggerDetector', () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe('resolveActionBlock fallback to elseBranch', () => {
+  it('deve retornar o elseBranch se nenhuma regra passar', () => {
+    const detector = new TriggerDetector();
+    
+    // Configurar flow com um ConditionBlock que tem uma regra impossível e um elseBranch
+    const flow: any = {
+      id: 'f1',
+      blocks: [
+        {
+          type: 'condition',
+          data: {
+            rules: [
+              {
+                type: 'domain',
+                operator: 'contains',
+                value: 'impossible-domain.com',
+                action: { format: 'plaintext', content: 'Regra Passou', tokens: [] }
+              }
+            ],
+            elseBranch: { format: 'plaintext', content: 'Else Passou', tokens: [] }
+          }
+        }
+      ]
+    };
+    
+    vi.stubGlobal('window', { location: { hostname: 'current-domain.com' } });
+    
+    const resolved = detector.resolveActionBlock(flow);
+    
+    expect(resolved).not.toBeNull();
+    expect(resolved?.content).toBe('Else Passou');
+    
+    vi.unstubAllGlobals();
+  });
+});

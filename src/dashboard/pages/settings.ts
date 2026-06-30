@@ -553,22 +553,23 @@ export default class SettingsPage implements Page {
     const delayInp      = this.el.querySelector<HTMLInputElement>('#delay-input')!;
 
     // ── Inicializar valores ────────────────────────────────────────────────────
-    const mode = (this.settings as any).expansionMode ?? 'trigger_key';
-    radioTrigger.checked = mode === 'trigger_key';
+    const mode = this.settings.triggerMode ?? 'trigger';
+    radioTrigger.checked = mode === 'trigger';
     radioExact.checked   = mode === 'exact_match';
     this.applyModeUI(mode, cardTrigger, cardExact, cfgTrigger, cfgExact);
 
-    keyBadge.textContent = this.formatKey((this.settings as any).triggerKey ?? ' ');
-    exactCharInp.value   = (this.settings as any).exactMatchChar ?? '/';
-    delayInp.value       = String((this.settings as any).expansionDelay ?? 0);
+    const triggerKey = (this.settings.triggerKeys && this.settings.triggerKeys.length > 0) ? this.settings.triggerKeys[0] : 'Space';
+    keyBadge.textContent = this.formatKey(triggerKey);
+    exactCharInp.value   = this.settings.exactMatchChar ?? '/';
+    delayInp.value       = String(this.settings.exactMatchDelay ?? 0);
 
     // ── Troca de modo ─────────────────────────────────────────────────────────
     radioTrigger.addEventListener('change', () => {
-      this.updateSetting('expansionMode' as any, 'trigger_key');
-      this.applyModeUI('trigger_key', cardTrigger, cardExact, cfgTrigger, cfgExact);
+      this.updateSetting('triggerMode', 'trigger');
+      this.applyModeUI('trigger', cardTrigger, cardExact, cfgTrigger, cfgExact);
     });
     radioExact.addEventListener('change', () => {
-      this.updateSetting('expansionMode' as any, 'exact_match');
+      this.updateSetting('triggerMode', 'exact_match');
       this.applyModeUI('exact_match', cardTrigger, cardExact, cfgTrigger, cfgExact);
     });
 
@@ -609,21 +610,28 @@ export default class SettingsPage implements Page {
           keyBadge.style.color = '#ef4444';
           setTimeout(() => {
             keyBadge.style.color = '';
-            stopCapture((this.settings as any).triggerKey ?? ' ');
+            const fallback = (this.settings.triggerKeys && this.settings.triggerKeys.length > 0) ? this.settings.triggerKeys[0] : 'Space';
+            stopCapture(fallback);
           }, 1500);
           return;
         }
 
         // Escape: cancelar captura sem mudar
         if (e.key === 'Escape') {
-          stopCapture((this.settings as any).triggerKey ?? ' ');
+          const fallback = (this.settings.triggerKeys && this.settings.triggerKeys.length > 0) ? this.settings.triggerKeys[0] : 'Space';
+          stopCapture(fallback);
           return;
         }
 
         // Tecla válida
-        this.updateSetting('triggerKey' as any, e.key);
-        (this.settings as any).triggerKey = e.key;
-        stopCapture(e.key);
+        let codeName = e.code;
+        if (e.key === ' ') codeName = 'Space';
+        if (e.key === 'Tab') codeName = 'Tab';
+        if (e.key === 'Enter') codeName = 'Enter';
+
+        this.updateSetting('triggerKeys', [codeName]);
+        this.settings.triggerKeys = [codeName];
+        stopCapture(codeName);
       };
 
       document.addEventListener('keydown', captureHandler, true);
@@ -632,14 +640,14 @@ export default class SettingsPage implements Page {
     // ── Prefixo de Exact Match ─────────────────────────────────────────────────
     exactCharInp.addEventListener('change', (e) => {
       const val = (e.target as HTMLInputElement).value;
-      this.updateSetting('exactMatchChar' as any, val);
+      this.updateSetting('exactMatchChar', val);
     });
 
     // ── Delay ─────────────────────────────────────────────────────────────────
     delayInp.addEventListener('change', (e) => {
       const val = Math.max(0, Math.min(2000, parseInt((e.target as HTMLInputElement).value, 10) || 0));
       (e.target as HTMLInputElement).value = String(val);
-      this.updateSetting('expansionDelay' as any, val);
+      this.updateSetting('exactMatchDelay', val);
     });
   }
 
@@ -648,7 +656,7 @@ export default class SettingsPage implements Page {
     cardT: HTMLElement, cardE: HTMLElement,
     cfgT: HTMLElement,  cfgE: HTMLElement,
   ): void {
-    const isTrigger = mode === 'trigger_key';
+    const isTrigger = mode === 'trigger';
     cardT.classList.toggle('exp-card--selected', isTrigger);
     cardE.classList.toggle('exp-card--selected', !isTrigger);
     cfgT.style.display = isTrigger  ? 'block' : 'none';

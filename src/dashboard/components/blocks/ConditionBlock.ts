@@ -1,4 +1,4 @@
-﻿/**
+/**
  * src/dashboard/components/blocks/ConditionBlock.ts
  *
  * Bugs fixed:
@@ -10,6 +10,7 @@
  */
 
 import type { ConditionBlock as IConditionBlock, ConditionRule } from '../../../shared/types/index.js';
+import { ActionBlock } from './ActionBlock.js';
 
 const ICONS = {
   branch: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M80 104a24 24 0 1 0 0-48 24 24 0 1 0 0 48zm80-24c0 32.8-19.7 61-48 73.3v87.8c18.8-10.9 40.7-17.1 64-17.1h96c35.3 0 64-28.7 64-64v-6.7C307.7 141 288 112.8 288 80c0-44.2 35.8-80 80-80s80 35.8 80 80c0 32.8-19.7 61-48 73.3V160c0 70.7-57.3 128-128 128H176c-35.3 0-64 28.7-64 64v6.7c28.3 12.3 48 40.5 48 73.3c0 44.2-35.8 80-80 80s-80-35.8-80-80c0-32.8 19.7-61 48-73.3V352 153.3C19.7 141 0 112.8 0 80C0 35.8 35.8 0 80 0s80 35.8 80 80zm232 0a24 24 0 1 0 -48 0 24 24 0 1 0 48 0zM80 456a24 24 0 1 0 0-48 24 24 0 1 0 0 48z"/></svg>`,
@@ -180,7 +181,7 @@ export class ConditionBlock {
       row.style.marginBottom = '1rem';
 
       row.innerHTML = /* html */ `
-        <label class="form-label">Regra de Condição ${idx + 1}</label>
+        <label class="form-label">${idx === 0 ? 'Se (If)' : 'Senão Se (Else If)'}</label>
         <div style="display:flex; align-items:flex-start; gap:0.5rem; flex-wrap:wrap;">
           <select class="rule-type input-field" style="width:110px; background:#0a0a0a; color:#fff; border:1px solid #404040; padding:0.5rem; border-radius:0.5rem;">
             <option value="domain"  ${rule.type === 'domain'  ? 'selected' : ''}>Domínio</option>
@@ -218,7 +219,7 @@ export class ConditionBlock {
     // Bug 9: Add Rule — styled
     const addRuleBtn = document.createElement('button');
     addRuleBtn.className = 'btn-add-rule';
-    addRuleBtn.innerHTML = `${ICONS.plus} Adicionar Regra`;
+    addRuleBtn.innerHTML = `${ICONS.plus} ${this.data.rules.length > 0 ? 'Adicionar Senão Se' : 'Adicionar Regra'}`;
     addRuleBtn.addEventListener('click', () => {
       this.data.rules.push({ type: 'domain', operator: 'contains', value: '', action: { format: 'plaintext', content: '', tokens: [] } });
       this.renderRules();
@@ -229,16 +230,55 @@ export class ConditionBlock {
     // Bug 9: Add Else Branch — styled
     const elseRow = document.createElement('div');
     elseRow.className = 'else-row';
-    elseRow.innerHTML = `
-      <button class="btn-add-else">
-        ${ICONS.plus} Adicionar Else (Senão)
-      </button>
-    `;
-    container.appendChild(elseRow);
-
-    elseRow.querySelector('.btn-add-else')!.addEventListener('click', () => {
-      alert('Else Branch: funcionalidade disponível em breve.');
-    });
+    
+    if (!this.data.elseBranch) {
+      elseRow.innerHTML = `
+        <button class="btn-add-else">
+          ${ICONS.plus} Adicionar Else (Senão)
+        </button>
+      `;
+      elseRow.querySelector('.btn-add-else')!.addEventListener('click', () => {
+        this.data.elseBranch = { format: 'plaintext', content: '', tokens: [] };
+        this.renderRules();
+        this.onChange();
+      });
+      container.appendChild(elseRow);
+    } else {
+      elseRow.innerHTML = `
+        <div style="flex: 1; margin-top: 1rem; position: relative;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <label class="form-label" style="margin: 0;">Senão (Else)</label>
+            <button class="btn-remove-rule" style="background:transparent;border:none;color:#ef4444;cursor:pointer;padding:0.25rem;display:flex;align-items:center;" title="Remover Else">
+              ${ICONS.trash} Remover Else
+            </button>
+          </div>
+          <div id="else-action-container"></div>
+        </div>
+      `;
+      elseRow.querySelector('.btn-remove-rule')!.addEventListener('click', () => {
+        if (confirm('Remover o Senão (Else)?')) {
+          this.data.elseBranch = undefined;
+          this.renderRules();
+          this.onChange();
+        }
+      });
+      
+      container.appendChild(elseRow);
+      
+      const elseActionContainer = elseRow.querySelector('#else-action-container')!;
+      const actionBlockInst = new ActionBlock(this.data.elseBranch, () => {
+        this.data.elseBranch = actionBlockInst.getData();
+        this.onChange();
+      });
+      
+      const actionEl = actionBlockInst.getElement();
+      const header = actionEl.querySelector('.block-header');
+      if (header) header.remove();
+      actionEl.style.border = 'none';
+      actionEl.style.padding = '0';
+      
+      elseActionContainer.appendChild(actionEl);
+    }
   }
 
   private renderValueInput(rule: ConditionRule, container: HTMLElement) {
