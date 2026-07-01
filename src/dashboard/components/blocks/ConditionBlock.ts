@@ -355,7 +355,13 @@ export class ConditionRuleBlock {
 
     const timeFields = document.createElement('div');
     timeFields.className = 'condition-rule-row time-fields';
-    timeFields.style.flex = '1';
+    // Always its own full-width row, whether it holds one field ("Antes"/
+    // "Após") or two ("Entre") — this keeps the card's expansion consistent
+    // across operators instead of the fields being squeezed inline next to
+    // the operator select and only "expanding" for the 2-field case.
+    timeFields.style.flexBasis = '100%';
+    timeFields.style.width = '100%';
+    timeFields.style.marginTop = '0.5rem';
 
     container.appendChild(opWrap);
     container.appendChild(timeFields);
@@ -419,6 +425,9 @@ export class ConditionRuleBlock {
 
     const dayButtons = document.createElement('div');
     dayButtons.className = 'day-buttons';
+    dayButtons.style.flexBasis = '100%';
+    dayButtons.style.width = '100%';
+    dayButtons.style.marginTop = '0.5rem';
     dayButtons.innerHTML = dayKeys.map(k => `
       <button type="button" class="day-btn ${parsed.days.includes(k) ? 'active' : ''}" data-day="${k}">
         ${dayLabels[k]}

@@ -36,19 +36,30 @@ export class TriggerDetector {
       if (!flow.enabled) continue;
       
       const trigger = this.getTriggerBlock(flow);
-      if (!trigger) continue;
+      if (!trigger || !trigger.shortcut) continue;
 
-      // Check case-insensitive if smartCase is on, else exact
-      const isMatch = trigger.smartCase
-        ? word.toLowerCase() === trigger.shortcut.toLowerCase()
-        : word === trigger.shortcut;
-
-      if (isMatch && this.checkConditions(flow)) {
+      if (this.matchesShortcut(word, trigger.shortcut, trigger.smartCase) && this.checkConditions(flow)) {
         return { flow, shortcutTyped: word, isExactMatch: false };
       }
     }
 
     return null;
+  }
+
+  /**
+   * Compares a typed word against a flow's shortcut, respecting Smart Case.
+   * `smartCase` defaults to ON (case-insensitive) when the field is missing
+   * or undefined — e.g. for flows saved before this option existed — so the
+   * "Matches regardless of letter casing" behaviour always applies unless
+   * the user has explicitly turned it off.
+   */
+  private matchesShortcut(word: string, shortcut: string, smartCase: boolean | undefined): boolean {
+    const typed = word.trim();
+    const target = shortcut.trim();
+    if (smartCase === false) {
+      return typed === target;
+    }
+    return typed.toLowerCase() === target.toLowerCase();
   }
 
   /**
@@ -63,7 +74,7 @@ export class TriggerDetector {
       if (!flow.enabled) continue;
       
       const trigger = this.getTriggerBlock(flow);
-      if (!trigger) continue;
+      if (!trigger || !trigger.shortcut) continue;
 
       const prefix = this.settings.exactMatchChar;
       const expected = prefix + trigger.shortcut;
@@ -71,11 +82,7 @@ export class TriggerDetector {
       if (buffer.length < expected.length) continue;
       const tail = buffer.slice(-expected.length);
 
-      const isMatch = trigger.smartCase
-        ? tail.toLowerCase() === expected.toLowerCase()
-        : tail === expected;
-
-      if (isMatch && this.checkConditions(flow)) {
+      if (this.matchesShortcut(tail, expected, trigger.smartCase) && this.checkConditions(flow)) {
         return { flow, shortcutTyped: tail, isExactMatch: true };
       }
     }

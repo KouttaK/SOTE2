@@ -19,7 +19,14 @@ const ICONS = {
   save: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M64 32C28.7 32 0 60.7 0 96V416c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V173.3c0-17-6.7-33.3-18.7-45.3L352 50.7C340 38.7 323.7 32 306.7 32H64zm0 96c0-17.7 14.3-32 32-32H288c17.7 0 32 14.3 32 32v64c0 17.7-14.3 32-32 32H96c-17.7 0-32-14.3-32-32V128zM224 288a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"/></svg>`,
   chevronDown: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg>`,
   plus: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z"/></svg>`,
+  minus: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M432 256c0 17.7-14.3 32-32 32L48 288c-17.7 0-32-14.3-32-32s14.3-32 32-32l352 0c17.7 0 32 14.3 32 32z"/></svg>`,
+  expand: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M32 32C14.3 32 0 46.3 0 64V192c0 17.7 14.3 32 32 32s32-14.3 32-32V96h96c17.7 0 32-14.3 32-32s-14.3-32-32-32H32zM64 320c0-17.7-14.3-32-32-32s-32 14.3-32 32V448c0 17.7 14.3 32 32 32H160c17.7 0 32-14.3 32-32s-14.3-32-32-32H64V320zM320 32c-17.7 0-32 14.3-32 32s14.3 32 32 32h96v96c0 17.7 14.3 32 32 32s32-14.3 32-32V64c0-17.7-14.3-32-32-32H320zM448 320c0-17.7-14.3-32-32-32s-32 14.3-32 32v96H288c-17.7 0-32 14.3-32 32s14.3 32 32 32H416c17.7 0 32-14.3 32-32V320z"/></svg>`,
 };
+
+/** Zoom bounds & step for the flow canvas. */
+const CANVAS_MIN_ZOOM = 0.4;
+const CANVAS_MAX_ZOOM = 1.75;
+const CANVAS_ZOOM_STEP = 0.15;
 
 export default class FlowEditorPage implements Page {
   private el!: HTMLElement;
@@ -37,6 +44,19 @@ export default class FlowEditorPage implements Page {
 
   // Keydown handler reference for removal
   private handleKeyDown!: (e: KeyboardEvent) => void;
+
+  // Canvas pan/zoom state
+  private canvasZoom = 1;
+  private canvasPanX = 0;
+  private canvasPanY = 0;
+  private isPanning = false;
+  private panStartX = 0;
+  private panStartY = 0;
+  private panOriginX = 0;
+  private panOriginY = 0;
+  private canvasPanZoomInited = false;
+  private handleCanvasMouseMove!: (e: MouseEvent) => void;
+  private handleCanvasMouseUp!: (e: MouseEvent) => void;
 
   render(): HTMLElement {
     this.el = document.createElement('div');
@@ -62,12 +82,21 @@ export default class FlowEditorPage implements Page {
         </div>
       </div>
 
-      <div class="editor-canvas-bg">
-        <div class="dot-grid"></div>
-        
+      <div class="editor-canvas-bg" id="editor-canvas-bg">
+        <div class="canvas-viewport" id="canvas-viewport">
+          <div class="dot-grid"></div>
 
-        <div class="node-flow" id="node-flow-container">
-          <!-- Blocks injected here -->
+          <div class="node-flow" id="node-flow-container">
+            <!-- Blocks injected here -->
+          </div>
+        </div>
+
+        <div class="canvas-controls">
+          <button class="canvas-ctrl-btn" id="canvas-zoom-out" title="Diminuir zoom">${ICONS.minus}</button>
+          <span class="canvas-zoom-label" id="canvas-zoom-label">100%</span>
+          <button class="canvas-ctrl-btn" id="canvas-zoom-in" title="Aumentar zoom">${ICONS.plus}</button>
+          <div class="canvas-ctrl-divider"></div>
+          <button class="canvas-ctrl-btn" id="canvas-zoom-reset" title="Ajustar à tela">${ICONS.expand}</button>
         </div>
       </div>
     `;
@@ -117,6 +146,9 @@ export default class FlowEditorPage implements Page {
 
     this.el.querySelector('#btn-save-flow')!.addEventListener('click', () => this.saveFlow());
 
+    // Canvas pan & zoom (drag to move around, scroll/buttons to zoom)
+    this.initCanvasPanZoom();
+
     // Ctrl+S
     this.handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -132,6 +164,8 @@ export default class FlowEditorPage implements Page {
 
   unmount(): void {
     window.removeEventListener('keydown', this.handleKeyDown);
+    if (this.handleCanvasMouseMove) window.removeEventListener('mousemove', this.handleCanvasMouseMove);
+    if (this.handleCanvasMouseUp) window.removeEventListener('mouseup', this.handleCanvasMouseUp);
     if (this.isDirty) {
       // Actually we cannot easily abort unmount synchronously here because the router is naive.
       // But we'll trust the user to save. A more robust router would allow unmount cancellation.
@@ -390,6 +424,121 @@ export default class FlowEditorPage implements Page {
       <div class="connector-line"></div>
     `;
     return conn;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Canvas Pan & Zoom
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Wires up dragging (pan) and mouse-wheel / button zoom on the flow
+   * canvas, so flows with many conditions/branches can be fully explored
+   * even when the fanned-out branches are wider than the viewport.
+   */
+  private initCanvasPanZoom() {
+    if (this.canvasPanZoomInited) return; // avoid double-binding across mounts
+    this.canvasPanZoomInited = true;
+
+    const canvas = this.el.querySelector('#editor-canvas-bg') as HTMLElement;
+    const viewport = this.el.querySelector('#canvas-viewport') as HTMLElement;
+    if (!canvas || !viewport) return;
+
+    const zoomInBtn = this.el.querySelector('#canvas-zoom-in') as HTMLElement;
+    const zoomOutBtn = this.el.querySelector('#canvas-zoom-out') as HTMLElement;
+    const zoomResetBtn = this.el.querySelector('#canvas-zoom-reset') as HTMLElement;
+
+    this.applyCanvasTransform();
+
+    // ── Drag to pan ──
+    // Ignore drags that start on interactive elements (inputs, buttons,
+    // selects, block cards, etc.) so block editing still works normally;
+    // only dragging the empty canvas background pans the view.
+    canvas.addEventListener('mousedown', (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('.block-card, button, select, input, textarea, .block-menu')) return;
+      if (e.button !== 0) return;
+
+      this.isPanning = true;
+      this.panStartX = e.clientX;
+      this.panStartY = e.clientY;
+      this.panOriginX = this.canvasPanX;
+      this.panOriginY = this.canvasPanY;
+      canvas.classList.add('is-panning');
+      e.preventDefault();
+    });
+
+    this.handleCanvasMouseMove = (e: MouseEvent) => {
+      if (!this.isPanning) return;
+      this.canvasPanX = this.panOriginX + (e.clientX - this.panStartX);
+      this.canvasPanY = this.panOriginY + (e.clientY - this.panStartY);
+      this.applyCanvasTransform();
+    };
+    this.handleCanvasMouseUp = () => {
+      if (!this.isPanning) return;
+      this.isPanning = false;
+      canvas.classList.remove('is-panning');
+    };
+    window.addEventListener('mousemove', this.handleCanvasMouseMove);
+    window.addEventListener('mouseup', this.handleCanvasMouseUp);
+
+    // ── Wheel to zoom (zooms toward the cursor position) ──
+    canvas.addEventListener('wheel', (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const cursorX = e.clientX - rect.left;
+      const cursorY = e.clientY - rect.top;
+      const direction = e.deltaY > 0 ? -1 : 1;
+      this.zoomCanvasBy(direction * CANVAS_ZOOM_STEP, cursorX, cursorY);
+    }, { passive: false });
+
+    // ── Buttons ──
+    zoomInBtn?.addEventListener('click', () => {
+      const rect = canvas.getBoundingClientRect();
+      this.zoomCanvasBy(CANVAS_ZOOM_STEP, rect.width / 2, rect.height / 2);
+    });
+    zoomOutBtn?.addEventListener('click', () => {
+      const rect = canvas.getBoundingClientRect();
+      this.zoomCanvasBy(-CANVAS_ZOOM_STEP, rect.width / 2, rect.height / 2);
+    });
+    zoomResetBtn?.addEventListener('click', () => this.resetCanvasView());
+  }
+
+  /**
+   * Adjusts zoom by `delta`, keeping the point under (cursorX, cursorY)
+   * (relative to the canvas viewport) visually fixed, so zooming feels
+   * anchored to the mouse instead of jumping around.
+   */
+  private zoomCanvasBy(delta: number, cursorX: number, cursorY: number) {
+    const oldZoom = this.canvasZoom;
+    const newZoom = Math.min(CANVAS_MAX_ZOOM, Math.max(CANVAS_MIN_ZOOM, +(oldZoom + delta).toFixed(2)));
+    if (newZoom === oldZoom) return;
+
+    // Keep the point under the cursor stable: solve for the new pan offset
+    // so that (cursor - pan) / zoom stays constant before and after.
+    const canvasPointX = (cursorX - this.canvasPanX) / oldZoom;
+    const canvasPointY = (cursorY - this.canvasPanY) / oldZoom;
+
+    this.canvasZoom = newZoom;
+    this.canvasPanX = cursorX - canvasPointX * newZoom;
+    this.canvasPanY = cursorY - canvasPointY * newZoom;
+
+    this.applyCanvasTransform();
+  }
+
+  /** Resets pan & zoom back to the default 100% centered view. */
+  private resetCanvasView() {
+    this.canvasZoom = 1;
+    this.canvasPanX = 0;
+    this.canvasPanY = 0;
+    this.applyCanvasTransform();
+  }
+
+  private applyCanvasTransform() {
+    const viewport = this.el.querySelector('#canvas-viewport') as HTMLElement;
+    const label = this.el.querySelector('#canvas-zoom-label') as HTMLElement;
+    if (!viewport) return;
+    viewport.style.transform = `translate(${this.canvasPanX}px, ${this.canvasPanY}px) scale(${this.canvasZoom})`;
+    if (label) label.textContent = `${Math.round(this.canvasZoom * 100)}%`;
   }
 
   private updateStatusToggle() {

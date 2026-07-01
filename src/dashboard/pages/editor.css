@@ -109,17 +109,41 @@
   flex: 1;
   background-color: #0a0a0a; /* neutral-950 */
   position: relative;
-  overflow: auto;
+  overflow: hidden; /* panning/zooming is handled manually via transform */
   border-radius: 0.5rem;
   margin-top: 1.25rem;
+  cursor: grab;
+}
+
+.editor-canvas-bg.is-panning {
+  cursor: grabbing;
+}
+
+/* Viewport is the element that actually gets translated/scaled. Everything
+   that should pan & zoom together (grid + nodes) lives inside it. */
+.canvas-viewport {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: 0 0;
+  will-change: transform;
 }
 
 .dot-grid {
   position: absolute;
-  inset: 0;
+  /* Generously oversized so panning/zooming never reveals an edge. */
+  top: -2000px;
+  left: -2000px;
+  right: -2000px;
+  bottom: -2000px;
+  width: auto;
+  height: auto;
   opacity: 0.3;
   background-image: radial-gradient(circle, #4b5563 1px, transparent 1px);
   background-size: 24px 24px;
+  pointer-events: none;
 }
 
 .canvas-controls {
@@ -127,8 +151,14 @@
   top: 1rem;
   right: 1rem;
   display: flex;
-  gap: 0.5rem;
-  z-index: 10;
+  align-items: center;
+  gap: 0.375rem;
+  z-index: 20;
+  background-color: #171717;
+  border: 1px solid #404040;
+  border-radius: 0.625rem;
+  padding: 0.25rem;
+  box-shadow: 0 10px 25px -8px rgba(0,0,0,0.6);
 }
 
 .canvas-ctrl-btn {
@@ -143,8 +173,26 @@
   color: #a3a3a3;
   cursor: pointer;
   transition: all 150ms;
+  flex-shrink: 0;
 }
 .canvas-ctrl-btn:hover { color: #ffffff; border-color: #525252; }
+.canvas-ctrl-btn svg { width: 0.75rem; height: 0.75rem; }
+
+.canvas-zoom-label {
+  min-width: 3.25rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #a3a3a3;
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.canvas-ctrl-divider {
+  width: 1px;
+  height: 1.25rem;
+  background-color: #404040;
+  margin: 0 0.125rem;
+}
 
 /* ── Node Flow ──────────────────────────────────────────────────────────── */
 
@@ -516,10 +564,11 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 100%;
-  max-width: 100%;
-  overflow-x: auto;
+  width: max-content;
+  max-width: none;
   padding-bottom: 0.5rem;
+  /* No inner scroll: the canvas itself pans/zooms, so branches can grow
+     as wide as they need to and stay reachable via the canvas controls. */
 }
 
 .branch-row {
@@ -539,7 +588,7 @@
   align-items: center;
   position: relative;
   flex-shrink: 0;
-  width: 21rem;
+  width: 23rem;
 }
 
 .branch-col::before {
@@ -555,7 +604,7 @@
 
 .branch-col .block-card {
   width: 100%;
-  max-width: 21rem;
+  max-width: 23rem;
 }
 
 .branch-col .connector {

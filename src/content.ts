@@ -126,16 +126,30 @@ export default defineContentScript({
           return;
         }
 
-        // Apply SmartCase if needed
-        const triggerBlock = flow.blocks.find((b: Block) => b.type === 'trigger')?.data;
-        if (triggerBlock && (triggerBlock as any).smartCase) {
-          if (!isRichText) {
-            expandedContent = applyCasing(shortcutTyped, expandedContent, (triggerBlock as any).forceCapitalize);
-          }
+        // Apply Smart Case / Force Capitalize.
+        // These are independent toggles: Force Capitalize must work even
+        // when Smart Case is turned off, and both must work for richtext
+        // actions too (richtext is the default format for new flows) — the
+        // old code silently skipped both whenever isRichText was true.
+        const triggerBlock = flow.blocks.find((b: Block) => b.type === 'trigger')?.data as any;
+        if (triggerBlock && (triggerBlock.smartCase || triggerBlock.forceCapitalize)) {
+          expandedContent = applyCasing(shortcutTyped, expandedContent, !!triggerBlock.forceCapitalize, isRichText);
         }
 
         // Inject
         TextInjector.inject(element, shortcutTyped, expandedContent, isRichText);
+
+        // The 'input'/'change' events dispatched by TextInjector fire while
+        // the monitor is still paused (its listeners were removed above),
+        // so TextMonitor's internal buffer never gets refreshed to reflect
+        // the just-inserted expansion text. Without this, the buffer keeps
+        // holding the OLD shortcut (e.g. "i2"), so the next trigger key
+        // (Space/Tab/Enter) — even one pressed much later, just to keep
+        // typing — matches the stale buffer again and re-expands the same
+        // shortcut on top of itself (e.g. "boa noite" -> "boa noiboa noite").
+        // Clearing it here forces a fresh read from the DOM on the next
+        // real keystroke instead of reusing this stale snapshot.
+        monitor.clearBuffer();
         
         // Track stats
         const plainTextLength = isRichText ? expandedContent.replace(/<[^>]+>/g, '').length : expandedContent.length;
