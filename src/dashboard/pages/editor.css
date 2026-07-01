@@ -239,6 +239,55 @@
   padding: 0.125rem 0.5rem;
 }
 
+/* ── Block Header Overflow Menu ("...") ─────────────────────────────────── */
+
+.block-menu-wrap { position: relative; margin-left: 0.25rem; }
+.block-menu-btn {
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  background: transparent;
+  border: none;
+  color: #737373;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.block-menu-btn:hover { color: #d4d4d4; background: #262626; }
+.block-menu-btn svg { width: 0.75rem; height: 0.75rem; }
+.block-menu {
+  position: absolute;
+  top: calc(100% + 0.375rem);
+  right: 0;
+  min-width: 11rem;
+  background: #171717;
+  border: 1px solid #404040;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,.6);
+  padding: 0.25rem;
+  z-index: 50;
+}
+.block-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.375rem;
+  background: transparent;
+  border: none;
+  color: #a3a3a3;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.block-menu-item:hover { background: #262626; color: #fff; }
+.block-menu-item.danger:hover { color: #f87171; }
+.block-menu-item svg { width: 0.75rem; height: 0.75rem; flex-shrink: 0; }
+
 .block-body { padding: 1.25rem; }
 
 /* ── Form Elements ──────────────────────────────────────────────────────── */
@@ -457,3 +506,58 @@
 }
 .add-step-btn:hover { border-color: #737373; color: #d4d4d4; }
 .add-step-btn svg { width: 0.75rem; height: 0.75rem; }
+
+/* ── Condition Branch Fan-out ───────────────────────────────────────────── */
+/* When a condition has more than one path (Se / Senão Se / Senão), each
+   path is rendered as its own column with its own connector and Action
+   block, fanned out below the condition block like a flowchart. */
+
+.branch-fanout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.branch-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #404040;
+  position: relative;
+  margin: 0 auto;
+}
+
+.branch-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  flex-shrink: 0;
+  width: 21rem;
+}
+
+.branch-col::before {
+  content: '';
+  position: absolute;
+  top: -2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1px;
+  height: 2rem;
+  background-color: #404040;
+}
+
+.branch-col .block-card {
+  width: 100%;
+  max-width: 21rem;
+}
+
+.branch-col .connector {
+  margin: 0.5rem 0;
+}

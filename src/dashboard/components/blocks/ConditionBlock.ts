@@ -1,104 +1,174 @@
 /**
  * src/dashboard/components/blocks/ConditionBlock.ts
  *
- * Bugs fixed:
- *   Bug 9  — Add Rule / Add Else styled with CSS classes
- *   Bug 10 — Time: select operator (between/before/after) + dynamic fields
- *   Bug 11 — Weekday: select operator (is/is_not) + day buttons
- *   Bug 12 — Date: simple date picker only
- *   Bug 13 — Remove block button styled + functional
+ * Each condition (Se / Senão Se) and the optional Senão (Else) is rendered
+ * as its OWN separate visual card — not grouped inside a single shared
+ * "Condition" block. editor.ts places one ConditionRuleBlock (or the single
+ * ConditionElseBlock) per branch/column in the flow canvas, each followed
+ * by its own dedicated Action block.
+ *
+ * Visual style matches the reference design (ref_pages/SOTE/craicao.htm):
+ * pill-style dropdowns/inputs with leading icons, a single "Condition Rule"
+ * row per card, and a "..." overflow menu in the header instead of an X
+ * button. The overflow menu is also where new branches are added
+ * ("+ Adicionar Senão Se" / "+ Adicionar Senão (Else)") and existing ones
+ * are removed.
  */
 
-import type { ConditionBlock as IConditionBlock, ConditionRule } from '../../../shared/types/index.js';
-import { ActionBlock } from './ActionBlock.js';
+import type { ConditionRule } from '../../../shared/types/index.js';
+
+/**
+ * Produces a short human-readable summary of a condition rule, used as the
+ * label on the branch that comes out of the condition block in the flow
+ * canvas (e.g. "SE · Domínio contém gmail.com").
+ */
+export function describeConditionRule(rule: ConditionRule): string {
+  const typeLabels: Record<string, string> = {
+    domain: 'Domínio',
+    time: 'Horário',
+    weekday: 'Dia da Semana',
+    date: 'Data',
+    field_type: 'Tipo de Campo',
+    field_content: 'Conteúdo do Campo',
+  };
+  const opLabels: Record<string, string> = {
+    contains: 'contém',
+    equals: 'é igual a',
+    matches: 'corresponde a',
+    before: 'antes de',
+    after: 'após',
+  };
+  const typeLabel = typeLabels[rule.type] || rule.type;
+
+  if (rule.type === 'time') {
+    try {
+      const p = JSON.parse(rule.value || '{}');
+      if (p.op === 'between') return `Horário entre ${p.from || '--:--'} e ${p.to || '--:--'}`;
+      if (p.op === 'before') return `Horário antes de ${p.at || '--:--'}`;
+      if (p.op === 'after') return `Horário após ${p.at || '--:--'}`;
+    } catch { /* fallthrough */ }
+    return typeLabel;
+  }
+
+  if (rule.type === 'weekday') {
+    try {
+      const p = JSON.parse(rule.value || '{}');
+      const days = Array.isArray(p.days) ? p.days.join(', ') : '';
+      return `Dia ${p.op === 'is_not' ? 'não é' : 'é'} ${days || '(nenhum)'}`;
+    } catch { /* fallthrough */ }
+    return typeLabel;
+  }
+
+  if (rule.type === 'date') {
+    return `Data é ${rule.value || '...'}`;
+  }
+
+  return `${typeLabel} ${opLabels[rule.operator] || rule.operator} "${rule.value || '...'}"`;
+}
 
 const ICONS = {
   branch: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M80 104a24 24 0 1 0 0-48 24 24 0 1 0 0 48zm80-24c0 32.8-19.7 61-48 73.3v87.8c18.8-10.9 40.7-17.1 64-17.1h96c35.3 0 64-28.7 64-64v-6.7C307.7 141 288 112.8 288 80c0-44.2 35.8-80 80-80s80 35.8 80 80c0 32.8-19.7 61-48 73.3V160c0 70.7-57.3 128-128 128H176c-35.3 0-64 28.7-64 64v6.7c28.3 12.3 48 40.5 48 73.3c0 44.2-35.8 80-80 80s-80-35.8-80-80c0-32.8 19.7-61 48-73.3V352 153.3C19.7 141 0 112.8 0 80C0 35.8 35.8 0 80 0s80 35.8 80 80zm232 0a24 24 0 1 0 -48 0 24 24 0 1 0 48 0zM80 456a24 24 0 1 0 0-48 24 24 0 1 0 0 48z"/></svg>`,
+  arrowsSplit: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512" fill="currentColor"><path d="M320 96c0-10.6 6.3-20.2 16-24.5s21-2.4 28.7 4.7l96 88c6.5 6 10.2 14.5 10.2 23.3s-3.7 17.3-10.2 23.3l-96 88c-7.7 7-18.9 8.9-28.7 4.7s-16-13.9-16-24.5V240H243.6c-25.5 0-49.5 12-64.8 32.4L96.5 388.3l6.4-.3h96c19.4 0 37.9 8.6 50.5 23.4l30.1 35.4c4.7 5.5 11.6 8.7 18.8 8.7H384c17.7 0 32 14.3 32 32s-14.3 32-32 32H298.3c-25.5 0-49.6-11.1-66.1-30.5l-30.1-35.4c-2.5-3-6.3-4.7-10.2-4.7h-96C43.2 448 0 404.8 0 351.5v-.3c0-21.3 6.7-42 19.1-59.3l89.6-124.7C132.9 132.1 176.2 112 222.4 112H320V96zM32 128a32 32 0 1 1 0-64 32 32 0 1 1 0 64z"/></svg>`,
   plus: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z"/></svg>`,
   trash: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M170.5 51.6L151.5 80h145l-19-28.4c-1.5-2.2-4-3.6-6.7-3.6H177.1c-2.7 0-5.2 1.3-6.7 3.6zm147-26.6L354.2 80H368h48 8c13.3 0 24 10.7 24 24s-10.7 24-24 24h-8V432c0 44.2-35.8 80-80 80H112c-44.2 0-80-35.8-80-80V128H24c-13.3 0-24-10.7-24-24S10.7 80 24 80h8H80 93.8l36.7-55.1C140.9 9.4 158.4 0 177.1 0h93.7c18.7 0 36.2 9.4 46.6 24.9zM80 128V432c0 17.7 14.3 32 32 32H336c17.7 0 32-14.3 32-32V128H80zm80 64V400c0 8.8-7.2 16-16 16s-16-7.2-16-16V192c0-8.8 7.2-16 16-16s16 7.2 16 16zm80 0V400c0 8.8-7.2 16-16 16s-16-7.2-16-16V192c0-8.8 7.2-16 16-16s16 7.2 16 16zm80 0V400c0 8.8-7.2 16-16 16s-16-7.2-16-16V192c0-8.8 7.2-16 16-16s16 7.2 16 16z"/></svg>`,
-  xmark: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor"><path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z"/></svg>`,
+  ellipsis: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 512" fill="currentColor"><path d="M64 360a56 56 0 1 0 0 112 56 56 0 1 0 0-112zm0-160a56 56 0 1 0 0 112 56 56 0 1 0 0-112zM120 96A56 56 0 1 0 8 96a56 56 0 1 0 112 0z"/></svg>`,
+  globe: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M352 256c0 22.2-1.2 43.6-3.3 64H163.3c-2.2-20.4-3.3-41.8-3.3-64s1.2-43.6 3.3-64H348.7c2.2 20.4 3.3 41.8 3.3 64zm28.8-64H503.9c5.3 20.5 8.1 41.9 8.1 64s-2.8 43.5-8.1 64H380.8c2.1-20.6 3.2-42 3.2-64s-1.1-43.4-3.2-64zm112.6-32H376.7c-10-63.9-29.8-117.4-55.3-151.6c78.3 20.7 142 77.5 171.9 151.6zm-149.1 0H167.7c6.1-36.4 15.5-68.6 27-94.7c10.5-23.6 22.2-40.7 33.5-51.5C239.4 3.2 248.7 0 256 0s16.6 3.2 27.8 13.8c11.3 10.8 23 27.9 33.5 51.5c11.6 26 20.9 58.2 27 94.7zm-209 0H18.6C48.6 85.9 112.2 29.1 190.6 8.4C165.1 42.6 145.3 96.1 135.3 160zM8.1 192H131.2c-2.1 20.6-3.2 42-3.2 64s1.1 43.4 3.2 64H8.1C2.8 299.5 0 278.1 0 256s2.8-43.5 8.1-64zM194.7 446.6c-11.6-26-20.9-58.2-27-94.6H344.3c-6.1 36.4-15.5 68.6-27 94.6c-10.5 23.6-22.2 40.7-33.5 51.5C272.6 508.8 263.3 512 256 512s-16.6-3.2-27.8-13.8c-11.3-10.8-23-27.9-33.5-51.5zM135.3 352c10 63.9 29.8 117.4 55.3 151.6C112.2 482.9 48.6 426.1 18.6 352H135.3zm358.1 0c-30 74.1-93.6 130.9-171.9 151.6c25.5-34.2 45.2-87.7 55.3-151.6H493.4z"/></svg>`,
+  clock: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M256 0a256 256 0 1 1 0 512A256 256 0 1 1 256 0zM232 120V256c0 8 4 15.5 10.7 20l96 64c11 7.4 25.9 4.4 33.3-6.7s4.4-25.9-6.7-33.3L280 243.2V120c0-13.3-10.7-24-24-24s-24 10.7-24 24z"/></svg>`,
+  calendar: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M152 24c0-13.3-10.7-24-24-24s-24 10.7-24 24V64H64C28.7 64 0 92.7 0 128v16 48V448c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V192 144 128c0-35.3-28.7-64-64-64H344V24c0-13.3-10.7-24-24-24s-24 10.7-24 24V64H152V24zM48 192H400V448c0 8.8-7.2 16-16 16H64c-8.8 0-16-7.2-16-16V192z"/></svg>`,
 };
 
 // CSS injected once into document
 const COND_BLOCK_CSS = `
-.btn-remove-block {
-  margin-left: auto;
-  background: transparent;
-  border: none;
+.condition-rule-label {
+  display: block;
+  font-size: 0.75rem;
   color: #737373;
-  cursor: pointer;
-  padding: 0.25rem;
-  border-radius: 0.375rem;
+  margin-bottom: 0.375rem;
+}
+
+.condition-rule-row {
   display: flex;
   align-items: center;
-  transition: color 0.15s, background 0.15s;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
-.btn-remove-block:hover { color: #ef4444; background: rgba(239,68,68,.1); }
-.btn-remove-block svg { width: 16px; height: 16px; }
 
-.btn-add-rule {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0;
-  background: transparent;
-  border: none;
-  color: #737373;
+.pill-select-wrap { position: relative; flex-shrink: 0; }
+.pill-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: #0a0a0a;
+  color: #d4d4d4;
+  border: 1px solid #404040;
+  border-radius: 0.5rem;
+  padding: 0.625rem 1.75rem 0.625rem 0.75rem;
   font-size: 0.8125rem;
   cursor: pointer;
-  transition: color 0.15s;
   font-family: inherit;
 }
-.btn-add-rule:hover { color: #d4d4d4; }
-.btn-add-rule svg { width: 14px; height: 14px; }
-
-.btn-add-else {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0.75rem;
-  background: transparent;
-  border: 1px dashed #404040;
-  border-radius: 0.5rem;
-  color: #737373;
-  font-size: 0.75rem;
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
-  font-family: inherit;
-}
-.btn-add-else:hover { border-color: #7c3aed; color: #7c3aed; }
-.btn-add-else svg { width: 12px; height: 12px; }
-
-.else-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 0.75rem;
-}
-.else-row::before, .else-row::after {
+.pill-select:hover { border-color: #525252; }
+.pill-select:focus { outline: none; border-color: #737373; }
+.pill-select-wrap::after {
   content: '';
-  flex: 1;
-  height: 1px;
-  background: #262626;
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  width: 0.375rem;
+  height: 0.375rem;
+  border-right: 1.5px solid #737373;
+  border-bottom: 1.5px solid #737373;
+  transform: translateY(-65%) rotate(45deg);
+  pointer-events: none;
 }
 
-.day-buttons { display: flex; gap: 0.375rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.pill-value {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #0a0a0a;
+  border: 1px solid #404040;
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  flex: 1;
+  min-width: 8rem;
+  transition: border-color 0.15s;
+}
+.pill-value:focus-within { border-color: #737373; }
+.pill-value svg { width: 0.75rem; height: 0.75rem; color: #525252; flex-shrink: 0; }
+.pill-value input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 0.8125rem;
+  outline: none;
+  font-family: inherit;
+}
+
+.day-buttons { display: flex; gap: 0.375rem; flex-wrap: wrap; }
 .day-btn {
-  padding: 0.25rem 0.5rem;
+  padding: 0.375rem 0.625rem;
   border-radius: 0.375rem;
   border: 1px solid #404040;
-  background: transparent;
+  background: #0a0a0a;
   color: #737373;
   font-size: 0.75rem;
   cursor: pointer;
   transition: all 0.15s;
   font-family: inherit;
 }
-.day-btn.active { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+.day-btn:hover { border-color: #525252; color: #d4d4d4; }
+.day-btn.active { background: #ffffff; border-color: #ffffff; color: #171717; }
 
-.condition-col { display: flex; flex-direction: column; gap: 0.375rem; }
-.condition-row { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-.condition-label { font-size: 0.8125rem; color: #a3a3a3; white-space: nowrap; }
+.else-card-body {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: #a3a3a3;
+  font-size: 0.8125rem;
+}
+.else-card-body svg { width: 1rem; height: 1rem; color: #525252; flex-shrink: 0; }
 `;
 
 let condStylesInjected = false;
@@ -110,19 +180,56 @@ function injectCondStyles() {
   condStylesInjected = true;
 }
 
-export class ConditionBlock {
-  private el: HTMLElement;
-  public data: IConditionBlock;
-  private onChange: () => void;
-  private onRemove: () => void;
+/** Shared header menu wiring for both card types below. */
+function bindHeaderMenu(el: HTMLElement, items: { label: string; icon: string; danger?: boolean; onClick: () => void }[]) {
+  const menuBtn = el.querySelector('.block-menu-btn') as HTMLElement;
+  const menu = el.querySelector('.block-menu') as HTMLElement;
+  menu.innerHTML = items.map((item, i) => `
+    <button class="block-menu-item ${item.danger ? 'danger' : ''}" data-idx="${i}">
+      ${item.icon} ${item.label}
+    </button>
+  `).join('');
 
-  constructor(data: IConditionBlock | undefined, onChange: () => void, onRemove: () => void) {
-    this.data = data || { rules: [] };
-    this.onChange = onChange;
-    this.onRemove = onRemove;
+  const closeMenu = () => { menu.style.display = 'none'; };
+  menuBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  });
+  document.addEventListener('click', closeMenu);
+
+  menu.querySelectorAll('.block-menu-item').forEach((btn, i) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeMenu();
+      items[i].onClick();
+    });
+  });
+}
+
+export interface ConditionRuleBlockOptions {
+  label: string; // 'SE' | 'SENÃO SE'
+  onChange: () => void;
+  /** Removes just this rule (or the whole condition step, if it's the only branch). */
+  onRemove: () => void;
+  /** Present only on the last rule card — appends a new "Senão Se" branch. */
+  onAddSenaoSe?: () => void;
+  /** Present only on the last rule card when no Else exists yet. */
+  onAddElse?: () => void;
+}
+
+/**
+ * A single condition (Se / Senão Se) rendered as its own standalone block.
+ */
+export class ConditionRuleBlock {
+  private el: HTMLElement;
+  public data: ConditionRule;
+  private opts: ConditionRuleBlockOptions;
+
+  constructor(data: ConditionRule, opts: ConditionRuleBlockOptions) {
+    this.data = data;
+    this.opts = opts;
     this.el = document.createElement('div');
     this.el.className = 'block-card';
-    this.el.id = 'condition-block';
     injectCondStyles();
     this.render();
   }
@@ -131,215 +238,129 @@ export class ConditionBlock {
     return this.el;
   }
 
-  public getData(): IConditionBlock {
+  public getData(): ConditionRule {
     return this.data;
   }
 
   private render() {
+    const rule = this.data;
     this.el.innerHTML = /* html */ `
       <div class="block-header">
         <div class="block-icon">${ICONS.branch}</div>
         <div class="block-title-wrap">
-          <p class="block-step">Step 2</p>
+          <p class="block-step">${this.opts.label}</p>
           <h2 class="block-title">Condition: If context matches</h2>
         </div>
         <span class="block-badge">Filter</span>
-        <button class="btn-remove-block" title="Remove Condition Block">
-          ${ICONS.xmark}
-        </button>
+        <div class="block-menu-wrap">
+          <button class="block-menu-btn" title="Mais opções">${ICONS.ellipsis}</button>
+          <div class="block-menu" style="display:none;"></div>
+        </div>
       </div>
-      <div class="block-body" id="rules-container">
-        <!-- Rules injected here -->
+      <div class="block-body">
+        <label class="condition-rule-label">Condition Rule</label>
+        <div class="condition-rule-row">
+          <div class="pill-select-wrap">
+            <select class="pill-select rule-type">
+              <option value="domain"  ${rule.type === 'domain'  ? 'selected' : ''}>Domínio</option>
+              <option value="time"    ${rule.type === 'time'    ? 'selected' : ''}>Horário</option>
+              <option value="weekday" ${rule.type === 'weekday' ? 'selected' : ''}>Dia da Semana</option>
+              <option value="date"    ${rule.type === 'date'    ? 'selected' : ''}>Data</option>
+            </select>
+          </div>
+          <div class="rule-value-container condition-rule-row" style="flex:1; min-width:0;"></div>
+        </div>
       </div>
     `;
 
-    this.el.querySelector('.btn-remove-block')!.addEventListener('click', () => {
-      if (confirm('Remover este bloco de condição?')) {
-        this.onRemove();
-      }
-    });
+    const valueContainer = this.el.querySelector('.rule-value-container') as HTMLElement;
+    this.renderValueInput(rule, valueContainer);
 
-    this.renderRules();
-  }
-
-  private renderRules() {
-    const container = this.el.querySelector('#rules-container')!;
-    container.innerHTML = '';
-
-    if (this.data.rules.length === 0) {
-      this.data.rules.push({
-        type: 'domain',
-        operator: 'contains',
-        value: '',
-        action: { format: 'plaintext', content: '', tokens: [] }
-      });
-      this.onChange();
-    }
-
-    this.data.rules.forEach((rule, idx) => {
-      const row = document.createElement('div');
-      row.style.marginBottom = '1rem';
-
-      row.innerHTML = /* html */ `
-        <label class="form-label">${idx === 0 ? 'Se (If)' : 'Senão Se (Else If)'}</label>
-        <div style="display:flex; align-items:flex-start; gap:0.5rem; flex-wrap:wrap;">
-          <select class="rule-type input-field" style="width:110px; background:#0a0a0a; color:#fff; border:1px solid #404040; padding:0.5rem; border-radius:0.5rem;">
-            <option value="domain"  ${rule.type === 'domain'  ? 'selected' : ''}>Domínio</option>
-            <option value="time"    ${rule.type === 'time'    ? 'selected' : ''}>Horário</option>
-            <option value="weekday" ${rule.type === 'weekday' ? 'selected' : ''}>Dia da Semana</option>
-            <option value="date"    ${rule.type === 'date'    ? 'selected' : ''}>Data</option>
-          </select>
-          <div class="rule-value-container" style="flex:1; min-width:0;"></div>
-          ${this.data.rules.length > 1 ? `<button class="btn-remove-rule" style="background:transparent;border:none;color:#ef4444;cursor:pointer;padding:0.25rem;display:flex;align-items:center;flex-shrink:0;" title="Remover Regra">${ICONS.trash}</button>` : ''}
-        </div>
-      `;
-
-      const valueContainer = row.querySelector('.rule-value-container') as HTMLElement;
+    this.el.querySelector('.rule-type')!.addEventListener('change', (e) => {
+      rule.type = (e.target as HTMLSelectElement).value as any;
+      rule.value = '';
       this.renderValueInput(rule, valueContainer);
-
-      row.querySelector('.rule-type')!.addEventListener('change', (e) => {
-        rule.type = (e.target as HTMLSelectElement).value as any;
-        rule.value = '';
-        this.renderValueInput(rule, valueContainer);
-        this.onChange();
-      });
-
-      const removeBtn = row.querySelector('.btn-remove-rule');
-      if (removeBtn) {
-        removeBtn.addEventListener('click', () => {
-          this.data.rules.splice(idx, 1);
-          this.renderRules();
-          this.onChange();
-        });
-      }
-
-      container.appendChild(row);
+      this.opts.onChange();
     });
 
-    // Bug 9: Add Rule — styled
-    const addRuleBtn = document.createElement('button');
-    addRuleBtn.className = 'btn-add-rule';
-    addRuleBtn.innerHTML = `${ICONS.plus} ${this.data.rules.length > 0 ? 'Adicionar Senão Se' : 'Adicionar Regra'}`;
-    addRuleBtn.addEventListener('click', () => {
-      this.data.rules.push({ type: 'domain', operator: 'contains', value: '', action: { format: 'plaintext', content: '', tokens: [] } });
-      this.renderRules();
-      this.onChange();
-    });
-    container.appendChild(addRuleBtn);
-
-    // Bug 9: Add Else Branch — styled
-    const elseRow = document.createElement('div');
-    elseRow.className = 'else-row';
-    
-    if (!this.data.elseBranch) {
-      elseRow.innerHTML = `
-        <button class="btn-add-else">
-          ${ICONS.plus} Adicionar Else (Senão)
-        </button>
-      `;
-      elseRow.querySelector('.btn-add-else')!.addEventListener('click', () => {
-        this.data.elseBranch = { format: 'plaintext', content: '', tokens: [] };
-        this.renderRules();
-        this.onChange();
-      });
-      container.appendChild(elseRow);
-    } else {
-      elseRow.innerHTML = `
-        <div style="flex: 1; margin-top: 1rem; position: relative;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-            <label class="form-label" style="margin: 0;">Senão (Else)</label>
-            <button class="btn-remove-rule" style="background:transparent;border:none;color:#ef4444;cursor:pointer;padding:0.25rem;display:flex;align-items:center;" title="Remover Else">
-              ${ICONS.trash} Remover Else
-            </button>
-          </div>
-          <div id="else-action-container"></div>
-        </div>
-      `;
-      elseRow.querySelector('.btn-remove-rule')!.addEventListener('click', () => {
-        if (confirm('Remover o Senão (Else)?')) {
-          this.data.elseBranch = undefined;
-          this.renderRules();
-          this.onChange();
-        }
-      });
-      
-      container.appendChild(elseRow);
-      
-      const elseActionContainer = elseRow.querySelector('#else-action-container')!;
-      const actionBlockInst = new ActionBlock(this.data.elseBranch, () => {
-        this.data.elseBranch = actionBlockInst.getData();
-        this.onChange();
-      });
-      
-      const actionEl = actionBlockInst.getElement();
-      const header = actionEl.querySelector('.block-header');
-      if (header) header.remove();
-      actionEl.style.border = 'none';
-      actionEl.style.padding = '0';
-      
-      elseActionContainer.appendChild(actionEl);
+    const menuItems: { label: string; icon: string; danger?: boolean; onClick: () => void }[] = [];
+    if (this.opts.onAddSenaoSe) {
+      menuItems.push({ label: 'Adicionar Senão Se', icon: ICONS.plus, onClick: this.opts.onAddSenaoSe });
     }
+    if (this.opts.onAddElse) {
+      menuItems.push({ label: 'Adicionar Senão (Else)', icon: ICONS.plus, onClick: this.opts.onAddElse });
+    }
+    menuItems.push({
+      label: 'Remover esta Condição', icon: ICONS.trash, danger: true, onClick: () => {
+        if (confirm('Remover esta condição?')) this.opts.onRemove();
+      }
+    });
+    bindHeaderMenu(this.el, menuItems);
   }
 
   private renderValueInput(rule: ConditionRule, container: HTMLElement) {
     container.innerHTML = '';
-
-    if (rule.type === 'domain') {
-      this.renderDomainInputs(rule, container);
-    } else if (rule.type === 'time') {
-      this.renderTimeInputs(rule, container);
-    } else if (rule.type === 'weekday') {
-      this.renderWeekdayInputs(rule, container);
-    } else if (rule.type === 'date') {
-      this.renderDateInputs(rule, container);
-    }
+    if (rule.type === 'domain') this.renderDomainInputs(rule, container);
+    else if (rule.type === 'time') this.renderTimeInputs(rule, container);
+    else if (rule.type === 'weekday') this.renderWeekdayInputs(rule, container);
+    else if (rule.type === 'date') this.renderDateInputs(rule, container);
   }
 
   private renderDomainInputs(rule: ConditionRule, container: HTMLElement) {
-    const wrap = document.createElement('div');
-    wrap.className = 'condition-row';
-    wrap.innerHTML = `
-      <select class="rule-operator input-field" style="width:110px; background:#0a0a0a; color:#fff; border:1px solid #404040; padding:0.5rem; border-radius:0.5rem;">
+    const opWrap = document.createElement('div');
+    opWrap.className = 'pill-select-wrap';
+    opWrap.innerHTML = `
+      <select class="pill-select rule-operator">
         <option value="contains" ${rule.operator === 'contains' ? 'selected' : ''}>Contém</option>
         <option value="equals"   ${rule.operator === 'equals'   ? 'selected' : ''}>Igual</option>
         <option value="matches"  ${rule.operator === 'matches'  ? 'selected' : ''}>Corresponde</option>
       </select>
-      <input type="text" class="rule-value input-field" value="${rule.value || ''}" placeholder="ex: gmail.com" style="flex:1; background:#0a0a0a; color:#fff; border:1px solid #404040; padding:0.5rem; border-radius:0.5rem;" />
     `;
-    container.appendChild(wrap);
 
-    wrap.querySelector('.rule-operator')!.addEventListener('change', (e) => {
+    const valueWrap = document.createElement('div');
+    valueWrap.className = 'pill-value';
+    valueWrap.innerHTML = `
+      ${ICONS.globe}
+      <input type="text" class="rule-value" value="${rule.value || ''}" placeholder="ex: gmail.com" />
+    `;
+
+    container.appendChild(opWrap);
+    container.appendChild(valueWrap);
+
+    opWrap.querySelector('.rule-operator')!.addEventListener('change', (e) => {
       rule.operator = (e.target as HTMLSelectElement).value as any;
-      this.onChange();
+      this.opts.onChange();
     });
-    wrap.querySelector('.rule-value')!.addEventListener('input', (e) => {
+    valueWrap.querySelector('.rule-value')!.addEventListener('input', (e) => {
       rule.value = (e.target as HTMLInputElement).value;
-      this.onChange();
+      this.opts.onChange();
     });
   }
 
-  // Bug 10: TIME — operator select + dynamic fields
+  // TIME — operator select + dynamic fields
   private renderTimeInputs(rule: ConditionRule, container: HTMLElement) {
     let parsed: { op: string; from?: string; to?: string; at?: string } = { op: 'between' };
     try { parsed = JSON.parse(rule.value || '{}'); } catch { /* */ }
     if (!parsed.op) parsed.op = 'between';
 
-    const wrap = document.createElement('div');
-    wrap.className = 'condition-col';
-    wrap.innerHTML = `
-      <div class="condition-row">
-        <select class="time-op-select input-field" style="width:130px; background:#0a0a0a; color:#fff; border:1px solid #404040; padding:0.5rem; border-radius:0.5rem;">
-          <option value="between" ${parsed.op === 'between' ? 'selected' : ''}>Entre</option>
-          <option value="before"  ${parsed.op === 'before'  ? 'selected' : ''}>Antes de</option>
-          <option value="after"   ${parsed.op === 'after'   ? 'selected' : ''}>Após</option>
-        </select>
-        <div class="time-fields" style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;"></div>
-      </div>
+    const opWrap = document.createElement('div');
+    opWrap.className = 'pill-select-wrap';
+    opWrap.innerHTML = `
+      <select class="pill-select time-op-select">
+        <option value="between" ${parsed.op === 'between' ? 'selected' : ''}>Entre</option>
+        <option value="before"  ${parsed.op === 'before'  ? 'selected' : ''}>Antes de</option>
+        <option value="after"   ${parsed.op === 'after'   ? 'selected' : ''}>Após</option>
+      </select>
     `;
-    container.appendChild(wrap);
 
-    const select = wrap.querySelector('.time-op-select') as HTMLSelectElement;
-    const timeFields = wrap.querySelector('.time-fields') as HTMLElement;
+    const timeFields = document.createElement('div');
+    timeFields.className = 'condition-rule-row time-fields';
+    timeFields.style.flex = '1';
+
+    container.appendChild(opWrap);
+    container.appendChild(timeFields);
+
+    const select = opWrap.querySelector('.time-op-select') as HTMLSelectElement;
 
     const save = () => {
       const op = select.value;
@@ -351,21 +372,19 @@ export class ConditionBlock {
         const at = (timeFields.querySelector('.time-at') as HTMLInputElement)?.value || '';
         rule.value = JSON.stringify({ op, at });
       }
-      this.onChange();
+      this.opts.onChange();
     };
 
     const renderTimeFields = (op: string) => {
       if (op === 'between') {
         timeFields.innerHTML = `
-          <span class="condition-label">de</span>
-          <input type="time" class="time-from input-field" value="${parsed.from || '08:00'}" style="width:100px; background:#0a0a0a; color:#fff; border:1px solid #404040; padding:0.5rem; border-radius:0.5rem;">
-          <span class="condition-label">e</span>
-          <input type="time" class="time-to input-field" value="${parsed.to || '18:00'}" style="width:100px; background:#0a0a0a; color:#fff; border:1px solid #404040; padding:0.5rem; border-radius:0.5rem;">
+          <div class="pill-value" style="flex:0 1 auto; min-width:7rem;">${ICONS.clock}<input type="time" class="time-from" value="${parsed.from || '08:00'}"></div>
+          <span style="font-size:0.75rem; color:#737373;">e</span>
+          <div class="pill-value" style="flex:0 1 auto; min-width:7rem;"><input type="time" class="time-to" value="${parsed.to || '18:00'}"></div>
         `;
       } else {
         timeFields.innerHTML = `
-          <span class="condition-label">às</span>
-          <input type="time" class="time-at input-field" value="${parsed.at || '12:00'}" style="width:100px; background:#0a0a0a; color:#fff; border:1px solid #404040; padding:0.5rem; border-radius:0.5rem;">
+          <div class="pill-value" style="flex:0 1 auto; min-width:7rem;">${ICONS.clock}<input type="time" class="time-at" value="${parsed.at || '12:00'}"></div>
         `;
       }
       timeFields.querySelectorAll('input').forEach(inp => inp.addEventListener('change', save));
@@ -375,10 +394,11 @@ export class ConditionBlock {
     select.addEventListener('change', () => {
       parsed = { op: select.value };
       renderTimeFields(select.value);
+      save();
     });
   }
 
-  // Bug 11: WEEKDAY — operator select + day buttons
+  // WEEKDAY — operator select + day buttons
   private renderWeekdayInputs(rule: ConditionRule, container: HTMLElement) {
     let parsed: { op: string; days: string[] } = { op: 'is', days: [] };
     try { parsed = JSON.parse(rule.value || '{}'); } catch { /* */ }
@@ -388,32 +408,35 @@ export class ConditionBlock {
     const dayKeys = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const dayLabels: Record<string, string> = { Mon: 'Seg', Tue: 'Ter', Wed: 'Qua', Thu: 'Qui', Fri: 'Sex', Sat: 'Sáb', Sun: 'Dom' };
 
-    const wrap = document.createElement('div');
-    wrap.className = 'condition-col';
-    wrap.innerHTML = `
-      <select class="weekday-op-select input-field" style="width:220px; background:#0a0a0a; color:#fff; border:1px solid #404040; padding:0.5rem; border-radius:0.5rem;">
+    const opWrap = document.createElement('div');
+    opWrap.className = 'pill-select-wrap';
+    opWrap.innerHTML = `
+      <select class="pill-select weekday-op-select">
         <option value="is"     ${parsed.op === 'is'     ? 'selected' : ''}>É um dos dias</option>
         <option value="is_not" ${parsed.op === 'is_not' ? 'selected' : ''}>Não é nenhum dos dias</option>
       </select>
-      <div class="day-buttons">
-        ${dayKeys.map(k => `
-          <button type="button" class="day-btn ${parsed.days.includes(k) ? 'active' : ''}" data-day="${k}">
-            ${dayLabels[k]}
-          </button>
-        `).join('')}
-      </div>
     `;
-    container.appendChild(wrap);
+
+    const dayButtons = document.createElement('div');
+    dayButtons.className = 'day-buttons';
+    dayButtons.innerHTML = dayKeys.map(k => `
+      <button type="button" class="day-btn ${parsed.days.includes(k) ? 'active' : ''}" data-day="${k}">
+        ${dayLabels[k]}
+      </button>
+    `).join('');
+
+    container.appendChild(opWrap);
+    container.appendChild(dayButtons);
 
     const save = () => {
-      const op = (wrap.querySelector('.weekday-op-select') as HTMLSelectElement).value;
-      const days = Array.from(wrap.querySelectorAll('.day-btn.active')).map(b => (b as HTMLElement).dataset.day!);
+      const op = (opWrap.querySelector('.weekday-op-select') as HTMLSelectElement).value;
+      const days = Array.from(dayButtons.querySelectorAll('.day-btn.active')).map(b => (b as HTMLElement).dataset.day!);
       rule.value = JSON.stringify({ op, days });
-      this.onChange();
+      this.opts.onChange();
     };
 
-    wrap.querySelector('.weekday-op-select')!.addEventListener('change', save);
-    wrap.querySelectorAll('.day-btn').forEach(btn => {
+    opWrap.querySelector('.weekday-op-select')!.addEventListener('change', save);
+    dayButtons.querySelectorAll('.day-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         btn.classList.toggle('active');
         save();
@@ -421,19 +444,77 @@ export class ConditionBlock {
     });
   }
 
-  // Bug 12: DATE — simplified to just a date picker
+  // DATE — simple date picker
   private renderDateInputs(rule: ConditionRule, container: HTMLElement) {
-    const wrap = document.createElement('div');
-    wrap.className = 'condition-row';
-    wrap.innerHTML = `
-      <span class="condition-label">For a data</span>
-      <input type="date" class="rule-value input-field" value="${rule.value || ''}" style="background:#0a0a0a; color:#fff; border:1px solid #404040; padding:0.5rem; border-radius:0.5rem;">
+    const valueWrap = document.createElement('div');
+    valueWrap.className = 'pill-value';
+    valueWrap.style.flex = '0 1 auto';
+    valueWrap.style.minWidth = '10rem';
+    valueWrap.innerHTML = `
+      ${ICONS.calendar}
+      <input type="date" class="rule-value" value="${rule.value || ''}">
     `;
-    container.appendChild(wrap);
+    container.appendChild(valueWrap);
 
-    wrap.querySelector('.rule-value')!.addEventListener('change', (e) => {
+    valueWrap.querySelector('.rule-value')!.addEventListener('change', (e) => {
       rule.value = (e.target as HTMLInputElement).value;
-      this.onChange();
+      this.opts.onChange();
     });
+  }
+}
+
+export interface ConditionElseBlockOptions {
+  onRemove: () => void;
+}
+
+/**
+ * The "Senão (Else)" fallback path, rendered as its own standalone block
+ * with no condition editor — it always matches when no rule above did.
+ */
+export class ConditionElseBlock {
+  private el: HTMLElement;
+  private opts: ConditionElseBlockOptions;
+
+  constructor(opts: ConditionElseBlockOptions) {
+    this.opts = opts;
+    this.el = document.createElement('div');
+    this.el.className = 'block-card';
+    injectCondStyles();
+    this.render();
+  }
+
+  public getElement(): HTMLElement {
+    return this.el;
+  }
+
+  private render() {
+    this.el.innerHTML = /* html */ `
+      <div class="block-header">
+        <div class="block-icon">${ICONS.arrowsSplit}</div>
+        <div class="block-title-wrap">
+          <p class="block-step">SENÃO</p>
+          <h2 class="block-title">Else: Otherwise</h2>
+        </div>
+        <span class="block-badge">Fallback</span>
+        <div class="block-menu-wrap">
+          <button class="block-menu-btn" title="Mais opções">${ICONS.ellipsis}</button>
+          <div class="block-menu" style="display:none;"></div>
+        </div>
+      </div>
+      <div class="block-body">
+        <div class="else-card-body">
+          ${ICONS.arrowsSplit}
+          <span>Executa quando nenhuma condição acima corresponder.</span>
+        </div>
+      </div>
+    `;
+
+    bindHeaderMenu(this.el, [
+      {
+        label: 'Remover Senão', icon: ICONS.trash, danger: true, onClick: () => {
+          if (confirm('Remover o Senão (Else)?')) this.opts.onRemove();
+        }
+      },
+    ]);
   }
 }

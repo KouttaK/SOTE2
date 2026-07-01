@@ -8,8 +8,9 @@ import type { Flow, Block, TriggerBlock as ITriggerBlock, ConditionBlock as ICon
 import { router } from '../router.js';
 import { t } from '../../shared/i18n/index.js';
 import { TriggerBlock } from '../components/blocks/TriggerBlock.js';
-import { ConditionBlock } from '../components/blocks/ConditionBlock.js';
+import { ConditionRuleBlock, ConditionElseBlock } from '../components/blocks/ConditionBlock.js';
 import { ActionBlock } from '../components/blocks/ActionBlock.js';
+import type { ConditionRule } from '../../shared/types/index.js';
 import './editor.css';
 import './tokens.css';
 
@@ -29,8 +30,10 @@ export default class FlowEditorPage implements Page {
 
   // Block Instances
   private triggerBlockInst!: TriggerBlock;
-  private conditionBlockInst: ConditionBlock | null = null;
-  private actionBlockInst!: ActionBlock;
+  private hasCondition = false;
+  private conditionData: IConditionBlock | null = null; // rules[] + optional elseBranch, owned by the editor while a condition step exists
+  private actionBlockInst: ActionBlock | null = null; // used only in the linear (no-condition) flow
+  private branchActionInsts: { kind: 'rule' | 'else'; index: number; inst: ActionBlock }[] = [];
 
   // Keydown handler reference for removal
   private handleKeyDown!: (e: KeyboardEvent) => void;
@@ -176,8 +179,7 @@ export default class FlowEditorPage implements Page {
   private async saveFlow() {
     // Collect data from instances
     const triggerData = this.triggerBlockInst.getData();
-    const actionData = this.actionBlockInst.getData();
-    const condData = this.conditionBlockInst ? this.conditionBlockInst.getData() : null;
+    const condData = this.hasCondition ? this.conditionData : null;
 
     if (!triggerData.shortcut.trim()) {
       alert('Trigger shortcut cannot be empty.');
@@ -195,14 +197,20 @@ export default class FlowEditorPage implements Page {
     blocks.push({ id: crypto.randomUUID(), type: 'trigger', data: triggerData });
     
     if (condData) {
+      // Each condition branch (Se / Senão Se / Senão) has its own dedicated
+      // ActionBlock instance rendered in the flow canvas — pull their data
+      // back into the matching rule/elseBranch before persisting.
+      this.branchActionInsts.forEach(({ kind, index, inst }) => {
+        const actionData = inst.getData();
+        if (kind === 'rule' && condData.rules[index]) {
+          condData.rules[index].action = actionData;
+        } else if (kind === 'else') {
+          condData.elseBranch = actionData;
+        }
+      });
       blocks.push({ id: crypto.randomUUID(), type: 'condition', data: condData });
-      // The ConditionBlock's UI doesn't visually nest the action. 
-      // But the data structure requires ConditionRule to have an action.
-      // We will map the Main ActionBlock to the FIRST rule of the ConditionBlock to satisfy data structure.
-      if (condData.rules.length > 0) {
-        condData.rules[0].action = actionData;
-      }
     } else {
+      const actionData = this.actionBlockInst!.getData();
       blocks.push({ id: crypto.randomUUID(), type: 'action', data: actionData });
     }
 
@@ -233,51 +241,144 @@ export default class FlowEditorPage implements Page {
     this.triggerBlockInst = new TriggerBlock(triggerBlockData, () => this.markDirty());
     container.appendChild(this.triggerBlockInst.getElement());
 
-    // 2. Condition (if exists)
+    // 2. Condition (if exists) — each Se / Senão Se / Senão is its own
+    // standalone block+column, built entirely inside renderBranches().
     const condBlock = this.currentFlow.blocks.find(b => b.type === 'condition');
     if (condBlock) {
-      container.appendChild(this.createConnector());
-      this.conditionBlockInst = new ConditionBlock(
-        condBlock.data as IConditionBlock,
-        () => this.markDirty(),
-        () => {
-          this.conditionBlockInst = null;
-          this.markDirty();
-          this.renderFlow(); // re-render without condition
-        }
-      );
-      container.appendChild(this.conditionBlockInst.getElement());
-    }
-
-    // 3. Main Action
-    // Find action (if linear it's in blocks, if nested it's in rule)
-    let actionBlockData = this.currentFlow.blocks.find(b => b.type === 'action')?.data as IActionBlock;
-    if (!actionBlockData && condBlock) {
-      // Map it from the first rule
-      const rules = (condBlock.data as IConditionBlock).rules;
-      if (rules.length > 0) {
-        actionBlockData = rules[0].action;
+      this.hasCondition = true;
+      this.conditionData = condBlock.data as IConditionBlock;
+      if (!this.conditionData.rules || this.conditionData.rules.length === 0) {
+        this.conditionData.rules = [{ type: 'domain', operator: 'contains', value: '', action: { format: 'plaintext', content: '', tokens: [] } }];
       }
+      container.appendChild(this.createConnector());
+      this.renderBranches(container);
+      return;
     }
-    
+    this.hasCondition = false;
+    this.conditionData = null;
+
+    // 3. Main Action (linear flow, no condition)
     container.appendChild(this.createConnector());
+    const actionBlockData = this.currentFlow.blocks.find(b => b.type === 'action')?.data as IActionBlock;
     this.actionBlockInst = new ActionBlock(actionBlockData, () => this.markDirty());
     container.appendChild(this.actionBlockInst.getElement());
 
     // 4. Add Step (Condition)
-    if (!this.conditionBlockInst) {
-      container.appendChild(this.createConnector());
-      const addWrap = document.createElement('div');
-      addWrap.className = 'add-step-wrap';
-      addWrap.innerHTML = `<button class="add-step-btn">${ICONS.plus} Add Condition</button>`;
-      addWrap.querySelector('button')!.addEventListener('click', () => {
-        // We mutate the flow to add a condition block and re-render
-        this.currentFlow.blocks.push({ id: crypto.randomUUID(), type: 'condition', data: { rules: [] } as IConditionBlock });
-        this.markDirty();
-        this.renderFlow();
-      });
-      container.appendChild(addWrap);
+    container.appendChild(this.createConnector());
+    const addWrap = document.createElement('div');
+    addWrap.className = 'add-step-wrap';
+    addWrap.innerHTML = `<button class="add-step-btn">${ICONS.plus} Add Condition</button>`;
+    addWrap.querySelector('button')!.addEventListener('click', () => {
+      // We mutate the flow to add a condition block and re-render
+      this.currentFlow.blocks.push({ id: crypto.randomUUID(), type: 'condition', data: { rules: [] } as IConditionBlock });
+      this.markDirty();
+      this.renderFlow();
+    });
+    container.appendChild(addWrap);
+  }
+
+  /**
+   * Renders everything downstream of the trigger connector when a
+   * condition step exists: one column per branch (Se / Senão Se / Senão),
+   * each with its OWN condition card (ConditionRuleBlock or
+   * ConditionElseBlock) followed by its own connector and dedicated Action
+   * block — matching the reference design where every condition is a
+   * distinct visual block, not grouped inside a shared card.
+   */
+  private renderBranches(container: Element) {
+    if (!this.hasCondition || !this.conditionData) return;
+    const condData = this.conditionData;
+
+    // Remove everything previously rendered after the trigger's connector
+    // (i.e. re-render the whole branch section from scratch).
+    const trigEl = this.triggerBlockInst.getElement();
+    let node = trigEl.nextSibling; // the connector right after the trigger
+    node = node?.nextSibling ?? null; // first node after that connector
+    while (node) {
+      const next = node.nextSibling;
+      container.removeChild(node);
+      node = next;
     }
+
+    this.branchActionInsts = [];
+
+    const rebuild = () => {
+      this.markDirty();
+      this.renderBranches(container);
+    };
+    const removeConditionEntirely = () => {
+      this.hasCondition = false;
+      this.conditionData = null;
+      this.markDirty();
+      this.renderFlow();
+    };
+    const addSenaoSe = () => {
+      condData.rules.push({ type: 'domain', operator: 'contains', value: '', action: { format: 'plaintext', content: '', tokens: [] } });
+      rebuild();
+    };
+    const addElse = () => {
+      condData.elseBranch = { format: 'plaintext', content: '', tokens: [] };
+      rebuild();
+    };
+
+    const fanWrap = document.createElement('div');
+    fanWrap.className = 'branch-fanout';
+    const row = document.createElement('div');
+    row.className = 'branch-row';
+
+    const isOnlyBranch = condData.rules.length === 1 && !condData.elseBranch;
+
+    condData.rules.forEach((rule, i) => {
+      const isLastRule = i === condData.rules.length - 1;
+      const col = document.createElement('div');
+      col.className = 'branch-col';
+
+      const ruleCard = new ConditionRuleBlock(rule, {
+        label: i === 0 ? 'SE' : 'SENÃO SE',
+        onChange: () => this.markDirty(),
+        onRemove: () => {
+          if (isOnlyBranch) {
+            removeConditionEntirely();
+          } else {
+            condData.rules.splice(i, 1);
+            rebuild();
+          }
+        },
+        onAddSenaoSe: isLastRule ? addSenaoSe : undefined,
+        onAddElse: (isLastRule && !condData.elseBranch) ? addElse : undefined,
+      });
+      col.appendChild(ruleCard.getElement());
+      col.appendChild(this.createConnector());
+
+      const actionInst = new ActionBlock(rule.action, () => this.markDirty());
+      this.branchActionInsts.push({ kind: 'rule', index: i, inst: actionInst });
+      col.appendChild(actionInst.getElement());
+
+      row.appendChild(col);
+    });
+
+    if (condData.elseBranch) {
+      const col = document.createElement('div');
+      col.className = 'branch-col';
+
+      const elseCard = new ConditionElseBlock({
+        onRemove: () => {
+          condData.elseBranch = undefined;
+          rebuild();
+        },
+      });
+      col.appendChild(elseCard.getElement());
+      col.appendChild(this.createConnector());
+
+      const actionInst = new ActionBlock(condData.elseBranch, () => this.markDirty());
+      this.branchActionInsts.push({ kind: 'else', index: -1, inst: actionInst });
+      col.appendChild(actionInst.getElement());
+
+      row.appendChild(col);
+    }
+
+    fanWrap.appendChild(row);
+    container.appendChild(fanWrap);
   }
 
   private createConnector(): HTMLElement {
