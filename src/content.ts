@@ -70,7 +70,7 @@ export default defineContentScript({
 
     // 3. Orchestrator Logic
     // match parameter allows full match context, or just pass the Flow directly for palette
-    const handleTrigger = async (flow: Flow, shortcutTyped: string, element: HTMLElement, triggerKey?: string) => {
+    const handleTrigger = async (flow: Flow, shortcutTyped: string, element: HTMLElement) => {
       monitor.pause(); // Stop monitoring while expanding
 
       try {
@@ -135,7 +135,7 @@ export default defineContentScript({
         }
 
         // Inject
-        TextInjector.inject(element, shortcutTyped + (triggerKey === 'Space' ? ' ' : ''), expandedContent, isRichText);
+        TextInjector.inject(element, shortcutTyped, expandedContent, isRichText);
         
         // Track stats
         const plainTextLength = isRichText ? expandedContent.replace(/<[^>]+>/g, '').length : expandedContent.length;
@@ -182,7 +182,7 @@ export default defineContentScript({
         const match = detector.detectTriggerMode(buffer);
         if (match) {
           e.preventDefault(); 
-          handleTrigger(match.flow, match.shortcutTyped, element, keyName);
+          handleTrigger(match.flow, match.shortcutTyped, element);
         }
       }
     );

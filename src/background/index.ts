@@ -48,8 +48,15 @@ export default defineBackground(() => {
     // The StorageService might chunk flows, we just re-fetch everything and broadcast.
     
     // We can debounce this if needed, but for now we just do it.
-    // If settings changed:
-    if (Object.keys(changes).some(k => k.startsWith('__sote_'))) {
+    const relevantKeys = ['settings', 'flows', '__sote_sync_enabled__'];
+    const isRelevant = Object.keys(changes).some(k => 
+      relevantKeys.includes(k) || 
+      k.startsWith('settings__') || 
+      k.startsWith('flows__') || 
+      k.startsWith('__sote_')
+    );
+
+    if (isRelevant) {
       const settings = await storage.getSettings();
       const flows = await storage.getFlows();
 

@@ -9,8 +9,6 @@ export class TextInjector {
    * @param shortcutTyped The exact string the user typed (to be erased)
    * @param expansionHtml The expanded HTML (or plaintext)
    * @param isRichText Whether the source action block was richtext
-   * @param hasTriggerKey If a trigger key like Space/Tab was pressed, it usually needs to be erased too if the browser already inputted it. 
-   *                      (We will assume preventDefault was called, so the trigger key was NOT inputted into the field).
    */
   public static inject(
     element: HTMLElement,

@@ -94,16 +94,11 @@ export class TextMonitor {
     if (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'password') return;
     if (target.closest && target.closest('.sote-palette-host')) return;
 
-    let codeName = e.code;
-    if (e.key === ' ') codeName = 'Space';
-    if (e.key === 'Tab') codeName = 'Tab';
-    if (e.key === 'Enter') codeName = 'Enter';
-
+    const codeName = e.code;
+    
+    // Check if it's a trigger key
     if (this.triggerKeys.includes(codeName) || this.triggerKeys.includes(e.key)) {
-      // Usar timeout para permitir que a Command Palette aja se necessário,
-      // ou apenas disparar imediatamente
       this.onTriggerKeyPressed(e, codeName, this.buffer, target);
     }
   }
 }
-
