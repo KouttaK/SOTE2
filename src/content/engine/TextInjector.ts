@@ -7,19 +7,26 @@ export class TextInjector {
    * Main entry point to inject text and handle cursor positioning.
    * @param element The active element
    * @param shortcutTyped The exact string the user typed (to be erased)
-   * @param expansionHtml The expanded HTML (or plaintext)
+   * @param expansionHtml The expanded HTML (or plaintext) — must already
+   *   have any cursor marker removed; use `cursorOffset` to say where the
+   *   cursor should land instead.
    * @param isRichText Whether the source action block was richtext
+   * @param cursorOffset Where to place the cursor, expressed as a plain-text
+   *   character count from the start of the inserted content (i.e. counting
+   *   visible characters only, ignoring HTML tags). `null` (default) keeps
+   *   the old behavior of placing the cursor at the very end.
    */
   public static inject(
     element: HTMLElement,
     shortcutTyped: string,
     expansionHtml: string,
-    isRichText: boolean
+    isRichText: boolean,
+    cursorOffset: number | null = null
   ) {
     if (this.isInputOrTextarea(element)) {
-      this.injectIntoInput(element as HTMLInputElement | HTMLTextAreaElement, shortcutTyped, expansionHtml);
+      this.injectIntoInput(element as HTMLInputElement | HTMLTextAreaElement, shortcutTyped, expansionHtml, cursorOffset);
     } else if (element.isContentEditable) {
-      this.injectIntoContentEditable(element, shortcutTyped, expansionHtml, isRichText);
+      this.injectIntoContentEditable(element, shortcutTyped, expansionHtml, isRichText, cursorOffset);
     }
   }
 
@@ -27,7 +34,7 @@ export class TextInjector {
     return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA';
   }
 
-  private static injectIntoInput(el: HTMLInputElement | HTMLTextAreaElement, shortcut: string, text: string) {
+  private static injectIntoInput(el: HTMLInputElement | HTMLTextAreaElement, shortcut: string, text: string, cursorOffset: number | null) {
     // Strip HTML if we are injecting into plain text field
     const plainText = this.stripHtml(text);
     
@@ -49,17 +56,15 @@ export class TextInjector {
     el.dispatchEvent(new Event('input', { bubbles: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
 
-    // Reposition cursor
-    // Handle $cursor$ logic: if plainText contains multiple cursors, we'll just go to the first one
-    // But since tokens are already resolved (and $cursor$ was replaced by an empty string or placeholder by Expander),
-    // wait, we need a way to know where to put the cursor!
-    // Let's assume the expander left a hidden marker, e.g., \u200B (zero width space) or a specific string.
-    // For now, put cursor at the end of the injected text.
-    const newCursorPos = shortcutStart + plainText.length;
+    // Reposition cursor: honor an explicit Cursor token position if one was
+    // resolved (clamped to the inserted text's length, just in case),
+    // otherwise fall back to the end of the injected text as before.
+    const offset = cursorOffset !== null ? Math.min(Math.max(cursorOffset, 0), plainText.length) : plainText.length;
+    const newCursorPos = shortcutStart + offset;
     el.setSelectionRange(newCursorPos, newCursorPos);
   }
 
-  private static injectIntoContentEditable(el: HTMLElement, shortcut: string, html: string, isRichText: boolean) {
+  private static injectIntoContentEditable(el: HTMLElement, shortcut: string, html: string, isRichText: boolean, cursorOffset: number | null) {
     el.focus();
     
     const selection = window.getSelection();
@@ -94,6 +99,22 @@ export class TextInjector {
       document.execCommand('insertHTML', false, html);
     } else {
       document.execCommand('insertText', false, this.stripHtml(html));
+    }
+
+    // execCommand always leaves the caret at the END of what was just
+    // inserted. If a Cursor token asked for a specific spot instead, walk
+    // the caret backward (character by character, via the Selection API so
+    // it correctly steps across any bold/italic/link elements) from the end
+    // to that position.
+    if (cursorOffset !== null) {
+      const insertedPlainLength = this.stripHtml(html).length;
+      const charsToMoveBack = insertedPlainLength - Math.min(Math.max(cursorOffset, 0), insertedPlainLength);
+      const sel = window.getSelection();
+      if (sel && charsToMoveBack > 0) {
+        for (let i = 0; i < charsToMoveBack; i++) {
+          sel.modify('move', 'backward', 'character');
+        }
+      }
     }
     
     // Emulate input event for editors like Notion or Google Docs

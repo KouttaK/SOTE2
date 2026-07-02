@@ -309,4 +309,78 @@ describe('StorageService', () => {
       expect(await storage.getFolders()).toHaveLength(0);
     });
   });
+
+  // ---- Clipboard History ----------------------------------------------------
+
+  describe('clipboard history', () => {
+    it('getClipboardHistory() returns [] on empty storage', async () => {
+      expect(await storage.getClipboardHistory()).toEqual([]);
+    });
+
+    it('addClipboardEntry() puts the newest copy at index 0 ("Clipboard 1")', async () => {
+      await storage.addClipboardEntry('primeiro');
+      await storage.addClipboardEntry('segundo');
+      const history = await storage.getClipboardHistory();
+      expect(history.map((h) => h.text)).toEqual(['segundo', 'primeiro']);
+    });
+
+    it('caps history at DEFAULT_SETTINGS.clipboardHistoryMax (10) by default', async () => {
+      for (let i = 1; i <= 12; i++) {
+        await storage.addClipboardEntry(`item-${i}`);
+      }
+      const history = await storage.getClipboardHistory();
+      expect(history).toHaveLength(10);
+      // Newest 10 kept, oldest 2 dropped.
+      expect(history[0].text).toBe('item-12');
+      expect(history[9].text).toBe('item-3');
+    });
+
+    it('respects a custom clipboardHistoryMax from settings', async () => {
+      await storage.saveSettings({ clipboardHistoryMax: 3 });
+      for (let i = 1; i <= 5; i++) {
+        await storage.addClipboardEntry(`item-${i}`);
+      }
+      const history = await storage.getClipboardHistory();
+      expect(history).toHaveLength(3);
+      expect(history.map((h) => h.text)).toEqual(['item-5', 'item-4', 'item-3']);
+    });
+
+    it('clamps clipboardHistoryMax to the 1-50 range', async () => {
+      await storage.saveSettings({ clipboardHistoryMax: 999 });
+      for (let i = 1; i <= 55; i++) {
+        await storage.addClipboardEntry(`item-${i}`);
+      }
+      const history = await storage.getClipboardHistory();
+      expect(history).toHaveLength(50);
+    });
+
+    it('does not duplicate consecutive identical copies, just refreshes the timestamp', async () => {
+      await storage.addClipboardEntry('repetido');
+      await storage.addClipboardEntry('repetido');
+      const history = await storage.getClipboardHistory();
+      expect(history).toHaveLength(1);
+      expect(history[0].text).toBe('repetido');
+    });
+
+    it('ignores empty string copies', async () => {
+      await storage.addClipboardEntry('');
+      expect(await storage.getClipboardHistory()).toEqual([]);
+    });
+
+    it('trimClipboardHistory() re-applies a lowered cap to existing history', async () => {
+      for (let i = 1; i <= 5; i++) {
+        await storage.addClipboardEntry(`item-${i}`);
+      }
+      await storage.saveSettings({ clipboardHistoryMax: 2 });
+      const trimmed = await storage.trimClipboardHistory();
+      expect(trimmed.map((h) => h.text)).toEqual(['item-5', 'item-4']);
+      expect(await storage.getClipboardHistory()).toHaveLength(2);
+    });
+
+    it('clearClipboardHistory() empties the history', async () => {
+      await storage.addClipboardEntry('algo');
+      await storage.clearClipboardHistory();
+      expect(await storage.getClipboardHistory()).toEqual([]);
+    });
+  });
 });

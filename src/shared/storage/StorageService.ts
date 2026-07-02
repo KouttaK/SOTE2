@@ -18,8 +18,15 @@ import type {
   Folder,
   Settings,
   StorageSchema,
+  ClipboardEntry,
 } from '../types/index.js';
-import { DEFAULT_SETTINGS, SYNC_ENABLED_KEY, SYNC_ITEM_MAX_BYTES } from './defaults.js';
+import {
+  DEFAULT_SETTINGS,
+  SYNC_ENABLED_KEY,
+  SYNC_ITEM_MAX_BYTES,
+  DEFAULT_CLIPBOARD_HISTORY_MAX,
+  MAX_CLIPBOARD_HISTORY_LIMIT,
+} from './defaults.js';
 
 // ---------------------------------------------------------------------------
 // Internal types
@@ -34,6 +41,7 @@ const KEYS = {
   templates: 'templates',
   folders: 'folders',
   settings: 'settings',
+  clipboardHistory: 'clipboardHistory',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -343,6 +351,124 @@ class StorageService {
       KEYS.folders,
       folders.filter((f) => f.id !== id),
     );
+  }
+
+  // -------------------------------------------------------------------------
+  // Clipboard History
+  //
+  // Deliberately always read/written to browser.storage.local directly
+  // (bypassing getArea()/readList()/writeList()), for two reasons:
+  //   1. It's ephemeral, device-specific data — syncing copied text across
+  //      devices via browser.storage.sync has little value and needlessly
+  //      exposes potentially sensitive clipboard content to sync storage.
+  //   2. It changes far more often than flows/settings, and the sync path
+  //      chunks/re-chunks on every write, which would be wasteful here.
+  //
+  // All mutations (add/trim/clear) are funneled through `clipboardQueue` so
+  // they run strictly one at a time. Without this, two 'copy' events fired
+  // in quick succession (e.g. copying two things a second apart before
+  // triggering an expansion) could both read the "old" history before either
+  // had written back, and the second write would silently clobber the
+  // first — losing one of the two copied entries. This queue makes each
+  // add/trim/clear a read-modify-write that's atomic with respect to the
+  // others, regardless of how close together the calls arrive.
+  // -------------------------------------------------------------------------
+
+  private clipboardQueue: Promise<unknown> = Promise.resolve();
+
+  private enqueueClipboardOp<T>(op: () => Promise<T>): Promise<T> {
+    const result = this.clipboardQueue.then(op, op);
+    // Chain the queue itself off a version that never rejects, so one
+    // failed operation doesn't permanently wedge every operation after it.
+    // The original error still propagates to whoever awaited `result`.
+    this.clipboardQueue = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  }
+
+  private clampHistoryMax(max: number | undefined): number {
+    return Math.max(1, Math.min(MAX_CLIPBOARD_HISTORY_LIMIT, max ?? DEFAULT_CLIPBOARD_HISTORY_MAX));
+  }
+
+  async getClipboardHistory(): Promise<ClipboardEntry[]> {
+    try {
+      const raw = await browser.storage.local.get(KEYS.clipboardHistory);
+      return (raw[KEYS.clipboardHistory] as ClipboardEntry[]) ?? [];
+    } catch (err) {
+      console.error('[SOTE] getClipboardHistory failed:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Records a newly copied text as the most recent clipboard entry
+   * (index 0 / "Clipboard 1"). Consecutive duplicate copies of the exact
+   * same text just refresh the timestamp instead of creating a second
+   * entry. The list is capped at the user's configured
+   * `settings.clipboardHistoryMax` (default 10, hard max 50).
+   */
+  async addClipboardEntry(text: string): Promise<ClipboardEntry[]> {
+    return this.enqueueClipboardOp(() => this._addClipboardEntry(text));
+  }
+
+  private async _addClipboardEntry(text: string): Promise<ClipboardEntry[]> {
+    try {
+      if (!text) return this.getClipboardHistory();
+
+      const settings = await this.getSettings();
+      const max = this.clampHistoryMax(settings.clipboardHistoryMax);
+
+      const history = await this.getClipboardHistory();
+      const now = Date.now();
+
+      if (history.length > 0 && history[0].text === text) {
+        history[0] = { text, timestamp: now };
+      } else {
+        history.unshift({ text, timestamp: now });
+      }
+
+      const capped = history.slice(0, max);
+      await browser.storage.local.set({ [KEYS.clipboardHistory]: capped });
+      return capped;
+    } catch (err) {
+      console.error('[SOTE] addClipboardEntry failed:', err);
+      return this.getClipboardHistory();
+    }
+  }
+
+  /** Re-applies the current `clipboardHistoryMax` cap to the stored history. */
+  async trimClipboardHistory(): Promise<ClipboardEntry[]> {
+    return this.enqueueClipboardOp(() => this._trimClipboardHistory());
+  }
+
+  private async _trimClipboardHistory(): Promise<ClipboardEntry[]> {
+    try {
+      const settings = await this.getSettings();
+      const max = this.clampHistoryMax(settings.clipboardHistoryMax);
+      const history = await this.getClipboardHistory();
+      if (history.length <= max) return history;
+
+      const capped = history.slice(0, max);
+      await browser.storage.local.set({ [KEYS.clipboardHistory]: capped });
+      return capped;
+    } catch (err) {
+      console.error('[SOTE] trimClipboardHistory failed:', err);
+      return this.getClipboardHistory();
+    }
+  }
+
+  async clearClipboardHistory(): Promise<void> {
+    return this.enqueueClipboardOp(() => this._clearClipboardHistory());
+  }
+
+  private async _clearClipboardHistory(): Promise<void> {
+    try {
+      await browser.storage.local.remove(KEYS.clipboardHistory);
+    } catch (err) {
+      console.error('[SOTE] clearClipboardHistory failed:', err);
+    }
   }
 
   // -------------------------------------------------------------------------

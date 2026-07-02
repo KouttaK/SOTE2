@@ -78,6 +78,12 @@ export interface Folder {
   order: number;
 }
 
+/** A single entry captured from a 'copy' (or 'cut') event on the page. */
+export interface ClipboardEntry {
+  text: string;
+  timestamp: number;
+}
+
 export interface Settings {
   triggerMode: TriggerMode;
   triggerKeys: string[];
@@ -90,6 +96,8 @@ export interface Settings {
   analytics: Record<string, number>;
   language?: string;
   theme?: string;
+  /** Max number of items kept in the clipboard history (default 10, max 50). */
+  clipboardHistoryMax?: number;
 }
 
 export interface StorageSchema {
@@ -98,6 +106,12 @@ export interface StorageSchema {
   templates: Template[];
   folders: Folder[];
   settings: Settings;
+  /**
+   * Optional on purpose: clipboard history is local, ephemeral, and can
+   * contain sensitive copied text, so it's intentionally excluded from
+   * export/import backups (see settings.ts's #btn-export handler).
+   */
+  clipboardHistory?: ClipboardEntry[];
 }
 declare module '*.css';
 declare module '*.css?inline' {

@@ -4,7 +4,7 @@
 
 import type { Page } from './index.js';
 import { storage } from '../../shared/storage/StorageService.js';
-import type { Flow, Block, TriggerBlock as ITriggerBlock, ConditionBlock as IConditionBlock, ActionBlock as IActionBlock } from '../../shared/types/index.js';
+import type { Flow, Block, TriggerBlock as ITriggerBlock, ConditionBlock as IConditionBlock, ActionBlock as IActionBlock, Settings } from '../../shared/types/index.js';
 import { router } from '../router.js';
 import { t } from '../../shared/i18n/index.js';
 import { TriggerBlock } from '../components/blocks/TriggerBlock.js';
@@ -34,6 +34,7 @@ export default class FlowEditorPage implements Page {
   private isDirty = false;
   private isNew = false;
   private flowId = '';
+  private settings!: Settings; // global settings (trigger mode, exact-match prefix char, etc.)
 
   // Block Instances
   private triggerBlockInst!: TriggerBlock;
@@ -120,6 +121,7 @@ export default class FlowEditorPage implements Page {
     }
 
     this.isDirty = false;
+    this.settings = await storage.getSettings();
     this.renderFlow();
     this.updateStatusToggle();
 
@@ -272,7 +274,7 @@ export default class FlowEditorPage implements Page {
 
     // 1. Trigger
     const triggerBlockData = this.currentFlow.blocks.find(b => b.type === 'trigger')?.data as ITriggerBlock;
-    this.triggerBlockInst = new TriggerBlock(triggerBlockData, () => this.markDirty());
+    this.triggerBlockInst = new TriggerBlock(triggerBlockData, () => this.markDirty(), this.settings);
     container.appendChild(this.triggerBlockInst.getElement());
 
     // 2. Condition (if exists) — each Se / Senão Se / Senão is its own

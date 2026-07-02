@@ -7,6 +7,14 @@ import type { Token } from '../../shared/types/index.js';
 export interface ExpansionContext {
   tabUrl: string;
   tabTitle: string;
+  /**
+   * Locally-tracked clipboard history, newest item first (index 0 = most
+   * recently copied text = "Clipboard 1" in the UI). Populated by the
+   * content script from 'copy'/'cut' events and kept in sync with the
+   * background's persisted history. Optional so existing callers/tests
+   * that don't care about clipboard tokens don't need to pass it.
+   */
+  clipboardHistory?: string[];
 }
 
 export async function expandToken(token: Token, context: ExpansionContext): Promise<string | null> {
@@ -23,19 +31,35 @@ export async function expandToken(token: Token, context: ExpansionContext): Prom
     }
 
     case 'clipboard': {
-      // In Manifest V3 content scripts, navigator.clipboard.readText() works 
-      // if the document is focused and the user has granted permission.
-      // Or we can rely on a background script proxy.
-      // For now, we attempt to read from navigator.clipboard natively.
-      try {
-        // We currently only read the latest item (index 1 is latest).
-        // Extended clipboard history is a deeper system feature.
-        const text = await navigator.clipboard.readText();
-        return text;
-      } catch (err) {
-        console.warn('Failed to read clipboard:', err);
-        return '';
+      // token.config.index is 1-based: 1 = most recent copy, 2 = second
+      // most recent, etc. (see ClipboardModal.ts / TokenPill.ts).
+      const index = Math.max(1, (token.config?.index as number) || 1);
+      const history = context.clipboardHistory ?? [];
+      const fromHistory = history[index - 1];
+      console.log(`[SOTE][clipboard-token] token.id=${token.id} config.index=${token.config?.index} -> resolved index=${index}, history=`, history, `-> value=${JSON.stringify(fromHistory)}`);
+
+      if (fromHistory !== undefined) {
+        return fromHistory;
       }
+
+      // No tracked history yet for this slot. For index 1 only, fall back
+      // to reading the live OS clipboard directly — covers the moment
+      // right after install/reload, before any 'copy' event has been
+      // captured on a SOTE-monitored page. Indexes 2+ have no equivalent
+      // fallback (there's no "second most recent" without history), so
+      // they simply resolve to an empty string.
+      if (index === 1) {
+        try {
+          const text = await navigator.clipboard.readText();
+          return text;
+        } catch (err) {
+          console.warn('[SOTE] Failed to read clipboard:', err);
+          return '';
+        }
+      }
+
+      console.warn(`[SOTE] Clipboard history has no item at index ${index} (history length: ${history.length}).`);
+      return '';
     }
 
     case 'cursor':

@@ -250,7 +250,12 @@
   border: 1px solid #404040;
   border-radius: 0.75rem;
   box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
-  overflow: hidden;
+  /* Was overflow: hidden — that clipped the "Insert Token" dropdown
+     (7 items tall) whenever it extended past the card's bottom edge,
+     hiding everything after the first couple of options. Nothing else in
+     the card relies on this for corner-rounding (header/body share the
+     card's own background), so it's safe to let content overflow. */
+  overflow: visible;
 }
 
 .block-header {

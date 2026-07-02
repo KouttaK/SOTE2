@@ -19,7 +19,9 @@ const ICONS = {
   globe: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M352 256c0 22.2-1.2 43.6-3.3 64H163.3c-2.2-20.4-3.3-41.8-3.3-64s1.2-43.6 3.3-64H348.7c2.2 20.4 3.3 41.8 3.3 64zm28.8-64H503.9c5.3 20.5 8.1 41.9 8.1 64s-2.8 43.5-8.1 64H380.8c2.1-20.6 3.2-42 3.2-64s-1.1-43.4-3.2-64zm112.6-32H376.7c-10-63.9-29.8-117.4-55.3-151.6c78.3 20.7 142 77.5 171.9 151.6zm-149.1 0H167.7c6.1-36.4 15.5-68.6 27-94.7c10.5-23.6 22.2-40.7 33.5-51.5C239.4 3.2 248.7 0 256 0s16.6 3.2 27.8 13.8c11.3 10.8 23 27.9 33.5 51.5c11.6 26 20.9 58.2 27 94.7zm-209 0H18.6C48.6 85.9 112.2 29.1 190.6 8.4C165.1 42.6 145.3 96.1 135.3 160zM8.1 192H131.2c-2.1 20.6-3.2 42-3.2 64s1.1 43.4 3.2 64H8.1C2.8 299.5 0 278.1 0 256s2.8-43.5 8.1-64zM194.7 446.6c-11.6-26-20.9-58.2-27-94.6H344.3c-6.1 36.4-15.5 68.6-27 94.6c-10.5 23.6-22.2 40.7-33.5 51.5C272.6 508.8 263.3 512 256 512s-16.6-3.2-27.8-13.8c-11.3-10.8-23-27.9-33.5-51.5zM135.3 352c10 63.9 29.8 117.4 55.3 151.6C112.2 482.9 48.6 426.1 18.6 352H135.3zm358.1 0c-30 74.1-93.6 130.9-171.9 151.6c25.5-34.2 45.2-87.7 55.3-151.6H493.4z"/></svg>`,
   plus: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z"/></svg>`,
   download: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor"><path d="M64 0C28.7 0 0 28.7 0 64V448c0 35.3 28.7 64 64 64H320c35.3 0 64-28.7 64-64V160H256c-17.7 0-32-14.3-32-32V0H64zM256 0V128H384L256 0zM216 232V334.1l31-31c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9l-72 72c-9.4 9.4-24.6 9.4-33.9 0l-72-72c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l31 31V232c0-13.3 10.7-24 24-24s24 10.7 24 24z"/></svg>`,
-  upload: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor"><path d="M64 0C28.7 0 0 28.7 0 64V448c0 35.3 28.7 64 64 64H320c35.3 0 64-28.7 64-64V160H256c-17.7 0-32-14.3-32-32V0H64zM256 0V128H384L256 0zM216 408c0 13.3-10.7 24-24 24s-24-10.7-24-24V305.9l-31 31c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9l72-72c9.4-9.4 24.6-9.4 33.9 0l72 72c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0l-31-31V408z"/></svg>`
+  upload: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor"><path d="M64 0C28.7 0 0 28.7 0 64V448c0 35.3 28.7 64 64 64H320c35.3 0 64-28.7 64-64V160H256c-17.7 0-32-14.3-32-32V0H64zM256 0V128H384L256 0zM216 408c0 13.3-10.7 24-24 24s-24-10.7-24-24V305.9l-31 31c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9l72-72c9.4-9.4 24.6-9.4 33.9 0l72 72c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0l-31-31V408z"/></svg>`,
+  clipboard: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor"><path d="M192 0c-41.8 0-77.4 26.7-90.5 64H64C28.7 64 0 92.7 0 128V448c0 35.3 28.7 64 64 64H320c35.3 0 64-28.7 64-64V128c0-35.3-28.7-64-64-64H282.5C269.4 26.7 233.8 0 192 0zm0 64a32 32 0 1 1 0 64 32 32 0 1 1 0-64zM112 192H272c8.8 0 16 7.2 16 16s-7.2 16-16 16H112c-8.8 0-16-7.2-16-16s7.2-16 16-16z"/></svg>`,
+  eye: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor"><path d="M288 32c-80.8 0-146.1 39.3-196.2 82.5C42.1 157.2 8.3 208 1.2 231.1c-1.6 5.5-1.6 11.4 0 16.9C8.3 271.1 42.1 321.9 91.8 364.6C141.9 407.8 207.2 447.1 288 447.1s146.1-39.3 196.2-82.5c49.7-42.7 83.5-93.5 90.6-116.6c1.6-5.5 1.6-11.4 0-16.9c-7.1-23.1-40.9-73.9-90.6-116.6C434.1 71.3 368.8 32 288 32zM144 256a144 144 0 1 1 288 0 144 144 0 1 1 -288 0zm144-64c0 35.3-28.7 64-64 64c-7.1 0-13.9-1.2-20.3-3.3c-5.5-1.8-11.9 1.6-11.7 7.4c.3 6.9 1.3 13.8 3.2 20.7c13.7 51.2 66.4 81.6 117.6 67.9s81.6-66.4 67.9-117.6c-11.1-41.5-47.8-69.4-88.6-71.1c-5.8-.2-9.2 6.1-7.4 11.7c2.1 6.4 3.3 13.2 3.3 20.3z"/></svg>`
 };
 
 export default class SettingsPage implements Page {
@@ -133,6 +135,40 @@ export default class SettingsPage implements Page {
                 </div>
               </div>
 
+            </div>
+          </section>
+
+          <!-- Clipboard History Section -->
+          <section class="settings-section">
+            <div class="settings-section-header">
+              <div class="settings-section-icon">${ICONS.clipboard}</div>
+              <div>
+                <h2 class="settings-section-title">Histórico de Clipboard</h2>
+                <p class="settings-section-desc">Quantos itens copiados o token Clipboard consegue lembrar (Clipboard 1 = mais recente)</p>
+              </div>
+            </div>
+            <div class="settings-section-content">
+              <div style="display:flex; gap:1.5rem; flex-wrap:wrap; align-items:flex-end;">
+                <div class="settings-input-group" style="width:160px;">
+                  <label class="settings-label">Quantidade de itens</label>
+                  <input type="number" id="clipboard-max-input" class="settings-input"
+                    min="1" max="50" step="1" style="width:80px;" />
+                  <p class="exp-cfg-hint">Padrão: 10. Máximo: 50.</p>
+                </div>
+                <button class="btn-secondary" id="btn-view-clipboard">
+                  ${ICONS.eye} Ver Histórico Atual
+                </button>
+                <button class="btn-secondary" id="btn-clear-clipboard">
+                  ${ICONS.trash} Limpar Histórico
+                </button>
+              </div>
+
+              <div id="clipboard-history-list" style="display:none; margin-top:1rem;"></div>
+
+              <div class="info-box">
+                ${ICONS.info}
+                <p>Só é capturado o que for copiado (Ctrl+C) ou recortado dentro de páginas web. Textos copiados fora do navegador, ou via scripts que escrevem direto na área de transferência, não entram no histórico.</p>
+              </div>
             </div>
           </section>
 
@@ -312,6 +348,76 @@ export default class SettingsPage implements Page {
     });
 
 
+
+    // Clipboard History
+    const clipboardMaxInput = this.el.querySelector<HTMLInputElement>('#clipboard-max-input');
+    if (clipboardMaxInput) {
+      clipboardMaxInput.value = String(this.settings.clipboardHistoryMax ?? 10);
+      clipboardMaxInput.addEventListener('change', async (e) => {
+        const target = e.target as HTMLInputElement;
+        const val = Math.max(1, Math.min(50, parseInt(target.value, 10) || 10));
+        target.value = String(val);
+        await this.updateSetting('clipboardHistoryMax', val);
+        // Applies the new (possibly smaller) cap to whatever is already stored,
+        // instead of waiting for the next copy to trim it.
+        await storage.trimClipboardHistory();
+        if (clipboardHistoryList && clipboardHistoryList.style.display !== 'none') {
+          await renderClipboardHistoryList();
+        }
+      });
+    }
+
+    const clipboardHistoryList = this.el.querySelector<HTMLDivElement>('#clipboard-history-list');
+    const btnViewClipboard = this.el.querySelector<HTMLButtonElement>('#btn-view-clipboard');
+
+    const escapeHtml = (str: string): string =>
+      str.replace(/[&<>"']/g, (c) => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string
+      ));
+
+    const renderClipboardHistoryList = async () => {
+      if (!clipboardHistoryList) return;
+      const history = await storage.getClipboardHistory();
+      if (history.length === 0) {
+        clipboardHistoryList.innerHTML =
+          '<p class="text-sm text-gray" style="padding:0.5rem 0;">Histórico vazio. Copie algo (Ctrl+C) em qualquer página para começar a preenchê-lo.</p>';
+        return;
+      }
+      clipboardHistoryList.innerHTML = history
+        .map((entry, i) => `
+          <div style="display:flex; gap:0.75rem; padding:0.5rem 0; border-bottom:1px solid rgba(128,128,128,0.2); align-items:flex-start;">
+            <span style="flex-shrink:0; white-space:nowrap; font-size:0.75rem; font-weight:600; padding:0.15rem 0.5rem; border-radius:4px; background:rgba(128,128,128,0.15);">Clipboard ${i + 1}</span>
+            <span style="word-break:break-word; white-space:pre-wrap; flex:1; font-size:0.875rem;">${escapeHtml(entry.text) || '<em>(vazio)</em>'}</span>
+          </div>
+        `)
+        .join('');
+    };
+
+    if (btnViewClipboard && clipboardHistoryList) {
+      btnViewClipboard.addEventListener('click', async () => {
+        const isHidden = clipboardHistoryList.style.display === 'none';
+        if (isHidden) {
+          await renderClipboardHistoryList();
+          clipboardHistoryList.style.display = 'block';
+          btnViewClipboard.innerHTML = `${ICONS.eye} Ocultar Histórico`;
+        } else {
+          clipboardHistoryList.style.display = 'none';
+          btnViewClipboard.innerHTML = `${ICONS.eye} Ver Histórico Atual`;
+        }
+      });
+    }
+
+    const btnClearClipboard = this.el.querySelector<HTMLButtonElement>('#btn-clear-clipboard');
+    if (btnClearClipboard) {
+      btnClearClipboard.addEventListener('click', async () => {
+        if (confirm('Limpar todo o histórico de clipboard? Essa ação não pode ser desfeita.')) {
+          await storage.clearClipboardHistory();
+          if (clipboardHistoryList && clipboardHistoryList.style.display !== 'none') {
+            await renderClipboardHistoryList();
+          }
+        }
+      });
+    }
 
     // Sync Toggle
     const toggleSync = this.el.querySelector('#toggle-sync')!;

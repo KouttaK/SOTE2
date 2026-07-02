@@ -48,7 +48,7 @@ export default defineBackground(() => {
     // The StorageService might chunk flows, we just re-fetch everything and broadcast.
     
     // We can debounce this if needed, but for now we just do it.
-    const relevantKeys = ['settings', 'flows', '__sote_sync_enabled__'];
+    const relevantKeys = ['settings', 'flows', 'clipboardHistory', '__sote_sync_enabled__'];
     const isRelevant = Object.keys(changes).some(k => 
       relevantKeys.includes(k) || 
       k.startsWith('settings__') || 
@@ -64,6 +64,13 @@ export default defineBackground(() => {
 
       broadcastMessage({ type: 'SETTINGS_UPDATED', payload: settings });
       broadcastMessage({ type: 'FLOWS_UPDATED', payload: flows });
+    }
+
+    // Clipboard history has its own key/broadcast so it doesn't get
+    // re-fetched on every unrelated settings/flows change above.
+    if (Object.prototype.hasOwnProperty.call(changes, 'clipboardHistory')) {
+      const clipboardHistory = await storage.getClipboardHistory();
+      broadcastMessage({ type: 'CLIPBOARD_HISTORY_UPDATED', payload: clipboardHistory });
     }
   });
 });
@@ -112,6 +119,19 @@ async function handleMessage(message: Message, sender: any): Promise<any> {
         return { url: sender.tab.url, title: sender.tab.title };
       }
       return { url: null, title: null };
+
+    case 'CLIPBOARD_COPY':
+      // Storing triggers browser.storage.onChanged above, which broadcasts
+      // CLIPBOARD_HISTORY_UPDATED to every tab — no manual broadcast needed here.
+      await storage.addClipboardEntry(message.payload.text);
+      return { success: true };
+
+    case 'GET_CLIPBOARD_HISTORY':
+      return await storage.getClipboardHistory();
+
+    case 'CLEAR_CLIPBOARD_HISTORY':
+      await storage.clearClipboardHistory();
+      return { success: true };
 
     default:
       console.warn('[SOTE] Unknown message type:', message);

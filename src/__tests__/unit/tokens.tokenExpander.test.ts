@@ -50,6 +50,42 @@ describe('tokenExpander', () => {
     expect(result).toBe('Clipboard Content'); // Current implementation might just read current clipboard for index 1
   });
 
+  it("Token CLIPBOARD index 1: com histórico presente, retorna o item mais recente (posição 0)", async () => {
+    const token: Token = { id: 't5a', type: 'clipboard', config: { index: 1 } };
+    const ctx: ExpansionContext = { ...context, clipboardHistory: ['mais recente', 'segundo mais recente', 'terceiro'] };
+    const result = await expandToken(token, ctx);
+    expect(result).toBe('mais recente');
+  });
+
+  it("Token CLIPBOARD index 2: retorna o segundo item do histórico, não o mais recente", async () => {
+    const token: Token = { id: 't5b', type: 'clipboard', config: { index: 2 } };
+    const ctx: ExpansionContext = { ...context, clipboardHistory: ['mais recente', 'segundo mais recente', 'terceiro'] };
+    const result = await expandToken(token, ctx);
+    expect(result).toBe('segundo mais recente');
+  });
+
+  it("Token CLIPBOARD com dois tokens de índices diferentes: cada um resolve para um valor distinto", async () => {
+    const tokenNewest: Token = { id: 't5c', type: 'clipboard', config: { index: 1 } };
+    const tokenOldest: Token = { id: 't5d', type: 'clipboard', config: { index: 2 } };
+    const ctx: ExpansionContext = { ...context, clipboardHistory: ['novo', 'antigo'] };
+
+    const [resultNewest, resultOldest] = await Promise.all([
+      expandToken(tokenNewest, ctx),
+      expandToken(tokenOldest, ctx),
+    ]);
+
+    expect(resultNewest).toBe('novo');
+    expect(resultOldest).toBe('antigo');
+    expect(resultNewest).not.toBe(resultOldest);
+  });
+
+  it("Token CLIPBOARD index além do tamanho do histórico: retorna string vazia", async () => {
+    const token: Token = { id: 't5e', type: 'clipboard', config: { index: 5 } };
+    const ctx: ExpansionContext = { ...context, clipboardHistory: ['único item'] };
+    const result = await expandToken(token, ctx);
+    expect(result).toBe('');
+  });
+
   it("Token CHOICE: retorna null (aguarda input do usuário)", async () => {
     const token: Token = { id: 't6', type: 'choice', config: { options: ['A', 'B'] } };
     const result = await expandToken(token, context);

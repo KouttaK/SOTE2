@@ -15,6 +15,7 @@ vi.mock('../../shared/messaging/client.js', () => ({
       }]);
     }
     if (msg.type === 'GET_SETTINGS') return Promise.resolve({ exactMatchDelay: 200, triggerMode: 'exact_match' });
+    if (msg.type === 'GET_CLIPBOARD_HISTORY') return Promise.resolve([]);
     return Promise.resolve();
   }),
   onMessage: vi.fn(),

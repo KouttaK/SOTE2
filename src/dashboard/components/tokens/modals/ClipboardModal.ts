@@ -19,7 +19,7 @@ export class ClipboardModal extends BaseModal {
     this.body.innerHTML = `
       <div class="field-group">
         <label>Clipboard History Index</label>
-        <p class="text-sm text-gray" style="margin-bottom:0.5rem">1 = Most recent item, 2 = Second most recent, etc.</p>
+        <p class="text-sm text-gray" style="margin-bottom:0.5rem">1 = Most recent item, 2 = Second most recent, etc. History size is configurable in Settings (default 10, max 50).</p>
         <input type="number" min="1" max="50" class="form-input" id="clipboard-index" value="${index}">
       </div>
     `;

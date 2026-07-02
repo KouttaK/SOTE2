@@ -56,6 +56,28 @@ export class ChoicePopup {
         cursor: pointer;
         font-size: 0.875rem;
         transition: background 150ms;
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+      }
+      .choice-key {
+        flex-shrink: 0;
+        width: 1.125rem;
+        height: 1.125rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        color: #737373;
+        background: #262626;
+        border: 1px solid #404040;
+        border-radius: 0.25rem;
+      }
+      .choice-item.active .choice-key,
+      .choice-item:hover .choice-key {
+        color: #fff;
+        border-color: #525252;
       }
       .choice-item:hover, .choice-item.active {
         background: #262626;
@@ -111,18 +133,42 @@ export class ChoicePopup {
 
         const list = document.createElement('div');
         list.className = 'choice-list';
-        
+
         const options = (token.config?.options as string[]) || ['Error: No options'];
         let activeIndex = 0;
+        let settled = false;
+
+        // Auto-pick the first option if the user doesn't respond in time.
+        const AUTO_SELECT_MS = 30000;
+        let autoSelectTimer: ReturnType<typeof setTimeout> | null = null;
+
+        const finish = (value: string | null) => {
+          if (settled) return; // Promise already resolved, ignore further calls
+          settled = true;
+          if (autoSelectTimer) clearTimeout(autoSelectTimer);
+          document.removeEventListener('keydown', onKeyDown);
+          document.removeEventListener('mousedown', onDocMouseDown, true);
+          this.close();
+          resolve(value);
+        };
 
         options.forEach((opt, idx) => {
           const btn = document.createElement('button');
           btn.className = 'choice-item' + (idx === 0 ? ' active' : '');
-          btn.textContent = opt;
-          btn.addEventListener('click', () => {
-            this.close();
-            resolve(opt);
-          });
+
+          // Show the number key (1-9, then 0 for a 10th option) so the
+          // user knows which key expands each choice.
+          if (idx < 10) {
+            const keyLabel = document.createElement('span');
+            keyLabel.className = 'choice-key';
+            keyLabel.textContent = String((idx + 1) % 10);
+            btn.appendChild(keyLabel);
+          }
+          const labelSpan = document.createElement('span');
+          labelSpan.textContent = opt;
+          btn.appendChild(labelSpan);
+
+          btn.addEventListener('click', () => finish(opt));
           btn.addEventListener('mouseover', () => {
             list.querySelectorAll('.choice-item').forEach(el => el.classList.remove('active'));
             btn.classList.add('active');
@@ -130,10 +176,11 @@ export class ChoicePopup {
           });
           list.appendChild(btn);
         });
-        
+
         container.appendChild(list);
 
-        // Keyboard nav
+        // Keyboard nav: arrows to move, Enter to confirm, Esc to cancel,
+        // and number keys (1-9, 0) to jump straight to & confirm an option.
         const onKeyDown = (e: KeyboardEvent) => {
           const items = list.querySelectorAll('.choice-item');
           if (e.key === 'ArrowDown') {
@@ -146,17 +193,33 @@ export class ChoicePopup {
             items.forEach((el, i) => el.classList.toggle('active', i === activeIndex));
           } else if (e.key === 'Enter') {
             e.preventDefault();
-            this.close();
-            document.removeEventListener('keydown', onKeyDown);
-            resolve(options[activeIndex]);
+            finish(options[activeIndex]);
           } else if (e.key === 'Escape') {
             e.preventDefault();
-            this.close();
-            document.removeEventListener('keydown', onKeyDown);
-            resolve(null);
+            finish(null);
+          } else if (/^[0-9]$/.test(e.key)) {
+            // '1'..'9' select options 0..8, '0' selects the 10th option.
+            const pressed = parseInt(e.key, 10);
+            const optionIndex = pressed === 0 ? 9 : pressed - 1;
+            if (optionIndex < options.length) {
+              e.preventDefault();
+              finish(options[optionIndex]);
+            }
           }
         };
         document.addEventListener('keydown', onKeyDown);
+
+        // Click outside the popup cancels it.
+        const onDocMouseDown = (e: MouseEvent) => {
+          const path = e.composedPath ? e.composedPath() : [];
+          if (path.includes(this.host)) return; // click was inside the popup
+          finish(null);
+        };
+        // Registered on the next tick so the click/keypress that triggered
+        // the expansion itself doesn't immediately close the popup.
+        setTimeout(() => document.addEventListener('mousedown', onDocMouseDown, true), 0);
+
+        autoSelectTimer = setTimeout(() => finish(options[0]), AUTO_SELECT_MS);
 
       } else if (token.type === 'input') {
         const title = document.createElement('p');

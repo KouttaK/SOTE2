@@ -2,7 +2,7 @@
  * src/dashboard/components/blocks/TriggerBlock.ts
  */
 
-import type { TriggerBlock as ITriggerBlock, TriggerMode } from '../../../shared/types/index.js';
+import type { TriggerBlock as ITriggerBlock, TriggerMode, Settings } from '../../../shared/types/index.js';
 
 const ICONS = {
   play: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor"><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg>`,
@@ -13,13 +13,15 @@ export class TriggerBlock {
   private el: HTMLElement;
   public data: ITriggerBlock;
   private onChange: () => void;
+  private settings?: Settings;
 
-  constructor(data: ITriggerBlock | undefined, onChange: () => void) {
+  constructor(data: ITriggerBlock | undefined, onChange: () => void, settings?: Settings) {
     this.data = data || {
       shortcut: '',
       smartCase: true,
       forceCapitalize: false,
     };
+    this.settings = settings;
     this.onChange = onChange;
     this.el = document.createElement('div');
     this.el.className = 'block-card';
@@ -36,6 +38,21 @@ export class TriggerBlock {
   }
 
   private render() {
+    // The prefix hint (e.g. "Prefix: /") only makes sense in "exact match"
+    // trigger mode, where a shortcut is expanded as soon as it's typed
+    // after that prefix character. In the default "trigger" mode
+    // (word-boundary based: type the word then Space/Tab/Enter), there is
+    // no prefix at all, so the hint used to be shown — hardcoded to "/" —
+    // even when it didn't apply and even if the user had configured a
+    // different character in Settings.
+    const usesPrefix = this.settings?.triggerMode === 'exact_match';
+    const prefixChar = this.settings?.exactMatchChar || '/';
+    const prefixHintHtml = usesPrefix
+      ? `<div class="input-hint">
+          ${ICONS.keyboard} Prefix: <span style="color:#e5e5e5">${escapeHtml(prefixChar)}</span>
+        </div>`
+      : '';
+
     this.el.innerHTML = /* html */ `
       <div class="block-header">
         <div class="block-icon">${ICONS.play}</div>
@@ -52,12 +69,10 @@ export class TriggerBlock {
           <label class="form-label">Abbreviation / Shortcut</label>
           <div class="input-wrap">
             <div class="input-field">
-              <span>/</span>
+              <span>${usesPrefix ? escapeHtml(prefixChar) : ''}</span>
               <input type="text" id="trigger-shortcut" value="${this.data.shortcut}" placeholder="e.g. hello" />
             </div>
-            <div class="input-hint">
-              ${ICONS.keyboard} Prefix: <span style="color:#e5e5e5">/</span>
-            </div>
+            ${prefixHintHtml}
           </div>
         </div>
 
@@ -108,4 +123,12 @@ export class TriggerBlock {
       this.onChange();
     });
   }
+}
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }

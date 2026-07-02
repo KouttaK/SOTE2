@@ -2,13 +2,20 @@
  * src/content/engine/SmartCase.ts
  */
 
+// Invisible marker TextInjector/content.ts use internally to remember where
+// a Cursor token was. Must be skipped over here the same way whitespace is,
+// otherwise a Cursor token placed before any real text would make
+// capitalization bail out on the marker instead of finding the real first
+// letter that follows it.
+const CURSOR_MARKER_CHAR = '\u2063';
+
 export function applyCasing(
   originalTyped: string,
   expansionText: string,
   forceCapitalize: boolean,
   isHtml: boolean = false
 ): string {
-  const capitalize = isHtml ? capitalizeFirstLetterHtml : capitalizeFirstLetter;
+  const capitalize = isHtml ? capitalizeFirstLetterHtml : capitalizeFirstLetterPlain;
 
   // Force Capitalize always wins and must not depend on what was typed —
   // it used to be checked *after* the `!originalTyped` early return below,
@@ -36,9 +43,16 @@ export function applyCasing(
   return expansionText;
 }
 
-function capitalizeFirstLetter(str: string): string {
+/**
+ * Capitalizes the first real letter of a plain-text string, skipping over
+ * the invisible cursor marker if it happens to sit at the very start.
+ */
+function capitalizeFirstLetterPlain(str: string): string {
   if (!str) return str;
-  return str.charAt(0).toUpperCase() + str.slice(1);
+  let i = 0;
+  while (i < str.length && str[i] === CURSOR_MARKER_CHAR) i++;
+  if (i >= str.length) return str;
+  return str.slice(0, i) + str.charAt(i).toUpperCase() + str.slice(i + 1);
 }
 
 /**
@@ -58,7 +72,7 @@ function capitalizeFirstLetterHtml(html: string): string {
     if (ch === '>') { inTag = false; continue; }
     if (inTag) continue;
 
-    if (/\s/.test(ch)) continue; // skip leading whitespace/newlines
+    if (/\s/.test(ch) || ch === CURSOR_MARKER_CHAR) continue; // skip leading whitespace/newlines/cursor marker
     if (/[a-zà-öø-ÿ]/i.test(ch)) {
       return html.slice(0, i) + ch.toUpperCase() + html.slice(i + 1);
     }

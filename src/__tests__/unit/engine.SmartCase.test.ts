@@ -30,4 +30,20 @@ describe('SmartCase', () => {
     // Let's implement the expected output based on the description, and we might have to fix SmartCase.ts later if it fails.
     expect(applyCasing('OBG', 'obrigado', true)).toBe('Obrigado');
   });
+
+  it('forceCapitalize funciona mesmo sem texto digitado (ex: expansão via Command Palette)', () => {
+    expect(applyCasing('', 'boa noite', true)).toBe('Boa noite');
+  });
+
+  it('forceCapitalize funciona em conteúdo richtext (HTML), pulando as tags', () => {
+    expect(applyCasing('i2', '<p>boa noite</p>', true, true)).toBe('<p>Boa noite</p>');
+  });
+
+  it('forceCapitalize em richtext com HTML aninhado (span/strong) ainda encontra o primeiro texto visível', () => {
+    expect(applyCasing('i2', '<p><strong>boa</strong> noite</p>', true, true)).toBe('<p><strong>Boa</strong> noite</p>');
+  });
+
+  it('forceCapitalize em richtext já capitalizado não quebra nada', () => {
+    expect(applyCasing('i2', '<p>Olá</p>', true, true)).toBe('<p>Olá</p>');
+  });
 });

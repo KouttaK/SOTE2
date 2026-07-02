@@ -295,13 +295,41 @@ export class ActionBlock {
 
   private bindExistingTokens() {
     const pills = this.editorEl.querySelectorAll('.token-pill');
+    let migrated = false;
+
     pills.forEach((pillEl) => {
       const id = pillEl.getAttribute('data-token-id');
       const token = this.data.tokens.find(t => t.id === id);
-      if (token) {
-        this.attachPillInteractivity(pillEl as HTMLElement, token);
+      if (!token) return;
+
+      // Self-healing migration: pills saved before `data-token-config`
+      // existed on the pill (see TokenPill.createHTML) don't carry their
+      // own config yet, which used to make the expansion popup fall back
+      // to "Error: No options" at runtime because it could no longer trust
+      // a possibly-out-of-sync `tokens` array. Simply loading the flow in
+      // the editor now regenerates every such pill's HTML from the (still
+      // correct, in-memory) token data — the next Save persists the fix
+      // with no manual "reopen the token" step required.
+      if (!pillEl.getAttribute('data-token-config')) {
+        const cursorNumber = token.type === 'cursor' ? this.getCursorIndex(token.id) : undefined;
+        const newHtml = TokenPill.createHTML(token, cursorNumber);
+        const temp = document.createElement('div');
+        temp.innerHTML = newHtml;
+        const newPill = temp.firstElementChild as HTMLElement;
+        pillEl.replaceWith(newPill);
+        this.attachPillInteractivity(newPill, token);
+        migrated = true;
+        return;
       }
+
+      this.attachPillInteractivity(pillEl as HTMLElement, token);
     });
+
+    if (migrated) {
+      // Flags the flow as needing a save so the migrated HTML actually
+      // gets persisted, instead of silently reverting next time it loads.
+      this.onChange();
+    }
   }
 
   private attachPillInteractivity(pillEl: HTMLElement, token: Token) {

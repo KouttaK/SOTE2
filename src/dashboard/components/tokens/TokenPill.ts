@@ -33,8 +33,16 @@ export class TokenPill {
       label = `Choice (${(token.config.options as string[]).length})`;
     }
 
+    // The token's config (e.g. the Choice options) is embedded directly on
+    // the pill as data-token-config. This makes the saved HTML the single
+    // source of truth for what a token needs to expand — the content
+    // script can resolve a choice/input popup correctly straight from the
+    // pill itself, without depending on a separate `tokens` array staying
+    // perfectly in sync with the HTML across saves/re-renders.
+    const configAttr = escapeHtmlAttr(JSON.stringify(token.config || {}));
+
     return /* html */ `
-      <span class="token-pill token-${token.type}" contenteditable="false" data-token-id="${token.id}">
+      <span class="token-pill token-${token.type}" contenteditable="false" data-token-id="${token.id}" data-token-config="${configAttr}">
         ${icon}
         ${label}
       </span>
@@ -46,4 +54,12 @@ export class TokenPill {
     tmp.innerHTML = this.createHTML(token, cursorNumber);
     return tmp.firstElementChild as HTMLSpanElement;
   }
+}
+
+function escapeHtmlAttr(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }

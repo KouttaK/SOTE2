@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS: Settings = {
   blocklist: [],
   commandPaletteShortcut: 'Ctrl+Shift+Space',
   analytics: {},
+  clipboardHistoryMax: 10,
 };
 
 /**
@@ -23,3 +24,9 @@ export const SYNC_ENABLED_KEY = '__sote_sync_enabled__';
  * We leave a small buffer for key overhead.
  */
 export const SYNC_ITEM_MAX_BYTES = 7800;
+
+/** Default number of clipboard items kept in history. */
+export const DEFAULT_CLIPBOARD_HISTORY_MAX = 10;
+
+/** Hard ceiling for the configurable clipboard history size (settings UI). */
+export const MAX_CLIPBOARD_HISTORY_LIMIT = 50;
