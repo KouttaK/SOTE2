@@ -10,14 +10,9 @@
   overflow-y: auto;
 }
 
-/* Header */
+/* Header — plain title block, same spacing model as .flows-header */
 .settings-header {
-  background-color: #171717;
-  border-bottom: 1px solid #262626;
-  padding: 1.5rem 2rem;
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  margin-bottom: 1.5rem;
 }
 
 .settings-header-title {
@@ -35,7 +30,6 @@
 /* Main Layout */
 .settings-main {
   flex: 1;
-  padding: 2rem;
   display: flex;
   justify-content: center;
 }

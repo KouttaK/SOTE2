@@ -17,7 +17,13 @@ describe('TriggerDetector', () => {
       triggerMode: 'trigger',
       theme: 'system',
       commandPaletteShortcut: 'Ctrl+Shift+Space',
-      analytics: {}
+      analytics: {},
+      searchTrigger: {
+        enabled: true,
+        includeFlows: true,
+        domainPrefix: '//',
+        globalPrefix: '///',
+      },
     };
   });
 
@@ -183,6 +189,85 @@ describe('resolveActionBlock fallback to elseBranch', () => {
     expect(resolved).not.toBeNull();
     expect(resolved?.content).toBe('Else Passou');
     
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('domain operator "not_contains" (Não corresponde)', () => {
+  const buildFlow = (value: string): any => ({
+    id: 'f1',
+    blocks: [
+      {
+        type: 'condition',
+        data: {
+          rules: [
+            {
+              type: 'domain',
+              operator: 'not_contains',
+              value,
+              action: { format: 'plaintext', content: 'Regra Passou', tokens: [] }
+            }
+          ],
+          elseBranch: { format: 'plaintext', content: 'Else Passou', tokens: [] }
+        }
+      }
+    ]
+  });
+
+  it('passa quando o hostname NÃO contém o valor informado', () => {
+    const detector = new TriggerDetector();
+    vi.stubGlobal('window', { location: { hostname: 'gmail.com' } });
+
+    const resolved = detector.resolveActionBlock(buildFlow('notion.so'));
+
+    expect(resolved?.content).toBe('Regra Passou');
+    vi.unstubAllGlobals();
+  });
+
+  it('cai no elseBranch quando o hostname CONTÉM o valor informado', () => {
+    const detector = new TriggerDetector();
+    vi.stubGlobal('window', { location: { hostname: 'mail.gmail.com' } });
+
+    const resolved = detector.resolveActionBlock(buildFlow('gmail.com'));
+
+    expect(resolved?.content).toBe('Else Passou');
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('tipo de regra desconhecido — fail closed', () => {
+  it('NÃO deve passar (nem cair em erro) quando o tipo da regra é desconhecido, e deve usar o elseBranch', () => {
+    const detector = new TriggerDetector();
+    const flow: any = {
+      id: 'f1',
+      blocks: [
+        {
+          type: 'condition',
+          data: {
+            rules: [
+              {
+                type: 'some_future_unimplemented_type',
+                operator: 'equals',
+                value: 'whatever',
+                action: { format: 'plaintext', content: 'Não deveria passar', tokens: [] }
+              }
+            ],
+            elseBranch: { format: 'plaintext', content: 'Else Passou', tokens: [] }
+          }
+        }
+      ]
+    };
+
+    vi.stubGlobal('window', { location: { hostname: 'any-domain.com' } });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const resolved = detector.resolveActionBlock(flow);
+
+    // Fail closed: an unrecognized rule type must never be treated as a pass.
+    expect(resolved?.content).toBe('Else Passou');
+    expect(warnSpy).toHaveBeenCalled();
+
+    warnSpy.mockRestore();
     vi.unstubAllGlobals();
   });
 });

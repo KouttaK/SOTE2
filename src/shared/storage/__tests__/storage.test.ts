@@ -9,11 +9,12 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { fakeBrowser } from 'wxt/testing';
-import type { Flow, Settings } from '../../types/index.js';
+import type { Flow, Settings, Form } from '../../types/index.js';
 import { DEFAULT_SETTINGS } from '../defaults.js';
 import {
   generateId,
   isBlocklisted,
+  domainMatchesAny,
   isSnoozeActive,
   getActiveDomain,
 } from '../helpers.js';
@@ -38,6 +39,19 @@ function makeFlow(overrides: Partial<Flow> = {}): Flow {
     createdAt: Date.now(),
     updatedAt: Date.now(),
     stats: { usageCount: 0, keysSaved: 0 },
+    ...overrides,
+  };
+}
+
+function makeForm(overrides: Partial<Form> = {}): Form {
+  return {
+    id: generateId(),
+    name: 'Test form',
+    sites: [],
+    fields: [],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    stats: { usageCount: 0 },
     ...overrides,
   };
 }
@@ -78,6 +92,14 @@ describe('helpers', () => {
 
     it('returns false for non-matching domain', () => {
       expect(isBlocklisted('other.com', ['*.banco.com', 'example.com'])).toBe(false);
+    });
+  });
+
+  describe('domainMatchesAny (shared by Blocklist and Forms.sites)', () => {
+    it('is the same matcher isBlocklisted delegates to', () => {
+      expect(domainMatchesAny('app.banco.com', ['*.banco.com'])).toBe(true);
+      expect(domainMatchesAny('banco.com.br', ['*.banco.com'])).toBe(false);
+      expect(domainMatchesAny('mail.google.com', ['mail.google.com'])).toBe(true);
     });
   });
 
@@ -247,48 +269,6 @@ describe('StorageService', () => {
     });
   });
 
-  // ---- Templates -----------------------------------------------------------
-
-  describe('templates / resolveTemplates', () => {
-    it('resolves {{modelo:tag}} in text', async () => {
-      await storage.saveTemplate({
-        id: '1',
-        name: 'Greeting',
-        tag: 'greet',
-        content: 'Hello there',
-        format: 'plaintext',
-      });
-      const result = await storage.resolveTemplates('{{modelo:greet}}, friend!');
-      expect(result).toBe('Hello there, friend!');
-    });
-
-    it('leaves unknown {{modelo:tag}} untouched', async () => {
-      const result = await storage.resolveTemplates('{{modelo:missing}}');
-      expect(result).toBe('{{modelo:missing}}');
-    });
-  });
-
-  // ---- Chaining resolveVariables + resolveTemplates -----------------------
-
-  describe('chained resolution', () => {
-    it('resolveTemplates then resolveVariables expand in sequence', async () => {
-      await storage.saveTemplate({
-        id: 't1',
-        name: 'Sig',
-        tag: 'sig',
-        content: 'Best, {{author}}',
-        format: 'plaintext',
-      });
-      await storage.saveVariable({ id: 'v1', key: 'author', value: 'Lucas' });
-
-      // First expand the template, then expand the variable inside it.
-      const step1 = await storage.resolveTemplates('{{modelo:sig}}');
-      const step2 = await storage.resolveVariables(step1);
-
-      expect(step2).toBe('Best, Lucas');
-    });
-  });
-
   // ---- Folders -------------------------------------------------------------
 
   describe('folders', () => {
@@ -307,6 +287,97 @@ describe('StorageService', () => {
       await storage.saveFolder({ id: 'f1', name: 'Work', color: '#fff', order: 0 });
       await storage.deleteFolder('f1');
       expect(await storage.getFolders()).toHaveLength(0);
+    });
+  });
+
+  // ---- Forms -----------------------------------------------------------
+
+  describe('forms', () => {
+    it('getForms() returns [] on empty storage (before initialise())', async () => {
+      expect(await storage.getForms()).toEqual([]);
+    });
+
+    it('getForm() returns null for unknown id', async () => {
+      expect(await storage.getForm('does-not-exist')).toBeNull();
+    });
+
+    it('create, retrieve, and delete a form', async () => {
+      const form = makeForm({
+        name: 'Envio de Currículo',
+        sites: ['mail.google.com', '*.outlook.com'],
+        fields: [
+          {
+            id: 'f1',
+            name: 'Assunto',
+            type: 'text',
+            value: { format: 'plaintext', content: 'Candidatura', tokens: [] },
+          },
+        ],
+      });
+
+      await storage.saveForm(form);
+
+      const retrieved = await storage.getForm(form.id);
+      expect(retrieved).not.toBeNull();
+      expect(retrieved!.name).toBe('Envio de Currículo');
+      expect(retrieved!.fields).toHaveLength(1);
+
+      expect(await storage.getForms()).toHaveLength(1);
+
+      await storage.deleteForm(form.id);
+      expect(await storage.getForms()).toHaveLength(0);
+    });
+
+    it('saveForm() updates an existing form in place', async () => {
+      const form = makeForm({ name: 'Original' });
+      await storage.saveForm(form);
+
+      await storage.saveForm({ ...form, name: 'Updated' });
+      const forms = await storage.getForms();
+      expect(forms).toHaveLength(1);
+      expect(forms[0].name).toBe('Updated');
+    });
+
+    it('deleteForm() is a no-op for unknown id', async () => {
+      await expect(storage.deleteForm('ghost')).resolves.not.toThrow();
+    });
+
+    it('incrementFormStats() bumps usageCount and lastUsed', async () => {
+      const form = makeForm();
+      await storage.saveForm(form);
+
+      await storage.incrementFormStats(form.id);
+      await storage.incrementFormStats(form.id);
+
+      const updated = await storage.getForm(form.id);
+      expect(updated!.stats.usageCount).toBe(2);
+      expect(updated!.stats.lastUsed).toBeTypeOf('number');
+    });
+
+    it('incrementFormStats() is a no-op for unknown id', async () => {
+      await expect(storage.incrementFormStats('ghost')).resolves.not.toThrow();
+    });
+
+    it('initialise() seeds the two onboarding example Forms on first run', async () => {
+      await storage.initialise();
+      const forms = await storage.getForms();
+      expect(forms).toHaveLength(2);
+      expect(forms.map((f) => f.name)).toEqual(
+        expect.arrayContaining(['Envio de Currículo', 'Abertura de Protocolo']),
+      );
+    });
+
+    it('initialise() does not resurrect Forms the user deleted', async () => {
+      await storage.initialise(); // seeds the 2 examples
+      const [first] = await storage.getForms();
+      await storage.deleteForm(first.id);
+      await storage.deleteForm((await storage.getForms())[0].id);
+      expect(await storage.getForms()).toHaveLength(0);
+
+      // A second initialise() (e.g. next browser start) must not reseed,
+      // since the `forms` key already exists (as an empty array).
+      await storage.initialise();
+      expect(await storage.getForms()).toHaveLength(0);
     });
   });
 

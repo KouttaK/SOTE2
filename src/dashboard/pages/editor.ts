@@ -8,8 +8,10 @@ import type { Flow, Block, TriggerBlock as ITriggerBlock, ConditionBlock as ICon
 import { router } from '../router.js';
 import { t } from '../../shared/i18n/index.js';
 import { TriggerBlock } from '../components/blocks/TriggerBlock.js';
-import { ConditionRuleBlock, ConditionElseBlock } from '../components/blocks/ConditionBlock.js';
+import { ConditionRuleBlock, ConditionElseBlock, describeConditionRule } from '../components/blocks/ConditionBlock.js';
 import { ActionBlock } from '../components/blocks/ActionBlock.js';
+import { PreviewModal } from '../components/PreviewModal.js';
+import type { PreviewBranch } from '../components/PreviewModal.js';
 import type { ConditionRule } from '../../shared/types/index.js';
 import './editor.css';
 import './tokens.css';
@@ -31,7 +33,7 @@ const CANVAS_ZOOM_STEP = 0.15;
 export default class FlowEditorPage implements Page {
   private el!: HTMLElement;
   private currentFlow!: Flow;
-  private isDirty = false;
+  private _isDirty = false;
   private isNew = false;
   private flowId = '';
   private settings!: Settings; // global settings (trigger mode, exact-match prefix char, etc.)
@@ -45,6 +47,14 @@ export default class FlowEditorPage implements Page {
 
   // Keydown handler reference for removal
   private handleKeyDown!: (e: KeyboardEvent) => void;
+  private handleBeforeUnload = (e: BeforeUnloadEvent) => {
+    if (this._isDirty) {
+      // Standard cross-browser way to trigger the native
+      // "leave site? changes may not be saved" confirmation dialog.
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  };
 
   // Canvas pan/zoom state
   private canvasZoom = 1;
@@ -65,20 +75,20 @@ export default class FlowEditorPage implements Page {
     this.el.innerHTML = /* html */ `
       <div class="editor-header">
         <div class="editor-status-indicator">
-          <span class="status-label">Inactive</span>
+          <span class="status-label">${t('editor.status.inactive')}</span>
           <div class="status-toggle" id="flow-status-toggle"></div>
-          <span class="status-label" style="color: #d4d4d4;">Active</span>
+          <span class="status-label" style="color: #d4d4d4;">${t('editor.status.active')}</span>
         </div>
 
         <div class="editor-folder-select" style="margin-left: 20px; display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 13px; color: var(--neutral-400);">Folder:</span>
+          <span style="font-size: 13px; color: var(--neutral-400);">${t('editor.folder_label')}</span>
           <select id="flow-folder" style="background: var(--neutral-800); color: white; border: 1px solid var(--neutral-700); border-radius: 4px; padding: 4px 8px; font-size: 13px; outline: none;">
-            <option value="">Uncategorised</option>
+            <option value="">${t('flows.folder.none')}</option>
           </select>
         </div>
         
         <div class="editor-actions">
-          <button class="btn-preview">${ICONS.eye} Preview</button>
+          <button class="btn-preview">${ICONS.eye} <span class="btn-preview-label">${t('preview.title')}</span></button>
           <button class="btn-save" id="btn-save-flow">${ICONS.save} <span id="save-label">${t('editor.saveFlow')}</span></button>
         </div>
       </div>
@@ -120,7 +130,7 @@ export default class FlowEditorPage implements Page {
       this.currentFlow = JSON.parse(JSON.stringify(flow)); // deep clone
     }
 
-    this.isDirty = false;
+    this._isDirty = false;
     this.settings = await storage.getSettings();
     this.renderFlow();
     this.updateStatusToggle();
@@ -147,6 +157,7 @@ export default class FlowEditorPage implements Page {
     });
 
     this.el.querySelector('#btn-save-flow')!.addEventListener('click', () => this.saveFlow());
+    this.el.querySelector('.btn-preview')!.addEventListener('click', () => this.openPreview());
 
     // Canvas pan & zoom (drag to move around, scroll/buttons to zoom)
     this.initCanvasPanZoom();
@@ -160,19 +171,23 @@ export default class FlowEditorPage implements Page {
     };
     window.addEventListener('keydown', this.handleKeyDown);
 
-    // Sidebar warning before navigation
-    // (This works by hooking into router or beforeunload. WXT background/shell handles routing, we'll intercept in unmount if possible, or just rely on a window confirmation).
+    // Warns before closing the tab / refreshing / navigating to another
+    // site while there are unsaved changes. Navigation *within* the
+    // dashboard (sidebar links, Create New Flow) is handled separately by
+    // the shell, which checks isDirty()/saveFlow() before switching pages.
+    window.addEventListener('beforeunload', this.handleBeforeUnload);
   }
 
   unmount(): void {
     window.removeEventListener('keydown', this.handleKeyDown);
+    window.removeEventListener('beforeunload', this.handleBeforeUnload);
     if (this.handleCanvasMouseMove) window.removeEventListener('mousemove', this.handleCanvasMouseMove);
     if (this.handleCanvasMouseUp) window.removeEventListener('mouseup', this.handleCanvasMouseUp);
-    if (this.isDirty) {
-      // Actually we cannot easily abort unmount synchronously here because the router is naive.
-      // But we'll trust the user to save. A more robust router would allow unmount cancellation.
-      console.warn('Navigated away with unsaved changes');
-    }
+  }
+
+  /** Public accessor so the shell can check for unsaved edits (e.g. before starting a new flow). */
+  isDirty(): boolean {
+    return this._isDirty;
   }
 
   // ---------------------------------------------------------------------------
@@ -196,7 +211,7 @@ export default class FlowEditorPage implements Page {
   }
 
   private markDirty() {
-    this.isDirty = true;
+    this._isDirty = true;
     const saveLabel = this.el.querySelector('#save-label')!;
     saveLabel.textContent = t('editor.saveFlow') + ' *';
     const btn = this.el.querySelector('#btn-save-flow')!;
@@ -204,22 +219,67 @@ export default class FlowEditorPage implements Page {
   }
 
   private clearDirty() {
-    this.isDirty = false;
+    this._isDirty = false;
     const saveLabel = this.el.querySelector('#save-label')!;
-    saveLabel.textContent = 'Saved';
+    saveLabel.textContent = t('editor.saved_label');
     setTimeout(() => {
-      if (!this.isDirty) saveLabel.textContent = t('editor.saveFlow');
+      if (!this._isDirty) saveLabel.textContent = t('editor.saveFlow');
     }, 2000);
   }
 
-  private async saveFlow() {
+  /**
+   * Shows a read-only preview of exactly what this flow will type: the
+   * trigger shortcut, and — for each branch (or the single linear action,
+   * if there's no condition step) — the rule summary and rendered content.
+   * Pulls straight from the live block instances so it always reflects
+   * unsaved edits, same as saveFlow() does.
+   */
+  private async openPreview() {
+    const triggerData = this.triggerBlockInst.getData();
+    const branches: PreviewBranch[] = [];
+
+    if (this.hasCondition && this.conditionData) {
+      const condData = this.conditionData;
+      condData.rules.forEach((rule: ConditionRule, i: number) => {
+        const branchInst = this.branchActionInsts.find(b => b.kind === 'rule' && b.index === i);
+        branches.push({
+          tag: i === 0 ? t('condition.tag.if') : t('condition.tag.elseif'),
+          ruleDescription: describeConditionRule(rule),
+          action: branchInst ? branchInst.inst.getData() : rule.action,
+        });
+      });
+      if (condData.elseBranch) {
+        const branchInst = this.branchActionInsts.find(b => b.kind === 'else');
+        branches.push({
+          tag: t('condition.tag.else'),
+          action: branchInst ? branchInst.inst.getData() : condData.elseBranch,
+        });
+      }
+    } else if (this.actionBlockInst) {
+      branches.push({ action: this.actionBlockInst.getData() });
+    }
+
+    // Fetched fresh on every open so a variable created/edited on the
+    // Variables page shows up immediately, same as the runtime {{KEY}}
+    // resolution in content.ts.
+    const variables = await storage.getVariables();
+
+    new PreviewModal({ trigger: triggerData, settings: this.settings, branches, variables }).open();
+  }
+
+  /**
+   * Saves the current flow. Returns true if the save actually completed
+   * (used by the shell to decide whether it's safe to navigate away, e.g.
+   * when starting a new flow from an unsaved one).
+   */
+  async saveFlow(): Promise<boolean> {
     // Collect data from instances
     const triggerData = this.triggerBlockInst.getData();
     const condData = this.hasCondition ? this.conditionData : null;
 
     if (!triggerData.shortcut.trim()) {
       alert('Trigger shortcut cannot be empty.');
-      return;
+      return false;
     }
 
     // Name is just the shortcut
@@ -255,7 +315,15 @@ export default class FlowEditorPage implements Page {
 
     await storage.saveFlow(this.currentFlow);
     this.clearDirty();
+    if (this.isNew) {
+      // Keep the address bar in sync with the real id now that it's saved,
+      // so "Create New Flow" (and refreshes) don't get confused by a stale
+      // "/editor/new" URL still pointing at what is now a saved flow.
+      this.flowId = this.currentFlow.id;
+      router.replace(`/editor/${this.currentFlow.id}`);
+    }
     this.isNew = false;
+    return true;
   }
 
   // ---------------------------------------------------------------------------
@@ -269,7 +337,10 @@ export default class FlowEditorPage implements Page {
     // Step Counter
     const badge = document.createElement('div');
     badge.className = 'flow-step-badge';
-    badge.innerHTML = `Flow: ${this.currentFlow.blocks.length} steps &middot; ${this.isNew ? 'Not saved yet' : 'Last saved recently'}`;
+    badge.innerHTML = t('editor.flow_summary', {
+      count: this.currentFlow.blocks.length,
+      status: this.isNew ? t('editor.status.not_saved') : t('editor.status.saved_recently'),
+    });
     container.appendChild(badge);
 
     // 1. Trigger
@@ -303,7 +374,7 @@ export default class FlowEditorPage implements Page {
     container.appendChild(this.createConnector());
     const addWrap = document.createElement('div');
     addWrap.className = 'add-step-wrap';
-    addWrap.innerHTML = `<button class="add-step-btn">${ICONS.plus} Add Condition</button>`;
+    addWrap.innerHTML = `<button class="add-step-btn">${ICONS.plus} ${t('editor.condition.add')}</button>`;
     addWrap.querySelector('button')!.addEventListener('click', () => {
       // We mutate the flow to add a condition block and re-render
       this.currentFlow.blocks.push({ id: crypto.randomUUID(), type: 'condition', data: { rules: [] } as IConditionBlock });
@@ -345,6 +416,11 @@ export default class FlowEditorPage implements Page {
     const removeConditionEntirely = () => {
       this.hasCondition = false;
       this.conditionData = null;
+      // Actually remove the condition block from the flow's data — without
+      // this, renderFlow() re-derives hasCondition by looking it up in
+      // currentFlow.blocks again, finds it still there, and the condition
+      // section instantly reappears, making the remove button look broken.
+      this.currentFlow.blocks = this.currentFlow.blocks.filter(b => b.type !== 'condition');
       this.markDirty();
       this.renderFlow();
     };
@@ -370,7 +446,7 @@ export default class FlowEditorPage implements Page {
       col.className = 'branch-col';
 
       const ruleCard = new ConditionRuleBlock(rule, {
-        label: i === 0 ? 'SE' : 'SENÃO SE',
+        label: i === 0 ? t('condition.tag.if') : t('condition.tag.elseif'),
         onChange: () => this.markDirty(),
         onRemove: () => {
           if (isOnlyBranch) {

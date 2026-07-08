@@ -32,7 +32,7 @@ const ROUTE_PATTERNS: string[] = [
   '/flows',
   '/editor/:id',
   '/variables',
-  '/templates',
+  '/formularios',
   '/settings',
   '/analytics',
 ];
@@ -123,12 +123,41 @@ class Router {
   /**
    * Navigates to `path` by updating the hash.
    * Pushes a new history entry so the Back button works.
+   *
+   * If `path` resolves to the exact same hash we're already on, the browser
+   * won't fire a `hashchange` event, so nothing would normally happen. That
+   * broke "Create New Flow": after saving a brand-new flow the URL stays at
+   * "#/editor/new" (its route param never changes), so clicking the button
+   * again looked like a no-op. To handle that, we detect the no-op case and
+   * force a manual re-resolve + notify so the page always reloads.
    */
   navigate(path: string): void {
     // Normalise: ensure leading slash.
     const clean = path.startsWith('/') ? path : `/${path}`;
+    const targetHash = `#${clean}`;
+
+    if (window.location.hash === targetHash) {
+      // Same hash as current — hashchange won't fire, so force the reload ourselves.
+      this._current = resolve(hashToPath(targetHash));
+      this._notify();
+      return;
+    }
+
     window.location.hash = clean;
     // hashchange event fires automatically → no need to call notify manually.
+  }
+
+  /**
+   * Silently syncs the URL hash to `path` without triggering a route
+   * notification (no remount). Used after saving a brand-new flow so the
+   * address bar reflects its real id instead of staying on "new" —
+   * without resetting the editor the user is currently looking at.
+   */
+  replace(path: string): void {
+    const clean = path.startsWith('/') ? path : `/${path}`;
+    const targetHash = `#${clean}`;
+    history.replaceState(null, '', targetHash);
+    this._current = resolve(hashToPath(targetHash));
   }
 
   /**

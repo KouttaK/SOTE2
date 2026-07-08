@@ -107,32 +107,4 @@ describe('Storage Integration', () => {
     expect(flows[0].stats.usageCount).toBe(2);
   });
 
-  it('resolveVariables + resolveTemplates encadeados: template com variável interna resolve corretamente', async () => {
-    // Depending on where resolveTemplates is implemented, we test the logic.
-    // If it's a helper function, we test it here.
-    // Assuming we have a function to test or we mock the logic.
-    // In our spec, we need to test this behavior. Let's mock a simple resolution logic to prove the test suite works,
-    // or test the actual function if it exists.
-    
-    const resolveVars = (text: string, vars: Record<string, string>) => {
-      let res = text;
-      for (const [k, v] of Object.entries(vars)) res = res.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), v);
-      return res;
-    };
-    
-    const resolveTpls = (text: string, tpls: Record<string, string>) => {
-      let res = text;
-      for (const [k, v] of Object.entries(tpls)) res = res.replace(new RegExp(`\\{\\{modelo:${k}\\}\\}`, 'g'), v);
-      return res;
-    };
-    
-    const templates = { 'assinatura': 'Atenciosamente, {{NOME}}' };
-    const variables = { 'NOME': 'Lucas' };
-    
-    let content = 'Olá, segue anexo. {{modelo:assinatura}}';
-    content = resolveTpls(content, templates);
-    content = resolveVars(content, variables);
-    
-    expect(content).toBe('Olá, segue anexo. Atenciosamente, Lucas');
-  });
 });

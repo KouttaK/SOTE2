@@ -220,6 +220,37 @@ kbd {
   border-color: #262626; /* neutral-800 */
 }
 
+/* Forms/Flows type badge (spec §4.3/§7 — "Formulário" vs "Atalho") */
+.palette-type-badge {
+  flex-shrink: 0;
+  font-size: 0.625rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid #404040;
+  color: #a3a3a3;
+  white-space: nowrap;
+}
+.palette-type-badge.form { color: #93c5fd; border-color: #1d4ed8; }
+.palette-type-badge.flow { color: #86efac; border-color: #15803d; }
+
+.palette-breadcrumb {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.75rem;
+  color: #a3a3a3;
+  border-bottom: 1px solid #262626;
+}
+
+.palette-footer-suggestion {
+  padding: 0.625rem 1.25rem;
+  font-size: 0.75rem;
+  color: #93c5fd;
+  cursor: pointer;
+  border-top: 1px solid #262626;
+}
+.palette-footer-suggestion:hover {
+  background-color: #262626;
+}
+
 /* Footer */
 .footer {
   display: flex;

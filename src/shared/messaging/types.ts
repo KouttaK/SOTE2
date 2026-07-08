@@ -1,7 +1,7 @@
 /**
  * src/shared/messaging/types.ts
  */
-import type { Flow, Settings, ClipboardEntry } from '../types/index.js';
+import type { Flow, Form, Settings, ClipboardEntry, Variable } from '../types/index.js';
 
 export type Message =
   | { type: 'GET_FLOWS' }
@@ -15,10 +15,19 @@ export type Message =
   | { type: 'CLIPBOARD_COPY'; payload: { text: string } }
   | { type: 'GET_CLIPBOARD_HISTORY' }
   | { type: 'CLIPBOARD_HISTORY_UPDATED'; payload: ClipboardEntry[] }
-  | { type: 'CLEAR_CLIPBOARD_HISTORY' };
+  | { type: 'CLEAR_CLIPBOARD_HISTORY' }
+  | { type: 'GET_VARIABLES' }
+  | { type: 'VARIABLES_UPDATED'; payload: Variable[] }
+  | { type: 'GET_FORMS' }
+  | { type: 'SAVE_FORM'; payload: Form }
+  | { type: 'DELETE_FORM'; payload: { id: string } }
+  | { type: 'FORM_USED'; payload: { formId: string } }
+  | { type: 'FORMS_UPDATED'; payload: Form[] };
 
 // Response Types
 export type GetFlowsResponse = Flow[];
 export type GetSettingsResponse = Settings;
 export type GetTabInfoResponse = { url: string | null; title: string | null };
 export type GetClipboardHistoryResponse = ClipboardEntry[];
+export type GetVariablesResponse = Variable[];
+export type GetFormsResponse = Form[];

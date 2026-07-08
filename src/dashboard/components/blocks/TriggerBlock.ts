@@ -3,6 +3,8 @@
  */
 
 import type { TriggerBlock as ITriggerBlock, TriggerMode, Settings } from '../../../shared/types/index.js';
+import { t } from '../../../shared/i18n/index.js';
+import { shortcutConflictsWithSearchTrigger } from '../../../content/engine/SearchTriggerDetector.js';
 
 const ICONS = {
   play: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor"><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg>`,
@@ -49,7 +51,7 @@ export class TriggerBlock {
     const prefixChar = this.settings?.exactMatchChar || '/';
     const prefixHintHtml = usesPrefix
       ? `<div class="input-hint">
-          ${ICONS.keyboard} Prefix: <span style="color:#e5e5e5">${escapeHtml(prefixChar)}</span>
+          ${ICONS.keyboard} ${t('trigger.block.prefix_label')} <span style="color:#e5e5e5">${escapeHtml(prefixChar)}</span>
         </div>`
       : '';
 
@@ -57,23 +59,24 @@ export class TriggerBlock {
       <div class="block-header">
         <div class="block-icon">${ICONS.play}</div>
         <div class="block-title-wrap">
-          <p class="block-step">Step 1</p>
-          <h2 class="block-title">Trigger: When I type</h2>
+          <p class="block-step">${t('trigger.block.step')}</p>
+          <h2 class="block-title">${t('trigger.block.title')}</h2>
         </div>
-        <span class="block-badge">Keyboard</span>
+        <span class="block-badge">${t('trigger.block.badge')}</span>
       </div>
       <div class="block-body">
         
         <!-- Shortcut input -->
         <div style="margin-bottom: 1.25rem;">
-          <label class="form-label">Abbreviation / Shortcut</label>
+          <label class="form-label">${t('trigger.block.field_label')}</label>
           <div class="input-wrap">
             <div class="input-field">
               <span>${usesPrefix ? escapeHtml(prefixChar) : ''}</span>
-              <input type="text" id="trigger-shortcut" value="${this.data.shortcut}" placeholder="e.g. hello" />
+              <input type="text" id="trigger-shortcut" value="${this.data.shortcut}" placeholder="${t('editor.trigger.shortcut_placeholder')}" />
             </div>
             ${prefixHintHtml}
           </div>
+          <p class="input-hint" id="trigger-reserved-warning" style="display:none; color:#f59e0b;"></p>
         </div>
 
         <!-- Mode Select Removed -->
@@ -82,16 +85,16 @@ export class TriggerBlock {
         <!-- Toggles -->
         <div class="toggle-row">
           <div class="toggle-info">
-            <p>Smart Case</p>
-            <p>Matches regardless of letter casing</p>
+            <p>${t('trigger.block.smartcase_title')}</p>
+            <p>${t('trigger.block.smartcase_desc')}</p>
           </div>
           <div class="switch ${this.data.smartCase ? 'is-on' : ''}" id="trigger-smartcase"></div>
         </div>
         
         <div class="toggle-row">
           <div class="toggle-info">
-            <p>Force Capitalize</p>
-            <p>Always capitalize the first letter of the output</p>
+            <p>${t('trigger.block.capitalize_title')}</p>
+            <p>${t('trigger.block.capitalize_desc')}</p>
           </div>
           <div class="switch ${this.data.forceCapitalize ? 'is-on' : ''}" id="trigger-capitalize"></div>
         </div>
@@ -105,8 +108,10 @@ export class TriggerBlock {
     const input = this.el.querySelector<HTMLInputElement>('#trigger-shortcut')!;
     input.addEventListener('input', (e) => {
       this.data.shortcut = (e.target as HTMLInputElement).value;
+      this.updateReservedPrefixWarning();
       this.onChange();
     });
+    this.updateReservedPrefixWarning();
 
 
     const smartCase = this.el.querySelector<HTMLElement>('#trigger-smartcase')!;
@@ -122,6 +127,28 @@ export class TriggerBlock {
       forceCap.classList.toggle('is-on', this.data.forceCapitalize);
       this.onChange();
     });
+  }
+
+  /**
+   * Spec §6 — reserved prefixes: while the Gatilho de Busca is active,
+   * warn in real time if the shortcut being typed starts with one of its
+   * configured prefixes. This never blocks saving — it's a heads-up, same
+   * spirit as the Settings page's migration scan over existing Flows.
+   */
+  private updateReservedPrefixWarning() {
+    const warningEl = this.el.querySelector<HTMLElement>('#trigger-reserved-warning');
+    if (!warningEl) return;
+
+    const conflicts = shortcutConflictsWithSearchTrigger(this.data.shortcut, this.settings?.searchTrigger);
+    if (conflicts) {
+      const prefix = this.settings?.searchTrigger?.domainPrefix && this.data.shortcut.startsWith(this.settings.searchTrigger.domainPrefix)
+        ? this.settings.searchTrigger.domainPrefix
+        : this.settings?.searchTrigger?.globalPrefix || '';
+      warningEl.textContent = t('trigger.block.reserved_prefix_warning', { prefix });
+      warningEl.style.display = 'block';
+    } else {
+      warningEl.style.display = 'none';
+    }
   }
 }
 

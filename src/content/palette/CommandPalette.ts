@@ -2,22 +2,40 @@
  * src/content/palette/CommandPalette.ts
  */
 
-import type { Flow } from '../../shared/types/index.js';
+import type { Flow, Form, FormField } from '../../shared/types/index.js';
+import { buildSearchResults, SearchResultItem, SearchScope } from '../engine/SearchTriggerDetector.js';
 // We'll inject the CSS string manually since Vite content-script CSS imports 
 // might just append to the page head, but we need it inside the Shadow DOM.
 // Wait, wxt supports importing CSS as a string with ?raw or ?inline, 
 // but since we are writing standard TS, let's just fetch or use the raw string.
 import cssText from './CommandPalette.css?inline';
 
+/**
+ * §7 — the Palette is the secondary way to reach the same search Gatilho
+ * de Busca offers via `//`/`///` (same matching + ranking, see
+ * SearchTriggerDetector.ts): useful outside text fields, or for people who
+ * prefer browsing visually instead of typing a prefix.
+ */
+export type PaletteSelection = { kind: 'flow'; flow: Flow } | { kind: 'form-field'; form: Form; field: FormField };
+
 export class CommandPalette {
   private host!: HTMLDivElement;
   private shadow!: ShadowRoot;
   
   private flows: Flow[] = [];
-  private filteredFlows: Flow[] = [];
+  private forms: Form[] = [];
+  private hostname: string = '';
+  private includeFlows: boolean = true;
+  /** Starts scoped to the current site (like `//`); "buscar em todos os sites" flips this for the rest of the session. */
+  private scope: SearchScope = 'domain';
+
+  private results: SearchResultItem[] = [];
+  private mode: 'results' | 'submenu' = 'results';
+  private submenuForm: Form | null = null;
+  private footerSuggestion: { label: string; onClick: () => void } | null = null;
   private activeIndex: number = 0;
   
-  private onSelectCallback!: (flow: Flow) => void;
+  private onSelectCallback!: (sel: PaletteSelection) => void;
   private onCloseCallback!: () => void;
   
   private container!: HTMLDivElement;
@@ -37,7 +55,17 @@ export class CommandPalette {
     this.flows = flows.filter(f => f.enabled);
   }
 
-  public open(onSelect: (flow: Flow) => void, onClose: () => void) {
+  public updateForms(forms: Form[]) {
+    this.forms = forms;
+  }
+
+  /** Current page's domain + whether Flows should be included at all (mirrors Settings → Gatilho de Busca → "Incluir Atalhos"). */
+  public updateContext(hostname: string, includeFlows: boolean) {
+    this.hostname = hostname;
+    this.includeFlows = includeFlows;
+  }
+
+  public open(onSelect: (sel: PaletteSelection) => void, onClose: () => void) {
     if (this.isVisible) return;
     
     this.onSelectCallback = onSelect;
@@ -47,9 +75,13 @@ export class CommandPalette {
     
     document.body.appendChild(this.host);
     this.isVisible = true;
+
+    this.mode = 'results';
+    this.submenuForm = null;
+    this.scope = 'domain';
     
     this.searchInput.value = '';
-    this.filterFlows('');
+    this.filterResults('');
     
     document.addEventListener('keydown', this.keydownListener, true);
     
@@ -112,8 +144,8 @@ export class CommandPalette {
     this.searchInput = document.createElement('input');
     this.searchInput.className = 'search-input';
     this.searchInput.type = 'text';
-    this.searchInput.placeholder = 'Search flows by name or shortcut...';
-    this.searchInput.addEventListener('input', () => this.filterFlows(this.searchInput.value));
+    this.searchInput.placeholder = 'Search forms or flows by name, shortcut, or content...';
+    this.searchInput.addEventListener('input', () => this.filterResults(this.searchInput.value));
     
     inputWrapper.appendChild(this.searchInput);
     
@@ -149,42 +181,40 @@ export class CommandPalette {
     this.shadow.appendChild(this.container);
   }
 
-  private filterFlows(query: string) {
-    const q = query.toLowerCase().trim();
-    
-    if (!q) {
-      this.filteredFlows = this.flows.slice(0, 8);
-    } else {
-      // 1. Exact shortcut match
-      // 2. Contains in shortcut
-      // 3. Contains in name
-      const exactShortcuts: Flow[] = [];
-      const partialShortcuts: Flow[] = [];
-      const partialNames: Flow[] = [];
-
-      for (const f of this.flows) {
-        const trigger = f.blocks.find(b => b.type === 'trigger')?.data as any;
-        const shortcut = (trigger?.shortcut || '').toLowerCase();
-        const name = f.name.toLowerCase();
-
-        if (shortcut === q) {
-          exactShortcuts.push(f);
-        } else if (shortcut.includes(q)) {
-          partialShortcuts.push(f);
-        } else if (name.includes(q)) {
-          partialNames.push(f);
-        }
-      }
-
-      // Sort within categories by usage (if available)
-      const sortByUsage = (a: Flow, b: Flow) => (b.stats?.usageCount || 0) - (a.stats?.usageCount || 0);
-      
-      exactShortcuts.sort(sortByUsage);
-      partialShortcuts.sort(sortByUsage);
-      partialNames.sort(sortByUsage);
-
-      this.filteredFlows = [...exactShortcuts, ...partialShortcuts, ...partialNames].slice(0, 8);
+  private currentRows(): SearchResultItem[] {
+    if (this.mode === 'submenu' && this.submenuForm) {
+      return this.submenuForm.fields.map((field) => ({
+        kind: 'form-field' as const,
+        form: this.submenuForm as Form,
+        field,
+        matchLevel: 0 as const,
+        matchedIn: null,
+      }));
     }
+    return this.results;
+  }
+
+  private filterResults(query: string) {
+    const { results, noFormResultsForSite } = buildSearchResults({
+      query: query.trim(),
+      scope: this.scope,
+      hostname: this.hostname,
+      forms: this.forms,
+      flows: this.flows,
+      includeFlows: this.includeFlows,
+    });
+
+    this.results = results.slice(0, 8);
+    this.footerSuggestion =
+      this.scope === 'domain' && noFormResultsForSite
+        ? {
+            label: 'No Forms for this site — search all sites',
+            onClick: () => {
+              this.scope = 'global';
+              this.filterResults(this.searchInput.value);
+            },
+          }
+        : null;
 
     this.activeIndex = 0;
     this.renderResults();
@@ -192,55 +222,52 @@ export class CommandPalette {
 
   private renderResults() {
     this.resultsList.innerHTML = '';
-    
-    if (this.filteredFlows.length === 0) {
-      this.resultsList.innerHTML = `
-        <div style="padding: 2rem; text-align: center; color: #737373; font-size: 0.875rem;">
-          No matching flows found.
-        </div>
-      `;
-      return;
+    const rows = this.currentRows();
+
+    if (this.mode === 'submenu' && this.submenuForm) {
+      const breadcrumb = document.createElement('div');
+      breadcrumb.className = 'palette-breadcrumb';
+      breadcrumb.textContent = this.submenuForm.name;
+      this.resultsList.appendChild(breadcrumb);
     }
 
-    this.filteredFlows.forEach((flow, idx) => {
+    if (rows.length === 0) {
+      this.resultsList.innerHTML += `
+        <div style="padding: 2rem; text-align: center; color: #737373; font-size: 0.875rem;">
+          No matching forms or flows found.
+        </div>
+      `;
+    }
+
+    rows.forEach((item, idx) => {
       const el = document.createElement('div');
       el.className = 'result-item' + (idx === this.activeIndex ? ' active' : '');
-      
-      const trigger = flow.blocks.find(b => b.type === 'trigger')?.data as any;
-      const shortcut = trigger?.shortcut || 'none';
-      const actionBlock = flow.blocks.find(b => b.type === 'action' || b.type === 'condition');
-      
-      let preview = '';
-      if (actionBlock && actionBlock.type === 'action') {
-        const content = (actionBlock.data as any).content || '';
-        // Strip HTML and interactive tokens
-        preview = this.generatePreview(content);
-      } else if (actionBlock && actionBlock.type === 'condition') {
-        preview = 'Conditional logic block...';
-      }
 
       const activeBadgeClass = idx === this.activeIndex ? 'active' : 'inactive';
-      const prefix = trigger?.mode === 'exact_match' ? trigger.exactMatchChar || '/' : '';
+      const typeLabel = item.kind === 'flow' ? 'Atalho' : 'Formulário';
+      const typeClass = item.kind === 'flow' ? 'flow' : 'form';
+
+      const badgeText = this.badgeTextFor(item);
+      const preview = this.previewTextFor(item);
 
       el.innerHTML = `
         <div class="active-indicator"></div>
         <div class="result-content">
-          <span class="result-badge ${activeBadgeClass}">${prefix}${shortcut}</span>
-          <span class="result-text">${flow.name} — <span style="opacity:0.7">${preview}</span></span>
+          <span class="palette-type-badge ${typeClass}">${typeLabel}</span>
+          <span class="result-badge ${activeBadgeClass}">${badgeText}</span>
+          <span class="result-text">${this.titleFor(item)} — <span style="opacity:0.7">${preview}</span></span>
         </div>
         <div class="result-hint">
           <span>Press</span>
           <kbd>Enter</kbd>
-          <span>to insert</span>
+          <span>to ${item.kind === 'form' ? 'browse fields' : 'insert'}</span>
         </div>
         <div class="result-hint-alt">
           <kbd>↑↓</kbd>
         </div>
       `;
 
-      el.addEventListener('click', () => {
-        this.selectFlow(flow);
-      });
+      el.addEventListener('click', () => this.activate(idx));
       el.addEventListener('mouseover', () => {
         this.activeIndex = idx;
         this.updateSelectionUI();
@@ -248,6 +275,46 @@ export class CommandPalette {
 
       this.resultsList.appendChild(el);
     });
+
+    if (this.mode === 'results' && this.footerSuggestion) {
+      const suggestion = document.createElement('div');
+      suggestion.className = 'palette-footer-suggestion';
+      suggestion.textContent = this.footerSuggestion.label;
+      suggestion.addEventListener('click', () => this.footerSuggestion?.onClick());
+      this.resultsList.appendChild(suggestion);
+    }
+  }
+
+  private titleFor(item: SearchResultItem): string {
+    if (item.kind === 'flow') return item.flow.name;
+    if (item.kind === 'form') return item.form.name;
+    return item.field.name || '—';
+  }
+
+  private badgeTextFor(item: SearchResultItem): string {
+    if (item.kind === 'flow') {
+      const trigger = item.flow.blocks.find((b) => b.type === 'trigger')?.data as any;
+      const shortcut = trigger?.shortcut || 'none';
+      const prefix = trigger?.mode === 'exact_match' ? trigger.exactMatchChar || '/' : '';
+      return `${prefix}${shortcut}`;
+    }
+    if (item.kind === 'form') return `${item.form.fields.length} campo(s)`;
+    return item.field.type || 'texto';
+  }
+
+  private previewTextFor(item: SearchResultItem): string {
+    if (item.kind === 'form') return this.submenuForm ? '' : (item.form.sites.join(', ') || 'sem restrição de site');
+    if (item.matchedIn === 'content' && item.snippet) return item.snippet;
+
+    if (item.kind === 'flow') {
+      const actionBlock = item.flow.blocks.find((b) => b.type === 'action' || b.type === 'condition');
+      if (actionBlock && actionBlock.type === 'action') return this.generatePreview((actionBlock.data as any).content || '');
+      if (actionBlock && actionBlock.type === 'condition') return 'Conditional logic block...';
+      return '';
+    }
+
+    // form-field, matched by name (or browse mode)
+    return this.generatePreview(item.field.value?.content || '');
   }
 
   private generatePreview(html: string): string {
@@ -285,6 +352,7 @@ export class CommandPalette {
 
   private handleKeydown(e: KeyboardEvent) {
     if (!this.isVisible) return;
+    const rows = this.currentRows();
     
     // Prevent default scrolling for up/down
     if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter') {
@@ -299,24 +367,38 @@ export class CommandPalette {
       return;
     }
 
+    if (rows.length === 0) return;
+
     if (e.key === 'ArrowDown') {
-      this.activeIndex = (this.activeIndex + 1) % this.filteredFlows.length;
+      this.activeIndex = (this.activeIndex + 1) % rows.length;
       this.updateSelectionUI();
     } else if (e.key === 'ArrowUp') {
-      this.activeIndex = (this.activeIndex - 1 + this.filteredFlows.length) % this.filteredFlows.length;
+      this.activeIndex = (this.activeIndex - 1 + rows.length) % rows.length;
       this.updateSelectionUI();
     } else if (e.key === 'Enter') {
-      if (this.filteredFlows[this.activeIndex]) {
-        this.selectFlow(this.filteredFlows[this.activeIndex]);
-      }
+      this.activate(this.activeIndex);
     }
   }
 
-  private selectFlow(flow: Flow) {
+  /** Selecting a Form (name-matched, no specific field) drills into its fields — same palette instance, no close/reopen (spec §4.1, reused here too). */
+  private activate(index: number) {
+    const rows = this.currentRows();
+    const item = rows[index];
+    if (!item) return;
+
+    if (item.kind === 'form') {
+      this.mode = 'submenu';
+      this.submenuForm = item.form;
+      this.activeIndex = 0;
+      this.renderResults();
+      return;
+    }
+
+    const sel: PaletteSelection = item.kind === 'flow' ? { kind: 'flow', flow: item.flow } : { kind: 'form-field', form: item.form, field: item.field };
     this.close();
     // Use setTimeout so close() executes and focus returns before injection fires
     setTimeout(() => {
-      this.onSelectCallback(flow);
+      this.onSelectCallback(sel);
     }, 10);
   }
 }

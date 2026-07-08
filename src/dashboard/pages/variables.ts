@@ -4,7 +4,6 @@
 import type { Page } from './index.js';
 import { storage } from '../../shared/storage/StorageService.js';
 import type { Variable, Flow, Block, ActionBlock } from '../../shared/types/index.js';
-import { t } from '../../shared/i18n/index.js';
 import './variables.css';
 
 const ICONS = {
@@ -26,6 +25,8 @@ export default class VariablesPage implements Page {
   private filteredVars: Variable[] = [];
   private searchQuery = '';
   private flows: Flow[] = [];
+  private searchInput: HTMLInputElement | null = null;
+  private searchHandler!: (e: Event) => void;
 
   constructor() {
     this.el = document.createElement('div');
@@ -34,25 +35,14 @@ export default class VariablesPage implements Page {
 
   render(): HTMLElement {
     this.el.innerHTML = /* html */ `
-      <header class="vars-header">
-        <div>
-          <h1 class="vars-header-title">Global Variables</h1>
-          <p class="vars-header-subtitle">Manage shared key-value pairs used across all flows</p>
-        </div>
-        <div class="vars-actions">
-          <div class="vars-search">
-            ${ICONS.search}
-            <input type="text" id="vars-search-input" placeholder="Search variables..." />
-          </div>
-          <div class="vars-divider"></div>
-          <button class="btn-primary" id="btn-create-var">
-            ${ICONS.plus}
-            ${t('modal.createVariable')}
-          </button>
-        </div>
-      </header>
-
       <main class="vars-main">
+        <div class="vars-title-row">
+          <div>
+            <h1 class="vars-header-title">Global Variables</h1>
+            <p class="vars-header-subtitle">Manage shared key-value pairs used across all flows</p>
+          </div>
+        </div>
+
         <!-- Banner -->
         <div class="vars-banner" id="vars-banner">
           <div class="vars-banner-icon">${ICONS.globe}</div>
@@ -107,14 +97,18 @@ export default class VariablesPage implements Page {
     this.flows = await storage.getFlows();
     this.applySearch();
 
-    this.el.querySelector('#vars-search-input')?.addEventListener('input', (e) => {
-      this.searchQuery = (e.target as HTMLInputElement).value.trim().toLowerCase();
-      this.applySearch();
-    });
-
-    this.el.querySelector('#btn-create-var')?.addEventListener('click', () => {
-      this.openVarModal();
-    });
+    // Search is now driven by the shared header's input (#dash-search-input),
+    // not a local one — shell._updateHeaderControls() already swapped its
+    // placeholder to the variables copy before this page mounted.
+    this.searchInput = document.getElementById('dash-search-input') as HTMLInputElement | null;
+    if (this.searchInput) {
+      this.searchHandler = (e: Event) => {
+        this.searchQuery = (e.target as HTMLInputElement).value.trim().toLowerCase();
+        this.applySearch();
+      };
+      this.searchInput.addEventListener('input', this.searchHandler);
+      this.searchInput.value = ''; // clear whatever was typed on the previous page
+    }
 
     this.el.querySelector('#btn-close-banner')?.addEventListener('click', (e) => {
       (e.currentTarget as HTMLElement).closest('.vars-banner')?.remove();
@@ -122,7 +116,14 @@ export default class VariablesPage implements Page {
   }
 
   unmount() {
-    // GC
+    if (this.searchInput && this.searchHandler) {
+      this.searchInput.removeEventListener('input', this.searchHandler);
+    }
+  }
+
+  /** Called by the shell when the shared header's CTA is clicked on this page. */
+  onCreateClick(): void {
+    this.openVarModal();
   }
 
   private applySearch() {
@@ -146,8 +147,13 @@ export default class VariablesPage implements Page {
       let flowUsed = false;
       for (const block of flow.blocks) {
         if (block.type === 'action') {
-          // Bug 1/2 null guard: content may be undefined in older flows
-          const content = (block as ActionBlock)?.content ?? '';
+          // ActionBlock content lives at block.data.content, not
+          // block.content — Block.data is the actual TriggerBlock /
+          // ConditionBlock / ActionBlock union (see shared/types).
+          // Reading block.content directly always returned undefined,
+          // so this usage counter silently reported 0 for every variable
+          // no matter how many flows actually used it.
+          const content = (block.data as ActionBlock)?.content ?? '';
           if (content.includes(tokenStr)) {
             flowUsed = true;
           }
@@ -322,7 +328,7 @@ export default class VariablesPage implements Page {
     for (const flow of this.flows) {
       for (const block of flow.blocks) {
         if (block.type === 'action') {
-          const content = (block as ActionBlock)?.content ?? '';
+          const content = (block.data as ActionBlock)?.content ?? '';
           if (content.includes(tokenStr)) {
             affectedFlows.push(flow);
             break; // once per flow

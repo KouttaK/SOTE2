@@ -145,6 +145,7 @@ export class TriggerDetector {
         case 'domain':
           if (rule.operator === 'equals') passed = hostname === rule.value;
           else if (rule.operator === 'contains') passed = hostname.includes(rule.value);
+          else if (rule.operator === 'not_contains') passed = !hostname.includes(rule.value);
           break;
         case 'weekday': {
           // New format: JSON { op: 'is'|'is_not', days: ['Mon','Tue',...] }
@@ -198,7 +199,14 @@ export class TriggerDetector {
           passed = todayDate === rule.value;
           break;
         default:
-          passed = true; // Fallback for unimplemented types
+          // Fail closed: an unrecognized rule type must never be treated as
+          // a pass. Previously this defaulted to `true`, which meant any
+          // rule type the evaluator didn't know about (a typo, a future
+          // type not yet implemented here, corrupted data, etc.) would
+          // silently let its action run — the opposite of what a safety/
+          // gating rule is supposed to do.
+          console.warn(`[SOTE] Unrecognized condition rule type "${rule.type}" — treating as not passed.`);
+          passed = false;
       }
 
       if (passed && rule.action) {

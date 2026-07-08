@@ -9,74 +9,27 @@
   background-color: #0a0a0a; /* neutral-950 */
 }
 
-/* Header */
-.vars-header {
-  background-color: #171717; /* neutral-900 */
-  border-bottom: 1px solid #262626; /* neutral-800 */
-  padding: 1rem 2rem;
+/* Page title (search + create now live in the shared #dash-header) */
+.vars-title-row {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  margin-bottom: 1.5rem;
 }
 
 .vars-header-title {
   color: #fff;
-  font-size: 1rem;
+  font-size: 1.25rem;
+  line-height: 1.75rem;
   margin: 0;
 }
 
 .vars-header-subtitle {
   color: #737373; /* neutral-500 */
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   margin: 0.125rem 0 0 0;
 }
 
-.vars-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-left: auto;
-}
-
-.vars-search {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background-color: #0a0a0a; /* neutral-950 */
-  border: 1px solid #404040; /* neutral-700 */
-  border-radius: 0.5rem; /* rounded-lg */
-  padding: 0.5rem 0.75rem;
-  width: 16rem;
-}
-
-.vars-search svg {
-  color: #737373;
-  width: 0.75rem;
-  height: 0.75rem;
-}
-
-.vars-search input {
-  background: transparent;
-  border: none;
-  outline: none;
-  color: #d4d4d4; /* neutral-300 */
-  font-size: 0.875rem; /* text-sm */
-  flex: 1;
-}
-
-.vars-search input::placeholder {
-  color: #525252; /* neutral-600 */
-}
-
-.vars-divider {
-  height: 1.25rem;
-  width: 1px;
-  background-color: #404040; /* neutral-700 */
-}
-
+/* Still used by the modal's "Save Variable" button (unrelated to the header CTA). */
 .btn-primary {
   display: flex;
   align-items: center;
@@ -102,8 +55,6 @@
 /* Main */
 .vars-main {
   flex: 1;
-  padding: 2rem; /* py-8 px-8 */
-  background-color: #0a0a0a;
 }
 
 /* Info Banner */

@@ -3,9 +3,10 @@
  */
 import type { Page } from './index.js';
 import { storage } from '../../shared/storage/StorageService.js';
-import type { Settings, StorageSchema } from '../../shared/types/index.js';
+import type { Settings, StorageSchema, Folder } from '../../shared/types/index.js';
 import { browser } from 'wxt/browser';
-import { t, setLanguage } from '../../shared/i18n/index.js';
+import { t, setLanguage, getLanguage } from '../../shared/i18n/index.js';
+import { shortcutConflictsWithSearchTrigger } from '../../content/engine/SearchTriggerDetector.js';
 import './settings.css';
 
 const ICONS = {
@@ -21,13 +22,17 @@ const ICONS = {
   download: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor"><path d="M64 0C28.7 0 0 28.7 0 64V448c0 35.3 28.7 64 64 64H320c35.3 0 64-28.7 64-64V160H256c-17.7 0-32-14.3-32-32V0H64zM256 0V128H384L256 0zM216 232V334.1l31-31c9.4-9.4 24.6-9.4 33.9 0s9.4 24.6 0 33.9l-72 72c-9.4 9.4-24.6 9.4-33.9 0l-72-72c-9.4-9.4-9.4-24.6 0-33.9s24.6-9.4 33.9 0l31 31V232c0-13.3 10.7-24 24-24s24 10.7 24 24z"/></svg>`,
   upload: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor"><path d="M64 0C28.7 0 0 28.7 0 64V448c0 35.3 28.7 64 64 64H320c35.3 0 64-28.7 64-64V160H256c-17.7 0-32-14.3-32-32V0H64zM256 0V128H384L256 0zM216 408c0 13.3-10.7 24-24 24s-24-10.7-24-24V305.9l-31 31c-9.4 9.4-24.6 9.4-33.9 0s-9.4-24.6 0-33.9l72-72c9.4-9.4 24.6-9.4 33.9 0l72 72c9.4 9.4 9.4 24.6 0 33.9s-24.6 9.4-33.9 0l-31-31V408z"/></svg>`,
   clipboard: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor"><path d="M192 0c-41.8 0-77.4 26.7-90.5 64H64C28.7 64 0 92.7 0 128V448c0 35.3 28.7 64 64 64H320c35.3 0 64-28.7 64-64V128c0-35.3-28.7-64-64-64H282.5C269.4 26.7 233.8 0 192 0zm0 64a32 32 0 1 1 0 64 32 32 0 1 1 0-64zM112 192H272c8.8 0 16 7.2 16 16s-7.2 16-16 16H112c-8.8 0-16-7.2-16-16s7.2-16 16-16z"/></svg>`,
-  eye: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor"><path d="M288 32c-80.8 0-146.1 39.3-196.2 82.5C42.1 157.2 8.3 208 1.2 231.1c-1.6 5.5-1.6 11.4 0 16.9C8.3 271.1 42.1 321.9 91.8 364.6C141.9 407.8 207.2 447.1 288 447.1s146.1-39.3 196.2-82.5c49.7-42.7 83.5-93.5 90.6-116.6c1.6-5.5 1.6-11.4 0-16.9c-7.1-23.1-40.9-73.9-90.6-116.6C434.1 71.3 368.8 32 288 32zM144 256a144 144 0 1 1 288 0 144 144 0 1 1 -288 0zm144-64c0 35.3-28.7 64-64 64c-7.1 0-13.9-1.2-20.3-3.3c-5.5-1.8-11.9 1.6-11.7 7.4c.3 6.9 1.3 13.8 3.2 20.7c13.7 51.2 66.4 81.6 117.6 67.9s81.6-66.4 67.9-117.6c-11.1-41.5-47.8-69.4-88.6-71.1c-5.8-.2-9.2 6.1-7.4 11.7c2.1 6.4 3.3 13.2 3.3 20.3z"/></svg>`
+  eye: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor"><path d="M288 32c-80.8 0-146.1 39.3-196.2 82.5C42.1 157.2 8.3 208 1.2 231.1c-1.6 5.5-1.6 11.4 0 16.9C8.3 271.1 42.1 321.9 91.8 364.6C141.9 407.8 207.2 447.1 288 447.1s146.1-39.3 196.2-82.5c49.7-42.7 83.5-93.5 90.6-116.6c1.6-5.5 1.6-11.4 0-16.9c-7.1-23.1-40.9-73.9-90.6-116.6C434.1 71.3 368.8 32 288 32zM144 256a144 144 0 1 1 288 0 144 144 0 1 1 -288 0zm144-64c0 35.3-28.7 64-64 64c-7.1 0-13.9-1.2-20.3-3.3c-5.5-1.8-11.9 1.6-11.7 7.4c.3 6.9 1.3 13.8 3.2 20.7c13.7 51.2 66.4 81.6 117.6 67.9s81.6-66.4 67.9-117.6c-11.1-41.5-47.8-69.4-88.6-71.1c-5.8-.2-9.2 6.1-7.4 11.7c2.1 6.4 3.3 13.2 3.3 20.3z"/></svg>`,
+  folder: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M64 480H448c35.3 0 64-28.7 64-64V160c0-35.3-28.7-64-64-64H288c-18.9 0-36.8-7.3-50.5-20.4L205.8 44.1C196.2 34.1 182.7 28 168.4 28H64C28.7 28 0 56.7 0 92v324c0 35.3 28.7 64 64 64z"/></svg>`,
+  search: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"/></svg>`
 };
 
 export default class SettingsPage implements Page {
   private el: HTMLElement;
   private settings: Settings = {} as Settings;
   private syncEnabled = false;
+  private allFolders: Folder[] = [];
+  private flowCountByFolder: Record<string, number> = {};
 
   constructor() {
     this.el = document.createElement('div');
@@ -49,8 +54,8 @@ export default class SettingsPage implements Page {
             <div class="settings-section-header">
               <div class="settings-section-icon">${ICONS.keyboard}</div>
               <div>
-                <h2 class="settings-section-title">General & Triggers</h2>
-                <p class="settings-section-desc">Configure how and when your snippets expand</p>
+                <h2 class="settings-section-title">${t('settings.section.general_triggers')}</h2>
+                <p class="settings-section-desc">${t('settings.section.general_triggers_desc')}</p>
               </div>
             </div>
             <div class="settings-section-content">
@@ -60,9 +65,9 @@ export default class SettingsPage implements Page {
                 <label class="exp-card-radio-label">
                   <input type="radio" name="exp-mode" value="trigger_key" id="radio-trigger" />
                   <div class="exp-card-body">
-                    <span class="exp-card-title">Tecla de Gatilho</span>
+                    <span class="exp-card-title">${t('settings.trigger.title')}</span>
                     <span class="exp-card-desc">
-                      Digite o atalho e pressione a tecla configurada para expandir.
+                      ${t('settings.trigger.desc')}
                     </span>
                   </div>
                 </label>
@@ -70,12 +75,12 @@ export default class SettingsPage implements Page {
                 <div class="exp-card-config" id="cfg-trigger">
                   <div class="exp-cfg-row">
                     <div>
-                      <p class="exp-cfg-label">Tecla de Gatilho</p>
-                      <p class="exp-cfg-hint">Qualquer tecla exceto Enter.</p>
+                      <p class="exp-cfg-label">${t('settings.trigger.title')}</p>
+                      <p class="exp-cfg-hint">${t('settings.trigger.hint')}</p>
                     </div>
                     <div class="exp-key-area">
                       <div class="exp-key-badge" id="trigger-key-badge">···</div>
-                      <button class="btn-secondary btn-sm" id="btn-capture">Capturar tecla</button>
+                      <button class="btn-secondary btn-sm" id="btn-capture">${t('settings.trigger.capture_btn')}</button>
                     </div>
                   </div>
                 </div>
@@ -86,9 +91,9 @@ export default class SettingsPage implements Page {
                 <label class="exp-card-radio-label">
                   <input type="radio" name="exp-mode" value="exact_match" id="radio-exact" />
                   <div class="exp-card-body">
-                    <span class="exp-card-title">Correspondência Exata</span>
+                    <span class="exp-card-title">${t('settings.exact.title')}</span>
                     <span class="exp-card-desc">
-                      Expande automaticamente ao completar o atalho, sem precisar pressionar outra tecla.
+                      ${t('settings.exact.desc')}
                     </span>
                   </div>
                 </label>
@@ -96,22 +101,22 @@ export default class SettingsPage implements Page {
                 <div class="exp-card-config" id="cfg-exact">
                   <div style="display:flex; gap:1.5rem; flex-wrap:wrap;">
                     <div class="settings-input-group" style="flex:1; min-width:130px;">
-                      <label class="settings-label">Prefixo (opcional)</label>
+                      <label class="settings-label">${t('settings.exact.prefix_label')}</label>
                       <input type="text" id="exact-char-input" class="settings-input"
                         maxlength="1"
                         style="text-align:center; font-size:1.125rem; letter-spacing:.1em;"
                         placeholder="/" />
-                      <p class="exp-cfg-hint">Vazio = expandir sem prefixo.</p>
+                      <p class="exp-cfg-hint">${t('settings.exact.prefix_hint')}</p>
                     </div>
                     <div class="settings-input-group" style="width:160px;">
-                      <label class="settings-label">Delay de segurança (ms)</label>
+                      <label class="settings-label">${t('settings.exact.delay_label')}</label>
                       <div style="display:flex; align-items:center; gap:.5rem;">
                         <input type="number" id="delay-input" class="settings-input"
                           min="0" max="2000" step="50"
                           style="width:80px;" />
                         <span style="color:#737373; font-size:.8125rem;">ms</span>
                       </div>
-                      <p class="exp-cfg-hint">0 = instantâneo. Esc cancela durante o delay.</p>
+                      <p class="exp-cfg-hint">${t('settings.exact.delay_hint')}</p>
                     </div>
                   </div>
                 </div>
@@ -122,19 +127,51 @@ export default class SettingsPage implements Page {
               <!-- ── Command Palette + Language (mantidos) ─────────────────── -->
               <div style="display:flex; gap:1.5rem; flex-wrap:wrap;">
                 <div class="settings-input-group" style="flex:1;">
-                  <label class="settings-label">Command Palette Shortcut</label>
+                  <label class="settings-label">${t('settings.palette_shortcut')}</label>
                   <input type="text" id="setting-palette" class="settings-input"
-                    readonly placeholder="Press keys..." />
+                    readonly placeholder="${t('settings.palette_shortcut.placeholder')}" />
                 </div>
                 <div class="settings-input-group" style="width:10rem;">
                   <label class="settings-label">${t('settings.language')}</label>
                   <select id="setting-language" class="settings-input">
-                    <option value="en">English</option>
-                    <option value="pt-BR">Português (BR)</option>
+                    <option value="en">${t('settings.lang.en')}</option>
+                    <option value="pt-BR">${t('settings.lang.pt_BR')}</option>
                   </select>
                 </div>
               </div>
 
+            </div>
+          </section>
+
+          <!-- Folders / Categories Section -->
+          <section class="settings-section">
+            <div class="settings-section-header">
+              <div class="settings-section-icon">${ICONS.folder}</div>
+              <div>
+                <h2 class="settings-section-title">${t('settings.folders.title')}</h2>
+                <p class="settings-section-desc">${t('settings.folders.desc')}</p>
+              </div>
+              <span class="blocklist-header-badge" id="folders-count">${t('settings.folders.count', { count: 0 })}</span>
+            </div>
+            <div class="settings-section-content">
+              <div class="blocklist-input-wrapper">
+                <div class="blocklist-input-box">
+                  ${ICONS.folder}
+                  <input type="text" id="folder-name-input" placeholder="${t('settings.folders.new_placeholder')}" />
+                </div>
+                <button class="btn-secondary" id="btn-add-folder">
+                  ${ICONS.plus} ${t('settings.folders.create_btn')}
+                </button>
+              </div>
+
+              <div class="blocklist-list" id="folders-container">
+                <!-- Folder items go here -->
+              </div>
+
+              <div class="info-box">
+                ${ICONS.info}
+                <p>${t('settings.folders.info')}</p>
+              </div>
             </div>
           </section>
 
@@ -143,23 +180,23 @@ export default class SettingsPage implements Page {
             <div class="settings-section-header">
               <div class="settings-section-icon">${ICONS.clipboard}</div>
               <div>
-                <h2 class="settings-section-title">Histórico de Clipboard</h2>
-                <p class="settings-section-desc">Quantos itens copiados o token Clipboard consegue lembrar (Clipboard 1 = mais recente)</p>
+                <h2 class="settings-section-title">${t('settings.clipboard.title')}</h2>
+                <p class="settings-section-desc">${t('settings.clipboard.desc')}</p>
               </div>
             </div>
             <div class="settings-section-content">
               <div style="display:flex; gap:1.5rem; flex-wrap:wrap; align-items:flex-end;">
                 <div class="settings-input-group" style="width:160px;">
-                  <label class="settings-label">Quantidade de itens</label>
+                  <label class="settings-label">${t('settings.clipboard.count_label')}</label>
                   <input type="number" id="clipboard-max-input" class="settings-input"
                     min="1" max="50" step="1" style="width:80px;" />
-                  <p class="exp-cfg-hint">Padrão: 10. Máximo: 50.</p>
+                  <p class="exp-cfg-hint">${t('settings.clipboard.count_hint')}</p>
                 </div>
                 <button class="btn-secondary" id="btn-view-clipboard">
-                  ${ICONS.eye} Ver Histórico Atual
+                  ${ICONS.eye} ${t('settings.clipboard.view_btn')}
                 </button>
                 <button class="btn-secondary" id="btn-clear-clipboard">
-                  ${ICONS.trash} Limpar Histórico
+                  ${ICONS.trash} ${t('settings.clipboard.clear_btn')}
                 </button>
               </div>
 
@@ -167,7 +204,7 @@ export default class SettingsPage implements Page {
 
               <div class="info-box">
                 ${ICONS.info}
-                <p>Só é capturado o que for copiado (Ctrl+C) ou recortado dentro de páginas web. Textos copiados fora do navegador, ou via scripts que escrevem direto na área de transferência, não entram no histórico.</p>
+                <p>${t('settings.clipboard.info')}</p>
               </div>
             </div>
           </section>
@@ -177,22 +214,22 @@ export default class SettingsPage implements Page {
             <div class="settings-section-header">
               <div class="settings-section-icon">${ICONS.ban}</div>
               <div>
-                <h2 class="settings-section-title">${t('settings.blocklist')} <span style="color: #737373;">(Disabled Sites)</span></h2>
-                <p class="settings-section-desc">SOTE will be completely disabled on these domains</p>
+                <h2 class="settings-section-title">${t('settings.blocklist')} <span style="color: #737373;">${t('settings.blocklist.disabled_sites')}</span></h2>
+                <p class="settings-section-desc">${t('settings.blocklist.desc')}</p>
               </div>
-              <span class="blocklist-header-badge" id="blocklist-count">0 domains</span>
+              <span class="blocklist-header-badge" id="blocklist-count">${t('settings.blocklist.count', { count: 0 })}</span>
             </div>
             <div class="settings-section-content">
               <div class="blocklist-input-wrapper">
                 <div class="blocklist-input-box">
                   ${ICONS.globe}
-                  <input type="text" id="blocklist-input" placeholder="e.g. *.example.com or specific-site.com" />
+                  <input type="text" id="blocklist-input" placeholder="${t('settings.blocklist.placeholder')}" />
                 </div>
                 <button class="btn-secondary" id="btn-add-domain">
-                  ${ICONS.plus} Add Domain
+                  ${ICONS.plus} ${t('settings.blocklist.add')}
                 </button>
                 <button class="btn-secondary" id="btn-add-current-site">
-                  Add Current Site
+                  ${t('settings.blocklist.add_current')}
                 </button>
               </div>
               
@@ -202,7 +239,64 @@ export default class SettingsPage implements Page {
 
               <div class="info-box">
                 ${ICONS.info}
-                <p>Use <span style="color:#d4d4d4;">*.</span> before a domain to block all subdomains. Changes take effect immediately.</p>
+                <p>${t('settings.blocklist.info')}</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- Gatilho de Busca Section -->
+          <section class="settings-section">
+            <div class="settings-section-header">
+              <div class="settings-section-icon">${ICONS.search}</div>
+              <div>
+                <h2 class="settings-section-title">${t('settings.searchTrigger.title')}</h2>
+                <p class="settings-section-desc">${t('settings.searchTrigger.desc')}</p>
+              </div>
+            </div>
+            <div class="settings-section-content">
+              <div class="settings-row">
+                <div>
+                  <p class="settings-row-title">${t('settings.searchTrigger.enable_label')}</p>
+                  <p class="settings-row-desc">${t('settings.searchTrigger.enable_desc')}</p>
+                </div>
+                <div class="settings-toggle" id="toggle-search-trigger">
+                  <div class="settings-toggle-knob"></div>
+                </div>
+              </div>
+
+              <div class="settings-row">
+                <div>
+                  <p class="settings-row-title">${t('settings.searchTrigger.includeFlows_label')}</p>
+                  <p class="settings-row-desc">${t('settings.searchTrigger.includeFlows_desc')}</p>
+                </div>
+                <div class="settings-toggle" id="toggle-search-include-flows">
+                  <div class="settings-toggle-knob"></div>
+                </div>
+              </div>
+
+              <div class="divider"></div>
+
+              <div style="display:flex; gap:1.5rem; flex-wrap:wrap;">
+                <div class="settings-input-group" style="width:160px;">
+                  <label class="settings-label">${t('settings.searchTrigger.domainPrefix_label')}</label>
+                  <input type="text" id="search-domain-prefix-input" class="settings-input" placeholder="//" />
+                  <p class="settings-row-desc">${t('settings.searchTrigger.domainPrefix_hint')}</p>
+                </div>
+                <div class="settings-input-group" style="width:160px;">
+                  <label class="settings-label">${t('settings.searchTrigger.globalPrefix_label')}</label>
+                  <input type="text" id="search-global-prefix-input" class="settings-input" placeholder="///" />
+                  <p class="settings-row-desc">${t('settings.searchTrigger.globalPrefix_hint')}</p>
+                </div>
+              </div>
+
+              <div class="info-box" id="search-trigger-conflict-box" style="display:none; border-color:#f59e0b;">
+                ${ICONS.info}
+                <p id="search-trigger-conflict-text"></p>
+              </div>
+
+              <div class="info-box">
+                ${ICONS.info}
+                <p>${t('settings.searchTrigger.info')}</p>
               </div>
             </div>
           </section>
@@ -212,8 +306,8 @@ export default class SettingsPage implements Page {
             <div class="settings-section-header">
               <div class="settings-section-icon">${ICONS.cloud}</div>
               <div>
-                <h2 class="settings-section-title">Backup & Sync</h2>
-                <p class="settings-section-desc">Manage your data, export backups, and sync across devices</p>
+                <h2 class="settings-section-title">${t('settings.backup.title')}</h2>
+                <p class="settings-section-desc">${t('settings.backup.desc')}</p>
               </div>
             </div>
             <div class="settings-section-content">
@@ -222,8 +316,8 @@ export default class SettingsPage implements Page {
                 <div class="settings-row-left">
                   <div class="settings-row-icon" style="color: #fca5a5;">${ICONS.cloud}</div>
                   <div>
-                    <p class="settings-row-title">Enable Firefox Sync</p>
-                    <p class="settings-row-desc" id="sync-status-text">Sync all flows and variables across your Firefox devices automatically</p>
+                    <p class="settings-row-title">${t('settings.sync.enable_label')}</p>
+                    <p class="settings-row-desc" id="sync-status-text">${t('settings.sync.desc')}</p>
                   </div>
                 </div>
                 <div class="settings-toggle" id="toggle-sync">
@@ -251,27 +345,27 @@ export default class SettingsPage implements Page {
             <div class="settings-section-header">
               <div class="settings-section-icon">${ICONS.danger}</div>
               <div>
-                <h2 class="settings-section-title">Danger Zone</h2>
-                <p class="settings-section-desc">Irreversible actions — proceed with caution</p>
+                <h2 class="settings-section-title">${t('settings.danger.title')}</h2>
+                <p class="settings-section-desc">${t('settings.danger.desc')}</p>
               </div>
             </div>
             <div class="settings-section-content">
               <div class="settings-row">
                 <div>
-                  <p class="settings-row-title">Reset All Data</p>
-                  <p class="settings-row-desc">Permanently delete all flows, variables, and settings. This cannot be undone.</p>
+                  <p class="settings-row-title">${t('settings.danger.reset_title')}</p>
+                  <p class="settings-row-desc">${t('settings.danger.reset_desc')}</p>
                 </div>
                 <button class="btn-danger-outline" id="btn-reset">
-                  ${ICONS.trash} Reset All Data
+                  ${ICONS.trash} ${t('settings.danger.reset_title')}
                 </button>
               </div>
             </div>
           </section>
 
           <footer class="settings-footer">
-            <p class="settings-footer-text">SOTE v2.4.1 · Extension settings apply globally across all websites</p>
+            <p class="settings-footer-text">${t('settings.footer.text')}</p>
             <div class="settings-footer-status">
-              ${ICONS.check} All changes saved
+              ${ICONS.check} ${t('settings.footer.saved')}
             </div>
           </footer>
         </div>
@@ -282,15 +376,18 @@ export default class SettingsPage implements Page {
 
   async mount() {
     this.settings = await storage.getSettings();
-    setLanguage(this.settings.language || 'en');
-    
-    // Re-render UI after language load
-    this.render();
-    const parent = this.el.parentNode;
-    if (parent) {
-      parent.replaceChild(this.el, this.el);
+    // Only override the language if the user has explicitly chosen one.
+    // initI18n() (called once at dashboard boot, before anything renders)
+    // already loaded the correct language — falling back to 'en' here
+    // would silently override that on every visit to this page whenever
+    // settings.language happens to be unset.
+    if (this.settings.language) {
+      setLanguage(this.settings.language);
     }
-    
+    // Re-render with the now-confirmed language so labels stay in sync
+    // with the <select> below (this.el is reused in place, not replaced).
+    this.render();
+
     const localRaw = await browser.storage.local.get(['__sote_sync_enabled__', '__sote_last_sync_time__']);
     this.syncEnabled = localRaw['__sote_sync_enabled__'] === true;
 
@@ -307,7 +404,19 @@ export default class SettingsPage implements Page {
 
     this.bindInputs();
     this.bindExpansionMode();
+    this.bindSearchTrigger();
     this.renderBlocklist();
+
+    this.allFolders = await storage.getFolders();
+    const flows = await storage.getFlows();
+    this.flowCountByFolder = {};
+    for (const flow of flows) {
+      if (flow.folderId) {
+        this.flowCountByFolder[flow.folderId] = (this.flowCountByFolder[flow.folderId] || 0) + 1;
+      }
+    }
+    this.bindFolders();
+    this.renderFolders();
   }
 
   unmount() {}
@@ -321,7 +430,7 @@ export default class SettingsPage implements Page {
 
 
     const langSelect = this.el.querySelector('#setting-language') as HTMLSelectElement;
-    langSelect.value = this.settings.language || 'en';
+    langSelect.value = this.settings.language || getLanguage();
     langSelect.addEventListener('change', (e) => {
       this.settings.language = (e.target as HTMLSelectElement).value;
       this.updateSetting('language', this.settings.language);
@@ -380,14 +489,14 @@ export default class SettingsPage implements Page {
       const history = await storage.getClipboardHistory();
       if (history.length === 0) {
         clipboardHistoryList.innerHTML =
-          '<p class="text-sm text-gray" style="padding:0.5rem 0;">Histórico vazio. Copie algo (Ctrl+C) em qualquer página para começar a preenchê-lo.</p>';
+          `<p class="text-sm text-gray" style="padding:0.5rem 0;">${t('settings.clipboard.history_empty')}</p>`;
         return;
       }
       clipboardHistoryList.innerHTML = history
         .map((entry, i) => `
           <div style="display:flex; gap:0.75rem; padding:0.5rem 0; border-bottom:1px solid rgba(128,128,128,0.2); align-items:flex-start;">
             <span style="flex-shrink:0; white-space:nowrap; font-size:0.75rem; font-weight:600; padding:0.15rem 0.5rem; border-radius:4px; background:rgba(128,128,128,0.15);">Clipboard ${i + 1}</span>
-            <span style="word-break:break-word; white-space:pre-wrap; flex:1; font-size:0.875rem;">${escapeHtml(entry.text) || '<em>(vazio)</em>'}</span>
+            <span style="word-break:break-word; white-space:pre-wrap; flex:1; font-size:0.875rem;">${escapeHtml(entry.text) || `<em>${t('settings.clipboard.entry_empty')}</em>`}</span>
           </div>
         `)
         .join('');
@@ -399,10 +508,10 @@ export default class SettingsPage implements Page {
         if (isHidden) {
           await renderClipboardHistoryList();
           clipboardHistoryList.style.display = 'block';
-          btnViewClipboard.innerHTML = `${ICONS.eye} Ocultar Histórico`;
+          btnViewClipboard.innerHTML = `${ICONS.eye} ${t('settings.clipboard.hide_btn')}`;
         } else {
           clipboardHistoryList.style.display = 'none';
-          btnViewClipboard.innerHTML = `${ICONS.eye} Ver Histórico Atual`;
+          btnViewClipboard.innerHTML = `${ICONS.eye} ${t('settings.clipboard.view_btn')}`;
         }
       });
     }
@@ -410,7 +519,7 @@ export default class SettingsPage implements Page {
     const btnClearClipboard = this.el.querySelector<HTMLButtonElement>('#btn-clear-clipboard');
     if (btnClearClipboard) {
       btnClearClipboard.addEventListener('click', async () => {
-        if (confirm('Limpar todo o histórico de clipboard? Essa ação não pode ser desfeita.')) {
+        if (confirm(t('settings.clipboard.clear_confirm'))) {
           await storage.clearClipboardHistory();
           if (clipboardHistoryList && clipboardHistoryList.style.display !== 'none') {
             await renderClipboardHistoryList();
@@ -429,10 +538,10 @@ export default class SettingsPage implements Page {
       if (this.syncEnabled) {
         await storage.enableSync();
         browser.storage.local.set({ '__sote_last_sync_time__': Date.now() });
-        if (syncText) syncText.textContent = `Sincronizado há 0 min`;
+        if (syncText) syncText.textContent = t('settings.sync.lastSync', { mins: 0 });
       } else {
         await storage.disableSync();
-        if (syncText) syncText.textContent = 'Sync all flows and variables across your Firefox devices automatically';
+        if (syncText) syncText.textContent = t('settings.sync.desc');
       }
     });
 
@@ -463,7 +572,7 @@ export default class SettingsPage implements Page {
           const url = new URL(urlStr);
           addDomain(url.hostname);
         } else {
-          alert('No valid website found in the active tab.');
+          alert(t('settings.blocklist.no_active_site'));
         }
       } catch (err) {
         console.error('Failed to get current tab', err);
@@ -475,8 +584,8 @@ export default class SettingsPage implements Page {
       const data: StorageSchema = {
         flows: await storage.getFlows(),
         variables: await storage.getVariables(),
-        templates: await storage.getTemplates(),
         folders: await storage.getFolders(),
+        forms: await storage.getForms(),
         settings: await storage.getSettings()
       };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -501,7 +610,7 @@ export default class SettingsPage implements Page {
         if (!data.flows || !Array.isArray(data.flows)) throw new Error('Invalid schema');
         this.showImportModal(data);
       } catch (err) {
-        alert('Invalid backup file. Could not import.');
+        alert(t('settings.import_modal.invalid_file'));
       }
       fileInput.value = '';
     });
@@ -513,11 +622,11 @@ export default class SettingsPage implements Page {
   }
 
   private renderBlocklist() {
-    this.el.querySelector('#blocklist-count')!.textContent = `${this.settings.blocklist.length} domains`;
+    this.el.querySelector('#blocklist-count')!.textContent = t('settings.blocklist.count', { count: this.settings.blocklist.length });
     const container = this.el.querySelector('#blocklist-container')!;
     
     if (this.settings.blocklist.length === 0) {
-      container.innerHTML = '<p style="color: #737373; font-size: 0.875rem;">No domains blocked.</p>';
+      container.innerHTML = `<p style="color: #737373; font-size: 0.875rem;">${t('settings.blocklist.empty')}</p>`;
       return;
     }
 
@@ -528,7 +637,7 @@ export default class SettingsPage implements Page {
           <div class="blocklist-item-icon">${ICONS.ban}</div>
           <div class="blocklist-item-info">
             <p class="blocklist-item-domain">${this.escapeHTML(domain)}</p>
-            <p class="blocklist-item-desc">${isWildcard ? 'Wildcard — all subdomains' : 'Exact match — this domain only'}</p>
+            <p class="blocklist-item-desc">${isWildcard ? t('settings.blocklist.wildcard_desc') : t('settings.blocklist.exact_desc')}</p>
           </div>
           <span class="blocklist-item-type">${isWildcard ? 'wildcard' : 'exact'}</span>
           <button class="btn-icon-danger" data-domain="${this.escapeHTML(domain)}">
@@ -548,27 +657,93 @@ export default class SettingsPage implements Page {
     });
   }
 
+  private bindFolders() {
+    const btnAdd = this.el.querySelector<HTMLButtonElement>('#btn-add-folder')!;
+    const input = this.el.querySelector<HTMLInputElement>('#folder-name-input')!;
+
+    const createFolder = async () => {
+      const name = input.value.trim();
+      if (!name) return;
+      await storage.saveFolder({ id: crypto.randomUUID(), name, color: '#3b82f6', order: this.allFolders.length });
+      this.allFolders = await storage.getFolders();
+      input.value = '';
+      this.renderFolders();
+    };
+
+    btnAdd.addEventListener('click', createFolder);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') createFolder();
+    });
+  }
+
+  private renderFolders() {
+    const countBadge = this.el.querySelector('#folders-count');
+    if (countBadge) countBadge.textContent = t('settings.folders.count', { count: this.allFolders.length });
+
+    const container = this.el.querySelector('#folders-container');
+    if (!container) return;
+
+    if (this.allFolders.length === 0) {
+      container.innerHTML = `<p style="color: #737373; font-size: 0.875rem;">${t('settings.folders.empty')}</p>`;
+      return;
+    }
+
+    container.innerHTML = this.allFolders.map(folder => {
+      const count = this.flowCountByFolder[folder.id] || 0;
+      return /* html */ `
+        <div class="blocklist-item">
+          <div class="blocklist-item-icon" style="color: ${this.escapeHTML(folder.color || '#3b82f6')};">${ICONS.folder}</div>
+          <div class="blocklist-item-info">
+            <p class="blocklist-item-domain">${this.escapeHTML(folder.name)}</p>
+            <p class="blocklist-item-desc">${t('settings.folders.flow_count', { count })}</p>
+          </div>
+          <button class="btn-icon-danger" data-folder-id="${folder.id}" title="${t('settings.folders.delete_title')}">
+            ${ICONS.trash}
+          </button>
+        </div>
+      `;
+    }).join('');
+
+    container.querySelectorAll('.btn-icon-danger').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = (e.currentTarget as HTMLElement).dataset.folderId!;
+        const folder = this.allFolders.find(f => f.id === id);
+        if (!folder) return;
+        const count = this.flowCountByFolder[id] || 0;
+        const msg = count > 0
+          ? t('settings.folders.delete_confirm_with_flows', { name: folder.name, count })
+          : t('settings.folders.delete_confirm_empty', { name: folder.name });
+        if (confirm(msg)) {
+          await storage.deleteFolder(id);
+          this.allFolders = this.allFolders.filter(f => f.id !== id);
+          delete this.flowCountByFolder[id];
+          this.renderFolders();
+        }
+      });
+    });
+  }
+
   private showImportModal(data: StorageSchema) {
     const modal = document.createElement('div');
     modal.className = 'settings-modal-overlay';
     modal.innerHTML = /* html */ `
       <div class="settings-modal-content">
         <div class="settings-modal-header">
-          <h2 class="settings-modal-title">Import Backup Data</h2>
-          <p class="settings-modal-desc">This backup contains ${data.flows.length} flows and ${data.variables.length} variables. How do you want to proceed?</p>
+          <h2 class="settings-modal-title">${t('settings.import_modal.title')}</h2>
+          <p class="settings-modal-desc">${t('settings.import_modal.desc', { flows: data.flows.length, vars: data.variables.length })}</p>
         </div>
         <div style="display: flex; flex-direction: column; gap: 1rem;">
           <div style="background: #171717; border: 1px solid #404040; border-radius: 0.5rem; padding: 1rem; cursor: pointer;" id="opt-merge">
-            <p style="color: #fff; margin: 0; font-size: 0.875rem; font-weight: 500;">Merge Data</p>
-            <p style="color: #a3a3a3; margin: 0.25rem 0 0 0; font-size: 0.75rem;">Add new items and update existing ones. Your current data is preserved.</p>
+            <p style="color: #fff; margin: 0; font-size: 0.875rem; font-weight: 500;">${t('settings.import_modal.merge_title')}</p>
+            <p style="color: #a3a3a3; margin: 0.25rem 0 0 0; font-size: 0.75rem;">${t('settings.import_modal.merge_desc')}</p>
           </div>
           <div style="background: #171717; border: 1px solid #404040; border-radius: 0.5rem; padding: 1rem; cursor: pointer;" id="opt-replace">
-            <p style="color: #fff; margin: 0; font-size: 0.875rem; font-weight: 500;">Replace All</p>
-            <p style="color: #ef4444; margin: 0.25rem 0 0 0; font-size: 0.75rem;">Erase all current data and replace it entirely with this backup.</p>
+            <p style="color: #fff; margin: 0; font-size: 0.875rem; font-weight: 500;">${t('settings.import_modal.replace_title')}</p>
+            <p style="color: #ef4444; margin: 0.25rem 0 0 0; font-size: 0.75rem;">${t('settings.import_modal.replace_desc')}</p>
           </div>
         </div>
         <div class="settings-modal-footer">
-          <button class="settings-btn-primary" id="modal-cancel">Cancel</button>
+          <button class="settings-btn-primary" id="modal-cancel">${t('settings.common.cancel')}</button>
         </div>
       </div>
     `;
@@ -582,11 +757,11 @@ export default class SettingsPage implements Page {
       
       for (const flow of data.flows) await storage.saveFlow(flow);
       for (const v of data.variables) await storage.saveVariable(v);
-      for (const t of data.templates) await storage.saveTemplate(t);
       for (const f of data.folders) await storage.saveFolder(f);
+      for (const form of data.forms || []) await storage.saveForm(form);
       await storage.saveSettings(data.settings);
       
-      alert('Data replaced successfully.');
+      alert(t('settings.import_modal.replaced_alert'));
       modal.remove();
       this.mount();
     });
@@ -595,11 +770,11 @@ export default class SettingsPage implements Page {
       // Merge logic: saveFlow overwrites matching IDs, otherwise appends.
       for (const flow of data.flows) await storage.saveFlow(flow);
       for (const v of data.variables) await storage.saveVariable(v);
-      for (const t of data.templates) await storage.saveTemplate(t);
       for (const f of data.folders) await storage.saveFolder(f);
+      for (const form of data.forms || []) await storage.saveForm(form);
       await storage.saveSettings(data.settings);
       
-      alert('Data merged successfully.');
+      alert(t('settings.import_modal.merged_alert'));
       modal.remove();
       this.mount();
     });
@@ -611,12 +786,12 @@ export default class SettingsPage implements Page {
     modal.innerHTML = /* html */ `
       <div class="settings-modal-content" style="border-color: #3f2c2c;">
         <div class="settings-modal-header">
-          <h2 class="settings-modal-title" style="color: #ef4444;">Reset All Data</h2>
-          <p class="settings-modal-desc">Are you absolutely sure you want to permanently delete all flows, variables, templates, and settings? This action cannot be undone.</p>
+          <h2 class="settings-modal-title" style="color: #ef4444;">${t('settings.danger.reset_title')}</h2>
+          <p class="settings-modal-desc">${t('settings.reset_modal.desc')}</p>
         </div>
         <div class="settings-modal-footer">
-          <button class="settings-btn-primary" id="modal-cancel" style="background: #262626; color: #fff;">Cancel</button>
-          <button class="settings-btn-danger" id="modal-confirm">Yes, Reset Everything</button>
+          <button class="settings-btn-primary" id="modal-cancel" style="background: #262626; color: #fff;">${t('settings.common.cancel')}</button>
+          <button class="settings-btn-danger" id="modal-confirm">${t('settings.reset_modal.confirm_btn')}</button>
         </div>
       </div>
     `;
@@ -627,7 +802,7 @@ export default class SettingsPage implements Page {
       await browser.storage.local.clear();
       if (browser.storage.sync) await browser.storage.sync.clear();
       await storage.initialise();
-      alert('All data has been reset.');
+      alert(t('settings.reset_modal.done_alert'));
       modal.remove();
       this.mount();
     });
@@ -687,7 +862,7 @@ export default class SettingsPage implements Page {
       capturing = false;
       keyBadge.classList.remove('exp-key-badge--capturing');
       btnCapture.disabled = false;
-      btnCapture.textContent = 'Capturar tecla';
+      btnCapture.textContent = t('settings.trigger.capture_btn');
       if (key !== undefined) keyBadge.textContent = this.formatKey(key);
       if (captureHandler) {
         document.removeEventListener('keydown', captureHandler, true);
@@ -698,10 +873,10 @@ export default class SettingsPage implements Page {
     btnCapture.addEventListener('click', () => {
       if (capturing) return;
       capturing = true;
-      keyBadge.textContent = 'Pressione…';
+      keyBadge.textContent = t('settings.trigger.capture_press');
       keyBadge.classList.add('exp-key-badge--capturing');
       btnCapture.disabled = true;
-      btnCapture.textContent = 'Aguardando…';
+      btnCapture.textContent = t('settings.trigger.capture_waiting');
 
       captureHandler = (e: KeyboardEvent) => {
         e.preventDefault();
@@ -712,7 +887,7 @@ export default class SettingsPage implements Page {
 
         // Enter: proibido
         if (e.key === 'Enter') {
-          keyBadge.textContent = '⚠ Enter proibido';
+          keyBadge.textContent = t('settings.trigger.enter_forbidden');
           keyBadge.style.color = '#ef4444';
           setTimeout(() => {
             keyBadge.style.color = '';
@@ -757,6 +932,92 @@ export default class SettingsPage implements Page {
     });
   }
 
+  /**
+   * "Gatilho de Busca" section — spec §5 (settings) + §6 (reserved
+   * prefixes / migration scan when (re)activating or changing a prefix).
+   */
+  private bindSearchTrigger(): void {
+    const cfg = this.settings.searchTrigger || { enabled: true, includeFlows: true, domainPrefix: '//', globalPrefix: '///' };
+
+    const toggleEnabled = this.el.querySelector<HTMLElement>('#toggle-search-trigger')!;
+    const toggleIncludeFlows = this.el.querySelector<HTMLElement>('#toggle-search-include-flows')!;
+    const domainInput = this.el.querySelector<HTMLInputElement>('#search-domain-prefix-input')!;
+    const globalInput = this.el.querySelector<HTMLInputElement>('#search-global-prefix-input')!;
+    const conflictBox = this.el.querySelector<HTMLElement>('#search-trigger-conflict-box')!;
+    const conflictText = this.el.querySelector<HTMLElement>('#search-trigger-conflict-text')!;
+
+    toggleEnabled.classList.toggle('active', cfg.enabled);
+    toggleIncludeFlows.classList.toggle('active', cfg.includeFlows);
+    domainInput.value = cfg.domainPrefix;
+    globalInput.value = cfg.globalPrefix;
+
+    const saveSearchTrigger = async (next: typeof cfg) => {
+      this.settings.searchTrigger = next;
+      await this.updateSetting('searchTrigger', next);
+      await scanForConflicts(next);
+    };
+
+    /** Spec §6: scan existing Flows for shortcuts that collide with the (now active) prefixes, and just *warn* — never block either feature. */
+    const scanForConflicts = async (activeCfg: typeof cfg) => {
+      if (!activeCfg.enabled) {
+        conflictBox.style.display = 'none';
+        return;
+      }
+      const flows = await storage.getFlows();
+      const conflicting = flows
+        .map((f) => {
+          const trigger = f.blocks.find((b) => b.type === 'trigger')?.data as any;
+          return trigger?.shortcut as string | undefined;
+        })
+        .filter((shortcut): shortcut is string => !!shortcut && shortcutConflictsWithSearchTrigger(shortcut, activeCfg));
+
+      if (conflicting.length === 0) {
+        conflictBox.style.display = 'none';
+        return;
+      }
+
+      conflictBox.style.display = 'flex';
+      conflictText.textContent =
+        conflicting.length === 1
+          ? t('settings.searchTrigger.conflict_one', { shortcut: conflicting[0] })
+          : t('settings.searchTrigger.conflict_many', { count: conflicting.length, list: conflicting.join(', ') });
+    };
+
+    toggleEnabled.addEventListener('click', async () => {
+      const next = { ...cfg, enabled: !this.settings.searchTrigger?.enabled };
+      toggleEnabled.classList.toggle('active', next.enabled);
+      await saveSearchTrigger(next);
+    });
+
+    toggleIncludeFlows.addEventListener('click', async () => {
+      const next = { ...this.settings.searchTrigger, includeFlows: !this.settings.searchTrigger?.includeFlows } as typeof cfg;
+      toggleIncludeFlows.classList.toggle('active', next.includeFlows);
+      await saveSearchTrigger(next);
+    });
+
+    const commitPrefixes = async () => {
+      const domainPrefix = domainInput.value.trim();
+      const globalPrefix = globalInput.value.trim();
+
+      if (!domainPrefix || !globalPrefix || domainPrefix === globalPrefix) {
+        alert(t('settings.searchTrigger.error_equal_or_empty'));
+        // Revert to the last known-good values.
+        domainInput.value = this.settings.searchTrigger?.domainPrefix ?? '//';
+        globalInput.value = this.settings.searchTrigger?.globalPrefix ?? '///';
+        return;
+      }
+
+      const next = { ...this.settings.searchTrigger, domainPrefix, globalPrefix } as typeof cfg;
+      await saveSearchTrigger(next);
+    };
+
+    domainInput.addEventListener('change', commitPrefixes);
+    globalInput.addEventListener('change', commitPrefixes);
+
+    // Initial scan on page load too, in case Flows changed elsewhere since the feature was last active.
+    scanForConflicts(cfg);
+  }
+
   private applyModeUI(
     mode: string,
     cardT: HTMLElement, cardE: HTMLElement,
@@ -771,7 +1032,7 @@ export default class SettingsPage implements Page {
 
   private formatKey(key: string): string {
     const map: Record<string, string> = {
-      ' ':   'Espaço',
+      ' ':   t('settings.key.space'),
       'Tab': 'Tab',
     };
     return map[key] ?? key.toUpperCase();

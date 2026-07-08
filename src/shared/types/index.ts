@@ -25,7 +25,7 @@ export interface ConditionBlock {
 
 export interface ConditionRule {
   type: 'domain' | 'time' | 'weekday' | 'date' | 'field_type' | 'field_content';
-  operator: 'equals' | 'contains' | 'matches' | 'before' | 'after';
+  operator: 'equals' | 'contains' | 'not_contains' | 'before' | 'after';
   value: string;
   action: ActionBlock;
 }
@@ -62,13 +62,54 @@ export interface Variable {
   updatedAt: number;
 }
 
-export interface Template {
+/**
+ * Formulários (Forms) — a catalog of fill-in profiles per site.
+ *
+ * Unlike the old "Templates" (a flat list of reusable snippets), a Form
+ * groups several named fields that all belong to the same site (or set of
+ * sites): e.g. "Envio de Currículo" has an "Assunto", a "Destinatário" and
+ * a "Descrição" field, each with its own content.
+ *
+ * Nothing new happens at execution time: every field's `value` is a full
+ * ActionBlock, resolved exactly like a Flow's action (variables, tokens,
+ * conditions all reused as-is) — a Form is just a different way of
+ * organising/addressing content that already exists.
+ */
+export type FormFieldType = 'text' | 'email' | 'richtext';
+
+export interface FormField {
   id: string;
+  /** Free-form label, e.g. "Assunto". */
   name: string;
-  tag: string;
-  content: string;
-  format: 'plaintext' | 'richtext';
+  /**
+   * Light metadata only — does not affect execution/resolution. Only used
+   * to switch on editing conveniences (e.g. domain autocomplete for the
+   * "email" type). Optional: absent/unknown values behave like 'text'.
+   */
+  type?: FormFieldType;
+  /** Resolved exactly like a Flow's action block (text/richtext + variables + tokens + conditions). */
+  value: ActionBlock;
+}
+
+export interface FormStats {
+  usageCount: number;
+  lastUsed?: number;
+}
+
+export interface Form {
+  id: string;
+  /** e.g. "Envio de Currículo". */
+  name: string;
+  /**
+   * Domains this Form applies to. Wildcards supported with the exact same
+   * syntax/validation already used by Settings.blocklist (e.g. "*.gmail.com").
+   */
+  sites: string[];
+  /** Order matters (display/organisation order in the editor and in search results). */
+  fields: FormField[];
+  createdAt: number;
   updatedAt: number;
+  stats: FormStats;
 }
 
 export interface Folder {
@@ -82,6 +123,22 @@ export interface Folder {
 export interface ClipboardEntry {
   text: string;
   timestamp: number;
+}
+
+/**
+ * "Gatilho de Busca" — a third trigger mode (distinct from Trigger Key and
+ * Exact Match) that opens a cursor-anchored search popup instead of
+ * expanding automatically. See TriggerSearchDetector.
+ */
+export interface SearchTriggerSettings {
+  /** Master on/off switch for the whole feature. */
+  enabled: boolean;
+  /** Whether Flows (not just Forms) are included in the search results. Default: true. */
+  includeFlows: boolean;
+  /** Prefix that restricts results to Forms valid for the current site + all Flows. Default: "//". */
+  domainPrefix: string;
+  /** Prefix that searches everything regardless of domain. Default: "///". */
+  globalPrefix: string;
 }
 
 export interface Settings {
@@ -98,13 +155,14 @@ export interface Settings {
   theme?: string;
   /** Max number of items kept in the clipboard history (default 10, max 50). */
   clipboardHistoryMax?: number;
+  searchTrigger: SearchTriggerSettings;
 }
 
 export interface StorageSchema {
   flows: Flow[];
   variables: Variable[];
-  templates: Template[];
   folders: Folder[];
+  forms: Form[];
   settings: Settings;
   /**
    * Optional on purpose: clipboard history is local, ephemeral, and can

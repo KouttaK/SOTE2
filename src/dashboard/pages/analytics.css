@@ -10,17 +10,12 @@
   overflow-y: auto;
 }
 
-/* Header */
+/* Header — plain title row, same spacing model as .flows-header */
 .analytics-header {
-  background-color: #171717;
-  border-bottom: 1px solid #262626;
-  padding: 1.5rem 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  margin-bottom: 1.5rem;
 }
 
 .analytics-header-title {
@@ -61,7 +56,6 @@
 /* Main Layout */
 .analytics-main {
   flex: 1;
-  padding: 2rem;
   display: flex;
   justify-content: center;
 }

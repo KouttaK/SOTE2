@@ -4,13 +4,14 @@
 
 import { BaseModal } from './BaseModal.js';
 import type { Token } from '../../../../shared/types/index.js';
+import { t } from '../../../../shared/i18n/index.js';
 
 export class ClipboardModal extends BaseModal {
   private onSaveCallback: (newConfig: { index: number }) => void;
   private inputEl!: HTMLInputElement;
 
   constructor(token: Token, onSave: (newConfig: { index: number }) => void) {
-    super('Configure Clipboard');
+    super(t('token.modal.configure_clipboard'));
     this.onSaveCallback = onSave;
     
     const config = token.config || {};
@@ -18,8 +19,8 @@ export class ClipboardModal extends BaseModal {
 
     this.body.innerHTML = `
       <div class="field-group">
-        <label>Clipboard History Index</label>
-        <p class="text-sm text-gray" style="margin-bottom:0.5rem">1 = Most recent item, 2 = Second most recent, etc. History size is configurable in Settings (default 10, max 50).</p>
+        <label>${t('token.clipboard.index_label')}</label>
+        <p class="text-sm text-gray" style="margin-bottom:0.5rem">${t('token.clipboard.index_hint')}</p>
         <input type="number" min="1" max="50" class="form-input" id="clipboard-index" value="${index}">
       </div>
     `;
@@ -30,7 +31,7 @@ export class ClipboardModal extends BaseModal {
   protected onSave(): void {
     const val = parseInt(this.inputEl.value, 10);
     if (isNaN(val) || val < 1) {
-      alert('Please enter a valid positive number.');
+      alert(t('token.clipboard.invalid_alert'));
       return;
     }
     this.onSaveCallback({ index: val });

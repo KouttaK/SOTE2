@@ -4,8 +4,9 @@
 
 import type { Page } from './index.js';
 import { storage } from '../../shared/storage/StorageService.js';
-import type { Flow, Folder } from '../../shared/types/index.js';
+import type { Flow, Folder, Variable } from '../../shared/types/index.js';
 import { router } from '../router.js';
+import { t } from '../../shared/i18n/index.js';
 import './flows.css';
 
 // ---------------------------------------------------------------------------
@@ -23,12 +24,50 @@ const ICONS_LOCAL = {
 };
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Converts the rich HTML produced by the Action-block contenteditable
+ * editor (e.g. "<p>Hello</p><p>World</p>") into a single line of plain
+ * text ("Hello World") suitable for the flows-table row preview. Block
+ * elements (paragraphs, list items) are joined with a space instead of
+ * being concatenated raw, which is what previously caused the browser to
+ * render nested/adjacent <p> tags as separate lines.
+ */
+function htmlToPreviewText(html: string): string {
+  // textContent concatenates block elements with no separator at all
+  // ("<p>Hello</p><p>World</p>" -> "HelloWorld"), so insert a space at
+  // each block boundary/line-break before reading it back out as text.
+  const withBreaks = (html || '').replace(/<\/(p|div|li|h[1-6])>|<br\s*\/?>/gi, ' $&');
+  const div = document.createElement('div');
+  div.innerHTML = withBreaks;
+  return (div.textContent || div.innerText || '').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Replaces every `{{KEY}}` placeholder in plain text with the matching
+ * Global Variable's value — same substitution content.ts performs at
+ * runtime and PreviewModal.ts performs in the editor's Preview modal.
+ * Unknown keys are left untouched.
+ */
+function resolveVariablesText(text: string, variables: Variable[]): string {
+  if (!variables.length || !text.includes('{{')) return text;
+  const map = new Map(variables.map((v) => [v.key, v.value]));
+  return text.replace(/\{\{\s*([A-Z0-9_]+)\s*\}\}/g, (match, key: string) => {
+    const value = map.get(key);
+    return value === undefined ? match : value;
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Page Class
 // ---------------------------------------------------------------------------
 export default class FlowsPage implements Page {
   private el!: HTMLElement;
   private allFlows: Flow[] = [];
   private allFolders: Folder[] = [];
+  private allVariables: Variable[] = [];
   private currentFolderFilter: string | null = null;
   private currentSearchQuery = '';
 
@@ -46,8 +85,8 @@ export default class FlowsPage implements Page {
     this.el.innerHTML = /* html */ `
       <div class="flows-header">
         <div>
-          <h1 class="flows-title">My Flows</h1>
-          <p class="flows-subtitle">Manage and organize all your text shortcuts and automation flows.</p>
+          <h1 class="flows-title">${t('flows.title')}</h1>
+          <p class="flows-subtitle">${t('flows.subtitle')}</p>
         </div>
       </div>
 
@@ -64,12 +103,12 @@ export default class FlowsPage implements Page {
       <!-- Table -->
       <div class="flows-table-wrap">
         <div class="flows-th">
-          <div class="th-col">On</div>
-          <div class="th-col">Shortcut</div>
-          <div class="th-col">Category</div>
-          <div class="th-col">Preview</div>
-          <div class="th-col">Usage</div>
-          <div class="th-col" style="justify-content: flex-end">Actions</div>
+          <div class="th-col">${t('flows.th.on')}</div>
+          <div class="th-col">${t('flows.th.shortcut')}</div>
+          <div class="th-col">${t('flows.th.category')}</div>
+          <div class="th-col">${t('flows.th.preview')}</div>
+          <div class="th-col">${t('flows.th.usage')}</div>
+          <div class="th-col" style="justify-content: flex-end">${t('flows.th.actions')}</div>
         </div>
         <div id="flows-tbody"></div>
       </div>
@@ -80,13 +119,15 @@ export default class FlowsPage implements Page {
 
   async mount(): Promise<void> {
     // 1. Fetch data
-    const [flows, folders] = await Promise.all([
+    const [flows, folders, variables] = await Promise.all([
       storage.getFlows(),
-      storage.getFolders()
+      storage.getFolders(),
+      storage.getVariables()
     ]);
     
     this.allFlows = flows;
     this.allFolders = folders;
+    this.allVariables = variables;
 
     // 2. Bind global search input (from shell)
     this.searchInput = document.getElementById('dash-search-input') as HTMLInputElement | null;
@@ -109,10 +150,13 @@ export default class FlowsPage implements Page {
         if (this.currentSort === 'Category') this.currentSort = 'Name';
         else if (this.currentSort === 'Name') this.currentSort = 'Usage';
         else this.currentSort = 'Category';
-        
+
+        const sortKey = this.currentSort === 'Name' ? 'header.sort_by.name'
+          : this.currentSort === 'Usage' ? 'header.sort_by.usage'
+          : 'header.sort_by.category';
         const label = sortBtn.querySelector('.dash-header-btn-label');
-        if (label) label.textContent = `Sort by: ${this.currentSort}`;
-        
+        if (label) label.textContent = t('header.sort_by', { value: t(sortKey) });
+
         this.renderList();
       };
       sortBtn.addEventListener('click', this.sortHandler);
@@ -150,7 +194,7 @@ export default class FlowsPage implements Page {
     }
     const mostUsedShortcut = mostUsed 
       ? `/${(mostUsed.blocks.find(b => b.type === 'trigger')?.data as any)?.shortcut || mostUsed.name}` 
-      : 'None';
+      : t('flows.stats.none');
     
     const hrsSaved = (totalKeys * 250 / 1000 / 60 / 60).toFixed(1);
 
@@ -158,23 +202,23 @@ export default class FlowsPage implements Page {
       <div class="stat-card">
         <div class="stat-header">
           <div>
-            <p class="stat-label">Time Saved</p>
-            <p class="stat-value">${hrsSaved} hrs</p>
-            <p class="stat-sub">Estimated</p>
+            <p class="stat-label">${t('flows.stats.time_saved')}</p>
+            <p class="stat-value">${t('flows.stats.hrs_value', { hrs: hrsSaved })}</p>
+            <p class="stat-sub">${t('flows.stats.estimated')}</p>
           </div>
           <div class="stat-icon">${ICONS_LOCAL.clock}</div>
         </div>
         <div class="stat-footer">
           ${ICONS_LOCAL.trendUp}
-          <span>Based on keys saved</span>
+          <span>${t('flows.stats.based_on_keys')}</span>
         </div>
       </div>
       <div class="stat-card">
         <div class="stat-header">
           <div>
-            <p class="stat-label">Total Shortcuts</p>
+            <p class="stat-label">${t('flows.stats.total_shortcuts')}</p>
             <p class="stat-value">${totalFlows}</p>
-            <p class="stat-sub">Across ${this.allFolders.length} folders</p>
+            <p class="stat-sub">${t('flows.stats.across_folders', { count: this.allFolders.length })}</p>
           </div>
           <div class="stat-icon">${ICONS_LOCAL.bolt}</div>
         </div>
@@ -182,9 +226,9 @@ export default class FlowsPage implements Page {
       <div class="stat-card">
         <div class="stat-header">
           <div>
-            <p class="stat-label">Most Used</p>
+            <p class="stat-label">${t('flows.stats.most_used')}</p>
             <p class="stat-value">${mostUsedShortcut}</p>
-            <p class="stat-sub">${mostUsed?.stats.usageCount || 0} uses</p>
+            <p class="stat-sub">${t('flows.usage_count', { count: mostUsed?.stats.usageCount || 0 })}</p>
           </div>
           <div class="stat-icon">${ICONS_LOCAL.fire}</div>
         </div>
@@ -199,7 +243,7 @@ export default class FlowsPage implements Page {
     // "All" tab
     const allBtn = document.createElement('button');
     allBtn.className = `folder-tab ${this.currentFolderFilter === null ? 'is-active' : ''}`;
-    allBtn.innerHTML = `All <span class="folder-count">${this.allFlows.length}</span>`;
+    allBtn.innerHTML = `${t('flows.folder.all')} <span class="folder-count">${this.allFlows.length}</span>`;
     allBtn.onclick = () => {
       this.currentFolderFilter = null;
       this.renderFolders();
@@ -212,7 +256,7 @@ export default class FlowsPage implements Page {
     if (uncategorisedCount > 0) {
       const uncatBtn = document.createElement('button');
       uncatBtn.className = `folder-tab ${this.currentFolderFilter === 'uncategorised' ? 'is-active' : ''}`;
-      uncatBtn.innerHTML = `Uncategorised <span class="folder-count">${uncategorisedCount}</span>`;
+      uncatBtn.innerHTML = `${t('flows.folder.none')} <span class="folder-count">${uncategorisedCount}</span>`;
       uncatBtn.onclick = () => {
         this.currentFolderFilter = 'uncategorised';
         this.renderFolders();
@@ -235,7 +279,7 @@ export default class FlowsPage implements Page {
       // Right click to delete
       btn.oncontextmenu = async (e) => {
         e.preventDefault();
-        if (confirm(`Delete folder "${folder.name}"? (Flows will not be deleted)`)) {
+        if (confirm(t('flows.folder.delete_confirm', { name: folder.name }))) {
           await storage.deleteFolder(folder.id);
           this.allFolders = this.allFolders.filter(f => f.id !== folder.id);
           if (this.currentFolderFilter === folder.id) this.currentFolderFilter = null;
@@ -250,9 +294,9 @@ export default class FlowsPage implements Page {
     const addBtn = document.createElement('button');
     addBtn.className = 'folder-add-btn';
     addBtn.innerHTML = ICONS_LOCAL.plus;
-    addBtn.title = 'Create Folder';
+    addBtn.title = t('flows.folder.create_title');
     addBtn.onclick = async () => {
-      const name = prompt('Folder name:');
+      const name = prompt(t('flows.folder.prompt_name'));
       if (name) {
         await storage.saveFolder({ id: crypto.randomUUID(), name, color: '#3b82f6', order: this.allFolders.length });
         this.allFolders = await storage.getFolders();
@@ -266,8 +310,12 @@ export default class FlowsPage implements Page {
     const tbody = this.el.querySelector('#flows-tbody')!;
     tbody.innerHTML = '';
 
-    // Filter
-    let filtered = this.allFlows;
+    // Filter — always start from a fresh copy so sorting never mutates the
+    // underlying allFlows array as a side effect (it used to: when neither
+    // a folder nor a search filter was active, `filtered` was literally the
+    // same array reference as `this.allFlows`, so `.sort()` reordered the
+    // master list in place).
+    let filtered = [...this.allFlows];
     
     // By Folder
     if (this.currentFolderFilter === 'uncategorised') {
@@ -285,18 +333,23 @@ export default class FlowsPage implements Page {
       });
     }
 
-    // Sort
+    // Sort — every branch always falls back to a name comparison so ties
+    // (e.g. several flows that all have 0 uses, or all sit in the same/no
+    // folder — very common right after creating a batch of flows) still
+    // produce a deterministic, visibly-different order instead of leaving
+    // everything in place and looking like Sort By did nothing.
     filtered.sort((a, b) => {
       if (this.currentSort === 'Usage') {
         const usageA = a.stats.usageCount || 0;
         const usageB = b.stats.usageCount || 0;
-        return usageB - usageA;
+        if (usageA !== usageB) return usageB - usageA;
+        return a.name.localeCompare(b.name);
       } else if (this.currentSort === 'Name') {
         return a.name.localeCompare(b.name);
       } else {
         // Category
-        const folderA = this.allFolders.find(f => f.id === a.folderId)?.name || 'Uncategorised';
-        const folderB = this.allFolders.find(f => f.id === b.folderId)?.name || 'Uncategorised';
+        const folderA = this.allFolders.find(f => f.id === a.folderId)?.name || t('flows.folder.none');
+        const folderB = this.allFolders.find(f => f.id === b.folderId)?.name || t('flows.folder.none');
         if (folderA === folderB) {
           return a.name.localeCompare(b.name);
         }
@@ -308,8 +361,8 @@ export default class FlowsPage implements Page {
       tbody.innerHTML = /* html */ `
         <div class="flows-empty">
           ${ICONS_LOCAL.folder}
-          <h3>No flows found</h3>
-          <p>Create a new flow to get started.</p>
+          <h3>${t('flows.empty_title')}</h3>
+          <p>${t('flows.empty_desc')}</p>
         </div>
       `;
       return;
@@ -325,10 +378,20 @@ export default class FlowsPage implements Page {
       const trigger = flow.blocks.find(b => b.type === 'trigger');
       const action = flow.blocks.find(b => b.type === 'action');
       const shortcutText = trigger ? (trigger.data as any).shortcut : flow.name;
-      const previewText = action ? (action.data as any).content.slice(0, 50) : 'No preview available';
+      // action.content is rich HTML (e.g. "<p>Hello</p><p>World</p>") coming
+      // straight out of the contenteditable Action-block editor. Slicing
+      // that HTML as if it were plain text and dropping it into another
+      // <p class="row-preview"> produced nested <p> tags, which the browser
+      // auto-closes into two separate block-level paragraphs — that's what
+      // made the preview render on two lines no matter what CSS was applied
+      // to .row-preview. Strip tags down to plain text first so there's only
+      // ever a single text node to truncate and display.
+      const previewText = action
+        ? resolveVariablesText(htmlToPreviewText((action.data as any).content), this.allVariables).slice(0, 50)
+        : t('flows.preview_empty');
       
       const folder = this.allFolders.find(f => f.id === flow.folderId);
-      const folderName = folder ? folder.name : 'Uncategorised';
+      const folderName = folder ? folder.name : t('flows.folder.none');
       
       const usagePct = ((flow.stats.usageCount || 0) / maxUsage) * 100;
 
@@ -342,7 +405,7 @@ export default class FlowsPage implements Page {
       row.innerHTML = /* html */ `
         <!-- On/Off -->
         <div>
-          <div class="row-toggle ${flow.enabled ? 'is-on' : ''}" data-id="${flow.id}"></div>
+          <div class="row-toggle ${flow.enabled ? 'is-on' : ''}" data-id="${flow.id}" title="${flow.enabled ? t('flows.toggle.disable') : t('flows.toggle.enable')}"></div>
         </div>
         <!-- Shortcut -->
         <div>
@@ -368,8 +431,8 @@ export default class FlowsPage implements Page {
         </div>
         <!-- Actions -->
         <div class="row-actions">
-          <button class="action-btn btn-edit" title="Edit Flow">${ICONS_LOCAL.edit}</button>
-          <button class="action-btn btn-delete" title="Delete Flow">${ICONS_LOCAL.trash}</button>
+          <button class="action-btn btn-edit" title="${t('flows.action.edit')}">${ICONS_LOCAL.edit}</button>
+          <button class="action-btn btn-delete" title="${t('flows.action.delete')}">${ICONS_LOCAL.trash}</button>
         </div>
       `;
 
@@ -378,6 +441,7 @@ export default class FlowsPage implements Page {
       toggle.addEventListener('click', async () => {
         flow.enabled = !flow.enabled;
         toggle.classList.toggle('is-on', flow.enabled);
+        (toggle as HTMLElement).title = flow.enabled ? t('flows.toggle.disable') : t('flows.toggle.enable');
         await storage.saveFlow(flow);
       });
 
@@ -388,7 +452,7 @@ export default class FlowsPage implements Page {
 
       const btnDelete = row.querySelector('.btn-delete')!;
       btnDelete.addEventListener('click', async () => {
-        if (confirm(`Are you sure you want to delete /${shortcutText}?`)) {
+        if (confirm(t('flows.delete_confirm_named', { shortcut: shortcutText }))) {
           await storage.deleteFlow(flow.id);
           this.allFlows = this.allFlows.filter(f => f.id !== flow.id);
           this.renderList();

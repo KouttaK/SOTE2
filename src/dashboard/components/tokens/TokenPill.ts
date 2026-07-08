@@ -4,6 +4,7 @@
  */
 
 import type { Token } from '../../../shared/types/index.js';
+import { t } from '../../../shared/i18n/index.js';
 
 const ICONS = {
   choice: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M64 144a48 48 0 1 0 0-96 48 48 0 1 0 0 96zM192 64c-17.7 0-32 14.3-32 32s14.3 32 32 32H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H192zm0 160c-17.7 0-32 14.3-32 32s14.3 32 32 32H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H192zm0 160c-17.7 0-32 14.3-32 32s14.3 32 32 32H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H192zM64 464a48 48 0 1 0 0-96 48 48 0 1 0 0 96zm48-208a48 48 0 1 0 -96 0 48 48 0 1 0 96 0z"/></svg>`,
@@ -19,18 +20,18 @@ export class TokenPill {
   static createHTML(token: Token, cursorNumber?: number): string {
     const icon = ICONS[token.type] || '';
     
-    let label = token.type.charAt(0).toUpperCase() + token.type.slice(1);
-    
+    let label = t(`token.${token.type}`);
+
     if (token.type === 'cursor' && cursorNumber !== undefined) {
-      label = `Cursor ${cursorNumber}`;
+      label = `${label} ${cursorNumber}`;
     } else if (token.type === 'clipboard' && token.config?.index) {
-      label = `Clipboard ${token.config.index}`;
+      label = `${label} ${token.config.index}`;
     } else if (token.type === 'date' && token.config?.format) {
-      label = `Date (${token.config.format})`;
+      label = `${label} (${token.config.format})`;
     } else if (token.type === 'input' && token.config?.label) {
-      label = `Input (${token.config.label})`;
+      label = `${label} (${token.config.label})`;
     } else if (token.type === 'choice' && token.config?.options) {
-      label = `Choice (${(token.config.options as string[]).length})`;
+      label = `${label} (${(token.config.options as string[]).length})`;
     }
 
     // The token's config (e.g. the Choice options) is embedded directly on

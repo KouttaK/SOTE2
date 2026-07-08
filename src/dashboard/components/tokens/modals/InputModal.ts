@@ -4,6 +4,7 @@
 
 import { BaseModal } from './BaseModal.js';
 import type { Token } from '../../../../shared/types/index.js';
+import { t } from '../../../../shared/i18n/index.js';
 
 export class InputModal extends BaseModal {
   private onSaveCallback: (newConfig: { label: string, placeholder?: string }) => void;
@@ -11,7 +12,7 @@ export class InputModal extends BaseModal {
   private placeholderInput!: HTMLInputElement;
 
   constructor(token: Token, onSave: (newConfig: { label: string, placeholder?: string }) => void) {
-    super('Configure Input');
+    super(t('token.modal.configure_input'));
     this.onSaveCallback = onSave;
     
     const config = token.config || {};
@@ -20,12 +21,12 @@ export class InputModal extends BaseModal {
 
     this.body.innerHTML = `
       <div class="field-group" style="margin-bottom:1rem">
-        <label>Field Label</label>
-        <input type="text" class="form-input" id="input-label" value="${label}" placeholder="e.g. Client Name">
+        <label>${t('token.input.field_label')}</label>
+        <input type="text" class="form-input" id="input-label" value="${label}" placeholder="${t('token.input.label_example')}">
       </div>
       <div class="field-group">
-        <label>Placeholder (optional)</label>
-        <input type="text" class="form-input" id="input-placeholder" value="${placeholder}" placeholder="e.g. John Doe">
+        <label>${t('token.input.placeholder_optional')}</label>
+        <input type="text" class="form-input" id="input-placeholder" value="${placeholder}" placeholder="${t('token.input.placeholder_example')}">
       </div>
     `;
 
@@ -37,7 +38,7 @@ export class InputModal extends BaseModal {
     const label = this.labelInput.value.trim();
     const placeholder = this.placeholderInput.value.trim();
     if (!label) {
-      alert('Label is required.');
+      alert(t('token.input.label_required_alert'));
       return;
     }
     this.onSaveCallback({ label, placeholder: placeholder || undefined });

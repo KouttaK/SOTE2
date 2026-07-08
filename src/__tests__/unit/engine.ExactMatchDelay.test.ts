@@ -84,12 +84,17 @@ describe('Exact Match Delay in content.ts', () => {
     // Should not inject yet
     expect(TextInjector.inject).not.toHaveBeenCalled();
 
-    // Advance time by 100ms
-    vi.advanceTimersByTime(100);
+    // Advance time by 100ms. Using the *Async variant because handleTrigger
+    // now awaits the extracted resolveActionBlockContent() pipeline
+    // (ActionContentResolver.ts) — even with zero tokens to resolve,
+    // awaiting an async function call always yields at least one
+    // microtask, so the timer callback's continuation needs a flush that
+    // plain advanceTimersByTime() (sync) doesn't provide.
+    await vi.advanceTimersByTimeAsync(100);
     expect(TextInjector.inject).not.toHaveBeenCalled();
 
     // Advance remaining time
-    vi.advanceTimersByTime(100);
+    await vi.advanceTimersByTimeAsync(100);
 
     // Now it should have injected
     expect(TextInjector.inject).toHaveBeenCalled();

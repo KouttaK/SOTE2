@@ -14,8 +14,8 @@ import { browser } from 'wxt/browser';
 import type {
   Flow,
   Variable,
-  Template,
   Folder,
+  Form,
   Settings,
   StorageSchema,
   ClipboardEntry,
@@ -26,6 +26,7 @@ import {
   SYNC_ITEM_MAX_BYTES,
   DEFAULT_CLIPBOARD_HISTORY_MAX,
   MAX_CLIPBOARD_HISTORY_LIMIT,
+  buildDefaultForms,
 } from './defaults.js';
 
 // ---------------------------------------------------------------------------
@@ -38,8 +39,8 @@ type StorageArea = typeof browser.storage.local;
 const KEYS = {
   flows: 'flows',
   variables: 'variables',
-  templates: 'templates',
   folders: 'folders',
+  forms: 'forms',
   settings: 'settings',
   clipboardHistory: 'clipboardHistory',
 } as const;
@@ -94,10 +95,18 @@ class StorageService {
       }
 
       const area = await this.getArea();
-      const data = await area.get(KEYS.settings);
+      const data = await area.get([KEYS.settings, KEYS.forms]);
 
       if (!data[KEYS.settings]) {
         await area.set({ [KEYS.settings]: DEFAULT_SETTINGS });
+      }
+
+      // First run only: seed onboarding example Forms. Keyed off the
+      // `forms` storage key itself being entirely absent (never
+      // initialised) rather than an empty array, so a user who deletes
+      // every Form afterwards doesn't get them silently repopulated.
+      if (data[KEYS.forms] === undefined) {
+        await area.set({ [KEYS.forms]: buildDefaultForms() });
       }
     } catch (err) {
       console.error('[SOTE] StorageService.initialise failed:', err);
@@ -287,46 +296,6 @@ class StorageService {
   }
 
   // -------------------------------------------------------------------------
-  // Templates
-  // -------------------------------------------------------------------------
-
-  async getTemplates(): Promise<Template[]> {
-    return this.readList<Template>(KEYS.templates);
-  }
-
-  async saveTemplate(template: Template): Promise<void> {
-    const templates = await this.getTemplates();
-    const idx = templates.findIndex((t) => t.id === template.id);
-    if (idx >= 0) {
-      templates[idx] = template;
-    } else {
-      templates.push(template);
-    }
-    await this.writeList(KEYS.templates, templates);
-  }
-
-  async deleteTemplate(id: string): Promise<void> {
-    const templates = await this.getTemplates();
-    await this.writeList(
-      KEYS.templates,
-      templates.filter((t) => t.id !== id),
-    );
-  }
-
-  /**
-   * Replaces `{{modelo:tag}}` occurrences with the corresponding template
-   * content.  Unknown tags are left untouched.
-   */
-  async resolveTemplates(text: string): Promise<string> {
-    const templates = await this.getTemplates();
-    const map = new Map(templates.map((t) => [t.tag, t.content]));
-
-    return text.replace(/\{\{modelo:([^}]+)\}\}/g, (match, tag: string) => {
-      return map.has(tag) ? (map.get(tag) as string) : match;
-    });
-  }
-
-  // -------------------------------------------------------------------------
   // Folders
   // -------------------------------------------------------------------------
 
@@ -351,6 +320,57 @@ class StorageService {
       KEYS.folders,
       folders.filter((f) => f.id !== id),
     );
+  }
+
+  // -------------------------------------------------------------------------
+  // Forms ("Formulários" — per-site fill-in profiles)
+  // -------------------------------------------------------------------------
+
+  async getForms(): Promise<Form[]> {
+    return this.readList<Form>(KEYS.forms);
+  }
+
+  async getForm(id: string): Promise<Form | null> {
+    const forms = await this.getForms();
+    return forms.find((f) => f.id === id) ?? null;
+  }
+
+  async saveForm(form: Form): Promise<void> {
+    const forms = await this.getForms();
+    const idx = forms.findIndex((f) => f.id === form.id);
+    if (idx >= 0) {
+      forms[idx] = form;
+    } else {
+      forms.push(form);
+    }
+    await this.writeList(KEYS.forms, forms);
+  }
+
+  async deleteForm(id: string): Promise<void> {
+    const forms = await this.getForms();
+    await this.writeList(
+      KEYS.forms,
+      forms.filter((f) => f.id !== id),
+    );
+  }
+
+  /**
+   * Records a use of a Form (a field of it was inserted via the Gatilho de
+   * Busca or the Palette). Used as the recency/frequency tie-breaker in
+   * search ranking (see spec §4.2) — same idea as Flow.stats.usageCount,
+   * just without `keysSaved` since a Form field isn't typed as a shortcut.
+   */
+  async incrementFormStats(id: string): Promise<void> {
+    const form = await this.getForm(id);
+    if (!form) return;
+    await this.saveForm({
+      ...form,
+      updatedAt: Date.now(),
+      stats: {
+        usageCount: form.stats.usageCount + 1,
+        lastUsed: Date.now(),
+      },
+    });
   }
 
   // -------------------------------------------------------------------------
@@ -522,7 +542,7 @@ class StorageService {
       // Write each key to sync (chunking handled by writeList).
       this.syncEnabled = true;
 
-      const listKeys: (keyof StorageSchema)[] = ['flows', 'variables', 'templates', 'folders'];
+      const listKeys: (keyof StorageSchema)[] = ['flows', 'variables', 'folders', 'forms'];
       for (const key of listKeys) {
         if (Array.isArray(data[key])) {
           await this.writeList(key, data[key] as unknown[]);
@@ -558,7 +578,7 @@ class StorageService {
       // Disable BEFORE writing so writeList targets local.
       this.syncEnabled = false;
 
-      const listKeys: (keyof StorageSchema)[] = ['flows', 'variables', 'templates', 'folders'];
+      const listKeys: (keyof StorageSchema)[] = ['flows', 'variables', 'folders', 'forms'];
       for (const key of listKeys) {
         // Reassemble chunked lists from sync.
         const chunkCountRaw = syncData[`${key}__chunks`];

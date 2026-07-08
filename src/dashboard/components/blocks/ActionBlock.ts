@@ -2,7 +2,9 @@
  * src/dashboard/components/blocks/ActionBlock.ts
  */
 
-import type { ActionBlock as IActionBlock, Token } from '../../../shared/types/index.js';
+import type { ActionBlock as IActionBlock, Token, Variable } from '../../../shared/types/index.js';
+import { t } from '../../../shared/i18n/index.js';
+import { storage } from '../../../shared/storage/StorageService.js';
 import { TokenPill } from '../tokens/TokenPill.js';
 import { TokenMenu } from '../tokens/TokenMenu.js';
 import { ChoiceModal } from '../tokens/modals/ChoiceModal.js';
@@ -19,6 +21,7 @@ const ICONS = {
   plus: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z"/></svg>`,
   ellipsis: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 512" fill="currentColor"><path d="M64 360a56 56 0 1 0 0 112 56 56 0 1 0 0-112zm0-160a56 56 0 1 0 0 112 56 56 0 1 0 0-112zM120 96A56 56 0 1 0 8 96a56 56 0 1 0 112 0z"/></svg>`,
   trash: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M170.5 51.6L151.5 80h145l-19-28.4c-1.5-2.2-4-3.6-6.7-3.6H177.1c-2.7 0-5.2 1.3-6.7 3.6zm147-26.6L354.2 80H368h48 8c13.3 0 24 10.7 24 24s-10.7 24-24 24h-8V432c0 44.2-35.8 80-80 80H112c-44.2 0-80-35.8-80-80V128H24c-13.3 0-24-10.7-24-24S10.7 80 24 80h8H80 93.8l36.7-55.1C140.9 9.4 158.4 0 177.1 0h93.7c18.7 0 36.2 9.4 46.6 24.9zM80 128V432c0 17.7 14.3 32 32 32H336c17.7 0 32-14.3 32-32V128H80zm80 64V400c0 8.8-7.2 16-16 16s-16-7.2-16-16V192c0-8.8 7.2-16 16-16s16 7.2 16 16zm80 0V400c0 8.8-7.2 16-16 16s-16-7.2-16-16V192c0-8.8 7.2-16 16-16s16 7.2 16 16zm80 0V400c0 8.8-7.2 16-16 16s-16-7.2-16-16V192c0-8.8 7.2-16 16-16s16 7.2 16 16z"/></svg>`,
+  variable: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M448 80v48c0 44.2-100.3 80-224 80S0 172.2 0 128V80C0 35.8 100.3 0 224 0S448 35.8 448 80zM393.2 214.7c20.8-7.4 39.2-16.9 54.8-28.6V288c0 44.2-100.3 80-224 80S0 332.2 0 288V186.1c15.6 11.7 34 21.2 54.8 28.6C111.8 236.6 165 240 224 240s112.2-3.4 169.2-25.3zM0 346.1c15.6 11.7 34 21.2 54.8 28.6C111.8 396.6 165 400 224 400s112.2-3.4 169.2-25.3c20.8-7.4 39.2-16.9 54.8-28.6V432c0 44.2-100.3 80-224 80S0 476.2 0 432V346.1z"/></svg>`,
 };
 
 export class ActionBlock {
@@ -27,6 +30,8 @@ export class ActionBlock {
   private onChange: () => void;
   private editorEl!: HTMLDivElement;
   private tokenMenu!: TokenMenu;
+  private variableMenuEl!: HTMLElement;
+  private variables: Variable[] = [];
   private mutationObserver!: MutationObserver;
   private savedRange: Range | null = null;
 
@@ -60,15 +65,15 @@ export class ActionBlock {
       <div class="block-header">
         <div class="block-icon">${ICONS.keyboard}</div>
         <div class="block-title-wrap">
-          <p class="block-step">Step 3</p>
-          <h2 class="block-title">Action: Insert this text</h2>
+          <p class="block-step">${t('action.block.step')}</p>
+          <h2 class="block-title">${t('action.block.title')}</h2>
         </div>
-        <span class="block-badge">Output</span>
+        <span class="block-badge">${t('action.block.badge')}</span>
         <div class="block-menu-wrap">
-          <button class="block-menu-btn" title="Mais opções">${ICONS.ellipsis}</button>
+          <button class="block-menu-btn" title="${t('common.more_options')}">${ICONS.ellipsis}</button>
           <div class="block-menu" style="display:none;">
             <button class="block-menu-item danger" data-action="clear">
-              ${ICONS.trash} Limpar Texto
+              ${ICONS.trash} ${t('action.block.menu.clear_text')}
             </button>
           </div>
         </div>
@@ -80,16 +85,22 @@ export class ActionBlock {
           <button class="rt-btn" data-cmd="italic" style="font-style:italic;">I</button>
           <button class="rt-btn" data-cmd="underline" style="text-decoration:underline;">U</button>
           <div class="rt-divider"></div>
-          <button class="rt-btn" data-cmd="insertUnorderedList" title="Bulleted List">${ICONS.listUl}</button>
-          <button class="rt-btn" data-cmd="insertOrderedList" title="Numbered List">${ICONS.listOl}</button>
-          <button class="rt-btn" data-cmd="createLink" title="Insert Link">${ICONS.link}</button>
+          <button class="rt-btn" data-cmd="insertUnorderedList" title="${t('action.block.toolbar.bulleted_list')}">${ICONS.listUl}</button>
+          <button class="rt-btn" data-cmd="insertOrderedList" title="${t('action.block.toolbar.numbered_list')}">${ICONS.listOl}</button>
+          <button class="rt-btn" data-cmd="createLink" title="${t('action.block.toolbar.insert_link')}">${ICONS.link}</button>
           <div class="rt-divider"></div>
-          <button class="rt-btn" data-cmd="removeFormat" title="Clear Formatting">${ICONS.code}</button>
+          <button class="rt-btn" data-cmd="removeFormat" title="${t('action.block.toolbar.clear_formatting')}">${ICONS.code}</button>
           
           <div style="flex:1;"></div>
           <div style="position: relative;">
+            <button class="rt-insert-variable" id="btn-insert-variable" title="${t('variable.insert_title')}">
+              ${ICONS.variable} ${t('variable.insert_title')}
+            </button>
+            <div class="token-menu-overlay" id="variable-menu-container"></div>
+          </div>
+          <div style="position: relative;">
             <button class="rt-insert-token" id="btn-insert-token">
-              ${ICONS.plus} Insert Token
+              ${ICONS.plus} ${t('token.insert_title')}
             </button>
             <div id="token-menu-container"></div>
           </div>
@@ -104,6 +115,8 @@ export class ActionBlock {
 
     // Rebind token interactions to existing tokens
     this.bindExistingTokens();
+
+    this.variableMenuEl = this.el.querySelector<HTMLElement>('#variable-menu-container')!;
 
     this.bindHeaderMenu();
     this.bindEvents();
@@ -124,7 +137,7 @@ export class ActionBlock {
     menu.querySelector('[data-action="clear"]')!.addEventListener('click', (e) => {
       e.stopPropagation();
       closeMenu();
-      if (confirm('Limpar todo o texto deste bloco de ação?')) {
+      if (confirm(t('action.block.clear_confirm'))) {
         this.editorEl.innerHTML = '<p><br></p>';
         this.data.content = '';
         this.data.tokens = [];
@@ -161,31 +174,52 @@ export class ActionBlock {
 
   private setupObserver() {
     this.mutationObserver = new MutationObserver((mutations) => {
-      let tokensRemoved = false;
+      const candidateIds = new Set<string>();
+
       mutations.forEach(mutation => {
         mutation.removedNodes.forEach(node => {
           if (node.nodeType === Node.ELEMENT_NODE) {
             const el = node as HTMLElement;
             if (el.classList.contains('token-pill')) {
               const id = el.getAttribute('data-token-id');
-              if (id) {
-                this.removeTokenById(id);
-                tokensRemoved = true;
-              }
+              if (id) candidateIds.add(id);
             } else {
               // Check if token pills were removed inside a parent node (e.g. deleting a paragraph)
               const childPills = el.querySelectorAll('.token-pill');
               childPills.forEach(child => {
                 const id = child.getAttribute('data-token-id');
-                if (id) {
-                  this.removeTokenById(id);
-                  tokensRemoved = true;
-                }
+                if (id) candidateIds.add(id);
               });
             }
           }
         });
       });
+
+      if (candidateIds.size === 0) return;
+
+      // A pill can be "removed" here for two very different reasons:
+      //  1. The user actually deleted it (typed over it / deleted the paragraph).
+      //  2. It was swapped for a fresh node via `pillEl.replaceWith(newPill)`,
+      //     which happens every time a token is edited (e.g. saving new
+      //     Choice options) or self-healed in bindExistingTokens(). That
+      //     also shows up as a removal, but an equivalent pill with the
+      //     SAME data-token-id is reinserted immediately after.
+      // Only treat case 1 as a real deletion — i.e. only drop the token from
+      // data.tokens if no pill with that id remains anywhere in the editor.
+      // Getting this wrong silently orphaned the token from `data.tokens`
+      // while its pill (and data-token-config) stayed in the saved HTML,
+      // which is why reopening a saved flow and clicking e.g. a Choice pill
+      // did nothing: bindExistingTokens() couldn't find a matching token
+      // and skipped attaching the click handler entirely.
+      let tokensRemoved = false;
+      candidateIds.forEach(id => {
+        const stillPresent = this.editorEl.querySelector(`.token-pill[data-token-id="${id}"]`);
+        if (!stillPresent) {
+          this.removeTokenById(id);
+          tokensRemoved = true;
+        }
+      });
+
       if (tokensRemoved) {
         this.onChange();
       }
@@ -209,7 +243,7 @@ export class ActionBlock {
         if (!cmd) return;
 
         if (cmd === 'createLink') {
-          const url = prompt('Enter URL:');
+          const url = prompt(t('action.block.toolbar.insert_link_prompt'));
           if (url) document.execCommand(cmd, false, url);
         } else {
           document.execCommand(cmd, false);
@@ -232,11 +266,30 @@ export class ActionBlock {
     const btnToken = this.el.querySelector<HTMLElement>('#btn-insert-token')!;
     btnToken.addEventListener('click', (e) => {
       e.stopPropagation();
+      // Only one Cursor token is allowed per flow — grey it out in the menu
+      // once one has already been inserted (recomputed on every open so it
+      // re-enables immediately if the existing one gets deleted).
+      const hasCursor = this.data.tokens.some(t => t.type === 'cursor');
+      this.tokenMenu.setDisabledTypes(hasCursor ? ['cursor'] : []);
       this.tokenMenu.toggle();
     });
     document.addEventListener('click', (e) => {
       if (!btnToken.contains(e.target as Node) && !this.tokenMenu.getElement().contains(e.target as Node)) {
         this.tokenMenu.hide();
+      }
+    });
+
+    // Variable Menu (inserts a plain "{{KEY}}" placeholder — resolved
+    // against Global Variables at expansion time, see content.ts).
+    const btnVariable = this.el.querySelector<HTMLElement>('#btn-insert-variable')!;
+    btnVariable.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      this.saveRange();
+      await this.openVariableMenu();
+    });
+    document.addEventListener('click', (e) => {
+      if (!btnVariable.contains(e.target as Node) && !this.variableMenuEl.contains(e.target as Node)) {
+        this.variableMenuEl.classList.remove('is-open');
       }
     });
   }
@@ -252,7 +305,89 @@ export class ActionBlock {
     });
   }
 
+  /**
+   * Fetches the current Global Variables list and (re)renders the dropdown
+   * shown under the "Insert Variable" button, then opens it. Re-fetched on
+   * every open (rather than cached once) so a variable created moments ago
+   * on the Variables page shows up immediately without reloading the editor.
+   */
+  private async openVariableMenu() {
+    this.variables = await storage.getVariables();
+
+    if (this.variables.length === 0) {
+      this.variableMenuEl.innerHTML = /* html */ `
+        <div class="token-menu-item is-disabled">
+          <div class="token-menu-icon" style="background-color:#404040;">${ICONS.variable}</div>
+          <div class="token-menu-text">
+            <p>${t('variable.none_title')}</p>
+            <span>${t('variable.none_desc')}</span>
+          </div>
+        </div>
+      `;
+    } else {
+      this.variableMenuEl.innerHTML = this.variables.map((v) => /* html */ `
+        <div class="token-menu-item" data-key="${v.key}">
+          <div class="token-menu-icon" style="background-color:#0d9488;">${ICONS.variable}</div>
+          <div class="token-menu-text">
+            <p>{{${v.key}}}</p>
+            <span>${(v.value || '').slice(0, 40)}</span>
+          </div>
+        </div>
+      `).join('');
+
+      this.variableMenuEl.querySelectorAll<HTMLElement>('[data-key]').forEach((item) => {
+        item.addEventListener('mousedown', (e) => {
+          e.preventDefault(); // don't lose the saved selection/focus
+          const key = item.dataset.key!;
+          this.insertVariable(key);
+          this.variableMenuEl.classList.remove('is-open');
+        });
+      });
+    }
+
+    this.variableMenuEl.classList.add('is-open');
+  }
+
+  /** Inserts the literal text "{{KEY}}" at the saved caret position. */
+  private insertVariable(key: string) {
+    this.editorEl.focus();
+    this.restoreRange();
+
+    const textNode = document.createTextNode(`{{${key}}}`);
+
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      if (this.editorEl.contains(range.commonAncestorContainer)) {
+        range.deleteContents();
+        range.insertNode(textNode);
+        range.setStartAfter(textNode);
+        range.setEndAfter(textNode);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      } else {
+        this.editorEl.appendChild(textNode);
+      }
+    } else {
+      this.editorEl.appendChild(textNode);
+    }
+
+    const space = document.createTextNode('\u00A0');
+    textNode.parentNode?.insertBefore(space, textNode.nextSibling);
+
+    this.onChange();
+  }
+
   private insertToken(type: Token['type']) {
+    // Only one Cursor token is allowed per flow (the engine only ever uses
+    // the first one it finds at expansion time — extra ones were silently
+    // discarded). The menu already greys this option out once one exists,
+    // but this guard protects against it being called any other way.
+    if (type === 'cursor' && this.data.tokens.some(t => t.type === 'cursor')) {
+      alert(t('action.block.cursor_exists_alert'));
+      return;
+    }
+
     this.editorEl.focus();
     this.restoreRange();
     

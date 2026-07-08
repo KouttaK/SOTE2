@@ -16,6 +16,7 @@
  */
 
 import type { ConditionRule } from '../../../shared/types/index.js';
+import { t } from '../../../shared/i18n/index.js';
 
 /**
  * Produces a short human-readable summary of a condition rule, used as the
@@ -24,28 +25,24 @@ import type { ConditionRule } from '../../../shared/types/index.js';
  */
 export function describeConditionRule(rule: ConditionRule): string {
   const typeLabels: Record<string, string> = {
-    domain: 'Domínio',
-    time: 'Horário',
-    weekday: 'Dia da Semana',
-    date: 'Data',
-    field_type: 'Tipo de Campo',
-    field_content: 'Conteúdo do Campo',
+    domain: t('condition.domain'),
+    time: t('condition.time'),
+    weekday: t('condition.weekday'),
+    date: t('condition.date'),
   };
   const opLabels: Record<string, string> = {
-    contains: 'contém',
-    equals: 'é igual a',
-    matches: 'corresponde a',
-    before: 'antes de',
-    after: 'após',
+    contains: t('condition.op.contains'),
+    equals: t('condition.op.equals'),
+    not_contains: t('condition.op.not_contains'),
   };
   const typeLabel = typeLabels[rule.type] || rule.type;
 
   if (rule.type === 'time') {
     try {
       const p = JSON.parse(rule.value || '{}');
-      if (p.op === 'between') return `Horário entre ${p.from || '--:--'} e ${p.to || '--:--'}`;
-      if (p.op === 'before') return `Horário antes de ${p.at || '--:--'}`;
-      if (p.op === 'after') return `Horário após ${p.at || '--:--'}`;
+      if (p.op === 'between') return t('condition.preview.time_between', { from: p.from || '--:--', to: p.to || '--:--' });
+      if (p.op === 'before') return t('condition.preview.time_before', { at: p.at || '--:--' });
+      if (p.op === 'after') return t('condition.preview.time_after', { at: p.at || '--:--' });
     } catch { /* fallthrough */ }
     return typeLabel;
   }
@@ -53,14 +50,19 @@ export function describeConditionRule(rule: ConditionRule): string {
   if (rule.type === 'weekday') {
     try {
       const p = JSON.parse(rule.value || '{}');
-      const days = Array.isArray(p.days) ? p.days.join(', ') : '';
-      return `Dia ${p.op === 'is_not' ? 'não é' : 'é'} ${days || '(nenhum)'}`;
+      const dayKeyToLabel: Record<string, string> = {
+        Mon: t('weekday.mon'), Tue: t('weekday.tue'), Wed: t('weekday.wed'),
+        Thu: t('weekday.thu'), Fri: t('weekday.fri'), Sat: t('weekday.sat'), Sun: t('weekday.sun'),
+      };
+      const days = Array.isArray(p.days) ? p.days.map((d: string) => dayKeyToLabel[d] || d).join(', ') : '';
+      const key = p.op === 'is_not' ? 'condition.preview.weekday_is_not' : 'condition.preview.weekday_is';
+      return t(key, { days: days || t('condition.preview.weekday_none') });
     } catch { /* fallthrough */ }
     return typeLabel;
   }
 
   if (rule.type === 'date') {
-    return `Data é ${rule.value || '...'}`;
+    return t('condition.preview.date_is', { value: rule.value || '...' });
   }
 
   return `${typeLabel} ${opLabels[rule.operator] || rule.operator} "${rule.value || '...'}"`;
@@ -86,6 +88,21 @@ const COND_BLOCK_CSS = `
   margin-bottom: 0.375rem;
 }
 
+/* The branch column card is narrow (23rem), so cramming
+   [type select][operator][value] into a single row never had enough
+   room. Squeezing the operator+value container down to fit alongside
+   the type select (via its min-width:0) didn't force a clean wrap —
+   it forced an internal wrap *inside* that squeezed container, which
+   then got vertically centered against the type select by
+   align-items:center, producing a scrambled, misaligned card.
+   Stacking the type select on its own full-width row (matching the
+   label + full-width field pattern used elsewhere in the extension,
+   e.g. .form-label + .input-field) removes the fight for space:
+   the row below then has the full card width for operator + value. */
+.condition-rule-stack { display: flex; flex-direction: column; gap: 0.5rem; }
+.condition-rule-stack > .pill-select-wrap { width: 100%; }
+.condition-rule-stack > .pill-select-wrap .pill-select { width: 100%; }
+
 .condition-rule-row {
   display: flex;
   align-items: center;
@@ -93,6 +110,12 @@ const COND_BLOCK_CSS = `
   flex-wrap: wrap;
 }
 
+/* min-width (not a fixed width) keeps every dropdown in a condition row
+   visually anchored to the same baseline size — matching the reference
+   design's fixed-width "Domain" / operator pills — while still letting
+   longer Portuguese labels ("Dia da Semana", "Não é nenhum dos dias")
+   grow past it instead of being clipped. Without this, switching the
+   rule type made the whole row jump/reflow depending on label length. */
 .pill-select-wrap { position: relative; flex-shrink: 0; }
 .pill-select {
   appearance: none;
@@ -105,7 +128,10 @@ const COND_BLOCK_CSS = `
   font-size: 0.8125rem;
   cursor: pointer;
   font-family: inherit;
+  box-sizing: border-box;
+  min-width: 9rem;
 }
+.pill-select-wrap--op .pill-select { min-width: 6rem; }
 .pill-select:hover { border-color: #525252; }
 .pill-select:focus { outline: none; border-color: #737373; }
 .pill-select-wrap::after {
@@ -131,6 +157,7 @@ const COND_BLOCK_CSS = `
   padding: 0.625rem 0.75rem;
   flex: 1;
   min-width: 8rem;
+  box-sizing: border-box;
   transition: border-color 0.15s;
 }
 .pill-value:focus-within { border-color: #737373; }
@@ -144,6 +171,23 @@ const COND_BLOCK_CSS = `
   font-size: 0.8125rem;
   outline: none;
   font-family: inherit;
+}
+
+/* Two-field rows (e.g. "Entre {hora} e {hora}") should split the space
+   evenly and stay vertically centered on the "e" connector, instead of
+   each field sizing independently to its own min-width. */
+.pill-value-pair {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+}
+.pill-value-pair .pill-value { flex: 1 1 0; min-width: 6rem; }
+.pill-value-pair .pill-pair-sep {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: #737373;
 }
 
 .day-buttons { display: flex; gap: 0.375rem; flex-wrap: wrap; }
@@ -249,26 +293,26 @@ export class ConditionRuleBlock {
         <div class="block-icon">${ICONS.branch}</div>
         <div class="block-title-wrap">
           <p class="block-step">${this.opts.label}</p>
-          <h2 class="block-title">Condition: If context matches</h2>
+          <h2 class="block-title">${t('condition.rule.title')}</h2>
         </div>
-        <span class="block-badge">Filter</span>
+        <span class="block-badge">${t('condition.rule.badge')}</span>
         <div class="block-menu-wrap">
-          <button class="block-menu-btn" title="Mais opções">${ICONS.ellipsis}</button>
+          <button class="block-menu-btn" title="${t('common.more_options')}">${ICONS.ellipsis}</button>
           <div class="block-menu" style="display:none;"></div>
         </div>
       </div>
       <div class="block-body">
-        <label class="condition-rule-label">Condition Rule</label>
-        <div class="condition-rule-row">
+        <label class="condition-rule-label">${t('editor.condition.rule_label')}</label>
+        <div class="condition-rule-stack">
           <div class="pill-select-wrap">
             <select class="pill-select rule-type">
-              <option value="domain"  ${rule.type === 'domain'  ? 'selected' : ''}>Domínio</option>
-              <option value="time"    ${rule.type === 'time'    ? 'selected' : ''}>Horário</option>
-              <option value="weekday" ${rule.type === 'weekday' ? 'selected' : ''}>Dia da Semana</option>
-              <option value="date"    ${rule.type === 'date'    ? 'selected' : ''}>Data</option>
+              <option value="domain"  ${rule.type === 'domain'  ? 'selected' : ''}>${t('condition.domain')}</option>
+              <option value="time"    ${rule.type === 'time'    ? 'selected' : ''}>${t('condition.time')}</option>
+              <option value="weekday" ${rule.type === 'weekday' ? 'selected' : ''}>${t('condition.weekday')}</option>
+              <option value="date"    ${rule.type === 'date'    ? 'selected' : ''}>${t('condition.date')}</option>
             </select>
           </div>
-          <div class="rule-value-container condition-rule-row" style="flex:1; min-width:0;"></div>
+          <div class="rule-value-container condition-rule-row"></div>
         </div>
       </div>
     `;
@@ -285,14 +329,14 @@ export class ConditionRuleBlock {
 
     const menuItems: { label: string; icon: string; danger?: boolean; onClick: () => void }[] = [];
     if (this.opts.onAddSenaoSe) {
-      menuItems.push({ label: 'Adicionar Senão Se', icon: ICONS.plus, onClick: this.opts.onAddSenaoSe });
+      menuItems.push({ label: t('condition.menu.add_elseif'), icon: ICONS.plus, onClick: this.opts.onAddSenaoSe });
     }
     if (this.opts.onAddElse) {
-      menuItems.push({ label: 'Adicionar Senão (Else)', icon: ICONS.plus, onClick: this.opts.onAddElse });
+      menuItems.push({ label: t('editor.condition.add_else'), icon: ICONS.plus, onClick: this.opts.onAddElse });
     }
     menuItems.push({
-      label: 'Remover esta Condição', icon: ICONS.trash, danger: true, onClick: () => {
-        if (confirm('Remover esta condição?')) this.opts.onRemove();
+      label: t('editor.condition.remove_rule'), icon: ICONS.trash, danger: true, onClick: () => {
+        if (confirm(t('condition.confirm.remove_rule'))) this.opts.onRemove();
       }
     });
     bindHeaderMenu(this.el, menuItems);
@@ -308,12 +352,12 @@ export class ConditionRuleBlock {
 
   private renderDomainInputs(rule: ConditionRule, container: HTMLElement) {
     const opWrap = document.createElement('div');
-    opWrap.className = 'pill-select-wrap';
+    opWrap.className = 'pill-select-wrap pill-select-wrap--op';
     opWrap.innerHTML = `
       <select class="pill-select rule-operator">
-        <option value="contains" ${rule.operator === 'contains' ? 'selected' : ''}>Contém</option>
-        <option value="equals"   ${rule.operator === 'equals'   ? 'selected' : ''}>Igual</option>
-        <option value="matches"  ${rule.operator === 'matches'  ? 'selected' : ''}>Corresponde</option>
+        <option value="contains"     ${rule.operator === 'contains'     ? 'selected' : ''}>${t('condition.op.contains')}</option>
+        <option value="equals"       ${rule.operator === 'equals'       ? 'selected' : ''}>${t('condition.op.equals')}</option>
+        <option value="not_contains" ${rule.operator === 'not_contains' ? 'selected' : ''}>${t('condition.op.not_contains')}</option>
       </select>
     `;
 
@@ -321,7 +365,7 @@ export class ConditionRuleBlock {
     valueWrap.className = 'pill-value';
     valueWrap.innerHTML = `
       ${ICONS.globe}
-      <input type="text" class="rule-value" value="${rule.value || ''}" placeholder="ex: gmail.com" />
+      <input type="text" class="rule-value" value="${rule.value || ''}" placeholder="${t('condition.domain.placeholder')}" />
     `;
 
     container.appendChild(opWrap);
@@ -344,12 +388,12 @@ export class ConditionRuleBlock {
     if (!parsed.op) parsed.op = 'between';
 
     const opWrap = document.createElement('div');
-    opWrap.className = 'pill-select-wrap';
+    opWrap.className = 'pill-select-wrap pill-select-wrap--op';
     opWrap.innerHTML = `
       <select class="pill-select time-op-select">
-        <option value="between" ${parsed.op === 'between' ? 'selected' : ''}>Entre</option>
-        <option value="before"  ${parsed.op === 'before'  ? 'selected' : ''}>Antes de</option>
-        <option value="after"   ${parsed.op === 'after'   ? 'selected' : ''}>Após</option>
+        <option value="between" ${parsed.op === 'between' ? 'selected' : ''}>${t('condition.time.between')}</option>
+        <option value="before"  ${parsed.op === 'before'  ? 'selected' : ''}>${t('condition.time.before')}</option>
+        <option value="after"   ${parsed.op === 'after'   ? 'selected' : ''}>${t('condition.time.after')}</option>
       </select>
     `;
 
@@ -383,10 +427,16 @@ export class ConditionRuleBlock {
 
     const renderTimeFields = (op: string) => {
       if (op === 'between') {
+        // Both "de" and "até" fields get the clock icon and share the row
+        // evenly (.pill-value-pair) so the "e" connector sits centered
+        // between two equally-sized pills, matching the rest of the
+        // condition block's aligned pill layout.
         timeFields.innerHTML = `
-          <div class="pill-value" style="flex:0 1 auto; min-width:7rem;">${ICONS.clock}<input type="time" class="time-from" value="${parsed.from || '08:00'}"></div>
-          <span style="font-size:0.75rem; color:#737373;">e</span>
-          <div class="pill-value" style="flex:0 1 auto; min-width:7rem;"><input type="time" class="time-to" value="${parsed.to || '18:00'}"></div>
+          <div class="pill-value-pair">
+            <div class="pill-value">${ICONS.clock}<input type="time" class="time-from" value="${parsed.from || '08:00'}"></div>
+            <span class="pill-pair-sep">${t('condition.time.to')}</span>
+            <div class="pill-value">${ICONS.clock}<input type="time" class="time-to" value="${parsed.to || '18:00'}"></div>
+          </div>
         `;
       } else {
         timeFields.innerHTML = `
@@ -412,14 +462,17 @@ export class ConditionRuleBlock {
     if (!Array.isArray(parsed.days)) parsed.days = [];
 
     const dayKeys = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const dayLabels: Record<string, string> = { Mon: 'Seg', Tue: 'Ter', Wed: 'Qua', Thu: 'Qui', Fri: 'Sex', Sat: 'Sáb', Sun: 'Dom' };
+    const dayLabels: Record<string, string> = {
+      Mon: t('weekday.mon'), Tue: t('weekday.tue'), Wed: t('weekday.wed'),
+      Thu: t('weekday.thu'), Fri: t('weekday.fri'), Sat: t('weekday.sat'), Sun: t('weekday.sun'),
+    };
 
     const opWrap = document.createElement('div');
-    opWrap.className = 'pill-select-wrap';
+    opWrap.className = 'pill-select-wrap pill-select-wrap--op';
     opWrap.innerHTML = `
       <select class="pill-select weekday-op-select">
-        <option value="is"     ${parsed.op === 'is'     ? 'selected' : ''}>É um dos dias</option>
-        <option value="is_not" ${parsed.op === 'is_not' ? 'selected' : ''}>Não é nenhum dos dias</option>
+        <option value="is"     ${parsed.op === 'is'     ? 'selected' : ''}>${t('condition.weekday.is')}</option>
+        <option value="is_not" ${parsed.op === 'is_not' ? 'selected' : ''}>${t('condition.weekday.is_not')}</option>
       </select>
     `;
 
@@ -501,27 +554,27 @@ export class ConditionElseBlock {
       <div class="block-header">
         <div class="block-icon">${ICONS.arrowsSplit}</div>
         <div class="block-title-wrap">
-          <p class="block-step">SENÃO</p>
-          <h2 class="block-title">Else: Otherwise</h2>
+          <p class="block-step">${t('condition.tag.else')}</p>
+          <h2 class="block-title">${t('condition.else.title')}</h2>
         </div>
-        <span class="block-badge">Fallback</span>
+        <span class="block-badge">${t('condition.else.badge')}</span>
         <div class="block-menu-wrap">
-          <button class="block-menu-btn" title="Mais opções">${ICONS.ellipsis}</button>
+          <button class="block-menu-btn" title="${t('common.more_options')}">${ICONS.ellipsis}</button>
           <div class="block-menu" style="display:none;"></div>
         </div>
       </div>
       <div class="block-body">
         <div class="else-card-body">
           ${ICONS.arrowsSplit}
-          <span>Executa quando nenhuma condição acima corresponder.</span>
+          <span>${t('condition.else.body')}</span>
         </div>
       </div>
     `;
 
     bindHeaderMenu(this.el, [
       {
-        label: 'Remover Senão', icon: ICONS.trash, danger: true, onClick: () => {
-          if (confirm('Remover o Senão (Else)?')) this.opts.onRemove();
+        label: t('condition.else.menu.remove'), icon: ICONS.trash, danger: true, onClick: () => {
+          if (confirm(t('condition.confirm.remove_else'))) this.opts.onRemove();
         }
       },
     ]);

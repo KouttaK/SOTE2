@@ -82,6 +82,12 @@
   cursor: pointer;
   transition: all 150ms;
   background: transparent;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: max-content;
+}
+.btn-preview-label {
+  white-space: nowrap;
 }
 .btn-preview:hover { color: #ffffff; border-color: #525252; }
 
@@ -343,6 +349,51 @@
 
 .block-body { padding: 1.25rem; }
 
+/* ── Preview Modal ───────────────────────────────────────────────────────
+   .modal-backdrop / .modal-container / .modal-header / .modal-body are
+   shared with the token-config modals (tokens.css) for visual consistency;
+   this just widens the container since it needs to show real content. */
+.modal-container--wide { max-width: 34rem; }
+.preview-modal-body { display: flex; flex-direction: column; gap: 1.25rem; }
+
+.preview-trigger-row { display: flex; align-items: center; gap: 0.625rem; }
+.preview-trigger-label { font-size: 0.75rem; color: #737373; }
+.preview-trigger-badge {
+  font-family: monospace;
+  font-size: 0.8125rem;
+  background-color: #262626;
+  color: #d4d4d4;
+  border: 1px solid #404040;
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.625rem;
+}
+.preview-trigger-badge--empty { color: #737373; font-style: italic; font-family: inherit; }
+
+.preview-branch { display: flex; flex-direction: column; gap: 0.5rem; }
+.preview-branch + .preview-branch { margin-top: 0.25rem; padding-top: 1.25rem; border-top: 1px solid #262626; }
+.preview-branch-label { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.preview-branch-tag {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: #a3a3a3;
+  background-color: #262626;
+  border: 1px solid #404040;
+  border-radius: 9999px;
+  padding: 0.125rem 0.5rem;
+}
+.preview-branch-rule { font-size: 0.8125rem; color: #737373; }
+
+.preview-content--empty {
+  background-color: #0a0a0a;
+  border: 1px dashed #404040;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  color: #737373;
+  font-size: 0.8125rem;
+  font-style: italic;
+}
+
 /* ── Form Elements ──────────────────────────────────────────────────────── */
 
 .form-label {
@@ -478,9 +529,33 @@
   font-size: 0.75rem;
   cursor: pointer;
   background: transparent;
+  white-space: nowrap;
 }
 .rt-insert-token:hover { color: #ffffff; border-color: #525252; }
 .rt-insert-token svg { width: 0.625rem; height: 0.625rem; }
+
+.rt-insert-variable {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 0.375rem;
+  border: 1px solid #404040;
+  color: #a3a3a3;
+  font-size: 0.75rem;
+  cursor: pointer;
+  background: transparent;
+  white-space: nowrap;
+}
+.rt-insert-variable:hover { color: #ffffff; border-color: #525252; }
+.rt-insert-variable svg { width: 0.625rem; height: 0.625rem; }
+/* Reuses .token-menu-overlay/.token-menu-item (tokens.css) for the dropdown
+   look, but needs to align under its own (leftmost of the two) button. */
+#variable-menu-container.token-menu-overlay {
+  width: 16rem;
+  max-height: 16rem;
+  overflow-y: auto;
+}
 
 .rt-editor-area {
   background-color: #0a0a0a;
@@ -593,7 +668,12 @@
   align-items: center;
   position: relative;
   flex-shrink: 0;
-  width: 23rem;
+  /* Matches .block-card's own max-width (32rem) below — a narrower value
+     here used to force the Action block inside each branch to shrink
+     (via ".branch-col .block-card" max-width) as soon as a condition was
+     added, which must not happen: the text block should stay the same
+     size whether it's in the linear flow or inside a condition branch. */
+  width: 32rem;
 }
 
 .branch-col::before {
@@ -609,9 +689,146 @@
 
 .branch-col .block-card {
   width: 100%;
-  max-width: 23rem;
+  max-width: 32rem;
 }
 
 .branch-col .connector {
   margin: 0.5rem 0;
 }
+
+/* ── Condition Rule Inputs ───────────────────────────────────────────────
+   The type/operator <select>s, value pills, time-range pair, and weekday
+   toggle buttons rendered by ConditionRuleBlock had no CSS at all — bare
+   native form controls with zero sizing/spacing, which is why the whole
+   condition block looked tiny and unfinished next to the Trigger/Action
+   cards. */
+
+.condition-rule-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #737373;
+  margin-bottom: 0.5rem;
+}
+
+.condition-rule-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.condition-rule-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pill-select-wrap {
+  flex: 1 1 auto;
+  min-width: 8rem;
+}
+
+.pill-select {
+  width: 100%;
+  background-color: #0a0a0a;
+  border: 1px solid #404040;
+  border-radius: 0.5rem;
+  padding: 0.625rem 2rem 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  color: #ffffff;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+  /* Custom chevron instead of relying on the OS-native select arrow, which
+     looks out of place against the dark theme. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 512' fill='%23737373'%3E%3Cpath d='M31.3 192h257.3c17.8 0 26.7 21.5 14.1 34.1L174.1 354.8c-7.8 7.8-20.5 7.8-28.3 0L17.2 226.1C4.6 213.5 13.5 192 31.3 192z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 0.65rem;
+}
+.pill-select:focus { border-color: #737373; }
+
+.pill-value {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #0a0a0a;
+  border: 1px solid #404040;
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  flex: 1 1 auto;
+  min-width: 8rem;
+}
+.pill-value:focus-within { border-color: #737373; }
+.pill-value svg { width: 0.75rem; height: 0.75rem; color: #737373; flex-shrink: 0; }
+.pill-value input {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 0.875rem;
+  outline: none;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+}
+/* Native date/time picker icons default to a dark glyph that all but
+   disappears against our dark input background — invert so it's visible. */
+.pill-value input[type="time"]::-webkit-calendar-picker-indicator,
+.pill-value input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.6);
+  cursor: pointer;
+}
+
+.pill-value-pair {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex: 1 1 100%;
+}
+.pill-value-pair .pill-value { flex: 1 1 0; min-width: 0; }
+
+.pill-pair-sep {
+  font-size: 0.8125rem;
+  color: #737373;
+  flex-shrink: 0;
+}
+
+.day-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+.day-btn {
+  flex: 1 1 0;
+  min-width: 2.5rem;
+  background-color: #0a0a0a;
+  border: 1px solid #404040;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.375rem;
+  font-size: 0.8125rem;
+  color: #a3a3a3;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  font-family: inherit;
+}
+.day-btn:hover { border-color: #737373; color: #d4d4d4; }
+.day-btn.active {
+  background-color: #262626;
+  border-color: #737373;
+  color: #ffffff;
+}
+
+/* ── Else Block Body ─────────────────────────────────────────────────────
+   Also completely unstyled before. */
+.else-card-body {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  background-color: #0a0a0a;
+  border: 1px dashed #404040;
+  border-radius: 0.5rem;
+  padding: 0.875rem 1rem;
+  color: #a3a3a3;
+  font-size: 0.8125rem;
+}
+.else-card-body svg { width: 1rem; height: 1rem; color: #737373; flex-shrink: 0; }

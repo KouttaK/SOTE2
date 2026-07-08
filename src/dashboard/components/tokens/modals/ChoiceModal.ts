@@ -4,18 +4,19 @@
 
 import { BaseModal } from './BaseModal.js';
 import type { Token } from '../../../../shared/types/index.js';
+import { t } from '../../../../shared/i18n/index.js';
 
 export class ChoiceModal extends BaseModal {
   private options: string[];
   private onSaveCallback: (newConfig: { options: string[], label?: string }) => void;
 
   constructor(token: Token, onSave: (newConfig: { options: string[], label?: string }) => void) {
-    super('Configure Choice');
+    super(t('token.modal.configure_choice'));
     this.onSaveCallback = onSave;
     
     // Config defaults
     const config = token.config || {};
-    this.options = (config.options as string[]) || ['Option 1', 'Option 2'];
+    this.options = (config.options as string[]) || [t('token.choice.option_placeholder', { n: 1 }), t('token.choice.option_placeholder', { n: 2 })];
 
     this.renderBody();
   }
@@ -23,9 +24,9 @@ export class ChoiceModal extends BaseModal {
   private renderBody() {
     this.body.innerHTML = `
       <div class="field-group">
-        <label>Options (min 2, max 10)</label>
+        <label>${t('token.choice.options_label')}</label>
         <div class="choice-list" id="choice-list-container"></div>
-        <button class="btn-add-choice">+ Add Option</button>
+        <button class="btn-add-choice">+ ${t('token.choice.add_option')}</button>
       </div>
     `;
 
@@ -36,7 +37,7 @@ export class ChoiceModal extends BaseModal {
         this.options.push('');
         this.renderList();
       } else {
-        alert('Max 10 options allowed.');
+        alert(t('token.choice.max_options_alert'));
       }
     });
   }
@@ -53,7 +54,7 @@ export class ChoiceModal extends BaseModal {
       input.type = 'text';
       input.className = 'form-input';
       input.value = opt;
-      input.placeholder = `Option ${index + 1}`;
+      input.placeholder = t('token.choice.option_placeholder', { n: index + 1 });
       input.addEventListener('input', (e) => {
         this.options[index] = (e.target as HTMLInputElement).value;
       });
@@ -68,7 +69,7 @@ export class ChoiceModal extends BaseModal {
           this.options.splice(index, 1);
           this.renderList();
         } else {
-          alert('Min 2 options required.');
+          alert(t('token.choice.min_options_alert'));
         }
       });
 
@@ -81,7 +82,7 @@ export class ChoiceModal extends BaseModal {
   protected onSave(): void {
     const validOptions = this.options.map(o => o.trim()).filter(o => o.length > 0);
     if (validOptions.length < 2) {
-      alert('Please provide at least 2 valid options.');
+      alert(t('token.choice.min_valid_alert'));
       return;
     }
     this.onSaveCallback({ options: validOptions });

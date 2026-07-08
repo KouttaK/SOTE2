@@ -2,6 +2,8 @@
  * src/dashboard/components/tokens/modals/BaseModal.ts
  */
 
+import { t } from '../../../../shared/i18n/index.js';
+
 export abstract class BaseModal {
   protected backdrop!: HTMLElement;
   protected container!: HTMLElement;
@@ -38,8 +40,8 @@ export abstract class BaseModal {
     const footer = document.createElement('div');
     footer.className = 'modal-footer';
     footer.innerHTML = `
-      <button class="btn-secondary" id="btn-modal-cancel">Cancel</button>
-      <button class="btn-primary" id="btn-modal-save">Save</button>
+      <button class="btn-secondary" id="btn-modal-cancel">${t('common.cancel')}</button>
+      <button class="btn-primary" id="btn-modal-save">${t('common.save')}</button>
     `;
 
     this.container.appendChild(header);

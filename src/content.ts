@@ -10,8 +10,12 @@ import { ChoicePopup } from './content/engine/ChoicePopup.js';
 import { CommandPalette } from './content/palette/CommandPalette.js';
 import { applyCasing } from './content/engine/SmartCase.js';
 import { expandToken, ExpansionContext } from './content/engine/tokenExpander.js';
+import { resolveActionBlockContent } from './content/engine/ActionContentResolver.js';
+import { detectSearchTrigger, buildSearchResults, SearchScope } from './content/engine/SearchTriggerDetector.js';
+import { SearchPopup } from './content/search/SearchPopup.js';
 import { sendMessage, onMessage } from './shared/messaging/client.js';
-import type { ActionBlock, Token, Flow, Block, Settings, ClipboardEntry } from './shared/types/index.js';
+import { domainMatchesAny } from './shared/storage/helpers.js';
+import type { ActionBlock, Token, Flow, Form, Block, Settings, ClipboardEntry, Variable } from './shared/types/index.js';
 
 export default defineContentScript({
   matches: ['<all_urls>'],
@@ -23,27 +27,26 @@ export default defineContentScript({
     const choicePopup = new ChoicePopup();
     const commandPalette = new CommandPalette();
 
-    const isBlocked = (hostname: string, blocklist: string[]): boolean => {
-      for (const b of blocklist) {
-        if (b.startsWith('*.')) {
-          const domain = b.slice(2);
-          if (hostname === domain || hostname.endsWith('.' + domain)) return true;
-        } else {
-          if (hostname === b) return true;
-        }
-      }
-      return false;
-    };
+    const isBlocked = domainMatchesAny;
 
     // 1. Initial Load of Data via Messaging
     let flows: Flow[] = await sendMessage({ type: 'GET_FLOWS' });
     let settings: Settings = await sendMessage({ type: 'GET_SETTINGS' });
+
+    // Forms ("Formulários") — per-site fill-in profiles, consumed by the
+    // Gatilho de Busca (search trigger) and the Palette. Kept in sync the
+    // same way Flows are (initial fetch here + FORMS_UPDATED below).
+    let forms: Form[] = (await sendMessage({ type: 'GET_FORMS' })) || [];
 
     // Clipboard history, newest item first — text-only mirror of what's
     // persisted in the background (see StorageService.getClipboardHistory).
     let clipboardHistory: string[] = ((await sendMessage({ type: 'GET_CLIPBOARD_HISTORY' })) as ClipboardEntry[])
       .map((entry) => entry.text);
     console.log('[SOTE][clipboard] initial history fetched on page load:', clipboardHistory, '(url:', window.location.href, ')');
+
+    // Global Variables ({{KEY}} -> value), used to resolve variable tokens
+    // typed directly into action text at expansion time (see resolveVariablesInText below).
+    let variables: Variable[] = (await sendMessage({ type: 'GET_VARIABLES' })) || [];
 
     if (isBlocked(window.location.hostname, settings.blocklist || []) || !settings.globalEnabled) {
       console.log('[SOTE] Disabled on this site by blocklist or global settings.');
@@ -53,6 +56,8 @@ export default defineContentScript({
 
     detector.updateData(flows, settings);
     commandPalette.updateFlows(flows);
+    commandPalette.updateForms(forms);
+    commandPalette.updateContext(window.location.hostname, settings.searchTrigger?.includeFlows !== false);
 
     // 2. Listen for Broadcasts from Background
     onMessage((msg) => {
@@ -65,6 +70,7 @@ export default defineContentScript({
         }
         detector.updateData(flows, settings);
         monitor.triggerKeys = settings.triggerKeys;
+        commandPalette.updateContext(window.location.hostname, settings.searchTrigger?.includeFlows !== false);
       }
       
       if (msg.type === 'FLOWS_UPDATED') {
@@ -73,9 +79,18 @@ export default defineContentScript({
         commandPalette.updateFlows(flows);
       }
 
+      if (msg.type === 'FORMS_UPDATED') {
+        forms = (msg.payload as Form[]) || [];
+        commandPalette.updateForms(forms);
+      }
+
       if (msg.type === 'CLIPBOARD_HISTORY_UPDATED') {
         clipboardHistory = (msg.payload as ClipboardEntry[]).map((entry) => entry.text);
         console.log('[SOTE][clipboard] authoritative history from background:', clipboardHistory);
+      }
+
+      if (msg.type === 'VARIABLES_UPDATED') {
+        variables = (msg.payload as Variable[]) || [];
       }
     });
 
@@ -112,67 +127,6 @@ export default defineContentScript({
       return e.clipboardData?.getData('text/plain') ?? '';
     };
 
-    /**
-     * Looks up a token's full definition (type + config) for a pill element
-     * found in the saved HTML. Reads config straight off the pill's own
-     * `data-token-config` attribute first — that's the source of truth
-     * written at save time (see TokenPill.createHTML) — and only falls
-     * back to the flow's `tokens` array (older saved flows, before this
-     * attribute existed) or to inferring the bare type from the pill's
-     * `token-<type>` class as a last resort. This way a choice/input popup
-     * always has its real options/label instead of silently falling back
-     * to an empty config if the array and the HTML were ever out of sync.
-     */
-    /**
-     * Invisible marker used to remember where a Cursor token sat in the
-     * expanded content. It's inserted as plain text in place of the first
-     * Cursor token's pill, and after all Smart Case processing is done we
-     * locate it, compute how many plain-text characters precede it, strip
-     * it out, and tell TextInjector to land the caret at that offset
-     * instead of at the end of the inserted text (the old, unimplemented
-     * behavior — the token was just deleted with nothing done with it).
-     * Wrapped in U+2063 (invisible separator) on both sides so it can't
-     * collide with anything a user would plausibly type or paste.
-     */
-    const CURSOR_MARKER = '\u2063\u2063SOTE_CURSOR\u2063\u2063';
-
-    const resolveTokenForPill = (pillEl: Element, tokens: Token[]): Token | null => {
-      const tokenId = pillEl.getAttribute('data-token-id') || crypto.randomUUID();
-
-      const typeClass = Array.from(pillEl.classList).find(c => c.startsWith('token-') && c !== 'token-pill');
-      const classType = typeClass?.replace('token-', '') as Token['type'] | undefined;
-
-      const configAttr = pillEl.getAttribute('data-token-config');
-      if (configAttr) {
-        try {
-          const config = JSON.parse(configAttr);
-          const arrayMatch = tokens.find(t => t.id === pillEl.getAttribute('data-token-id'));
-          const type = classType || arrayMatch?.type;
-          if (type) {
-            console.log('[SOTE][token-resolve] via data-token-config attribute', { tokenId, type, config });
-            return { id: tokenId, type, config };
-          }
-        } catch (err) {
-          console.warn('[SOTE][token-resolve] data-token-config found but failed to JSON.parse it', { raw: configAttr, err });
-        }
-      } else {
-        console.log('[SOTE][token-resolve] pill has no data-token-config attribute (older saved flow?) — falling back', { pillOuterHTML: (pillEl as HTMLElement).outerHTML });
-      }
-
-      const arrayMatch = tokens.find(t => t.id === pillEl.getAttribute('data-token-id'));
-      if (arrayMatch) {
-        console.log('[SOTE][token-resolve] via tokens array match', arrayMatch);
-        return arrayMatch;
-      }
-
-      if (!classType) {
-        console.warn('[SOTE][token-resolve] could not resolve token at all (no config attr, no array match, no class type)', { pillOuterHTML: (pillEl as HTMLElement).outerHTML, tokens });
-        return null;
-      }
-      console.warn('[SOTE][token-resolve] falling back to bare type from class, config will be EMPTY', { tokenId, classType });
-      return { id: tokenId, type: classType, config: {} };
-    };
-
     // 3. Orchestrator Logic
     // match parameter allows full match context, or just pass the Flow directly for palette
     const handleTrigger = async (flow: Flow, shortcutTyped: string, element: HTMLElement) => {
@@ -186,88 +140,29 @@ export default defineContentScript({
         }
 
         const isRichText = actionBlock.format === 'richtext';
-        let rawContent = actionBlock.content;
-        console.log('[SOTE][handleTrigger] raw action content loaded at runtime:', rawContent);
-        console.log('[SOTE][handleTrigger] actionBlock.tokens array:', actionBlock.tokens);
 
         const context: ExpansionContext = {
           tabUrl: window.location.href,
           tabTitle: document.title,
           clipboardHistory,
         };
-        console.log('[SOTE][clipboard] history at trigger time (index 0 = most recent):', clipboardHistory);
 
-        // Resolve Tokens sequentially.
-        // We parse the saved HTML into a detached DOM and walk the actual
-        // <span class="token-pill" data-token-id="..."> elements present in
-        // it (via resolveTokenForPill), instead of iterating
-        // actionBlock.tokens and trying to find/replace each one back in
-        // the HTML string with a regex. This guarantees every pill that's
-        // really in the content gets resolved — and for 'choice'/'input'
-        // tokens, that the popup actually opens — even if the tokens array
-        // and the saved HTML were ever slightly out of sync.
-        const container = document.createElement('div');
-        container.innerHTML = rawContent;
-        const pillEls = Array.from(container.querySelectorAll('.token-pill'));
+        // Resolve tokens + variables + cursor position — shared pipeline,
+        // see ActionContentResolver.ts (also used by Forms' field insertion).
+        const resolved = await resolveActionBlockContent(actionBlock, element, {
+          choicePopup,
+          variables,
+          context,
+        });
 
-        let cancelled = false;
-        let cursorMarkerPlaced = false;
-
-        for (const pillEl of pillEls) {
-          const token = resolveTokenForPill(pillEl, actionBlock.tokens || []);
-          if (!token) continue;
-
-          if (token.type === 'cursor') {
-            // The Cursor token doesn't need async resolution — it just
-            // marks where the caret should end up after expansion. Only
-            // the first one found actually gets used (multi cursor
-            // "tab stops" aren't supported yet); any extra ones are simply
-            // removed, same as before.
-            if (!cursorMarkerPlaced) {
-              pillEl.replaceWith(document.createTextNode(CURSOR_MARKER));
-              cursorMarkerPlaced = true;
-            } else {
-              pillEl.replaceWith(document.createTextNode(''));
-            }
-            continue;
-          }
-
-          let expandedValue = await expandToken(token, context);
-
-          if (expandedValue === null) {
-            // Needs popup (choice / input)
-            expandedValue = await choicePopup.showForToken(token, element);
-            if (expandedValue === null) {
-              cancelled = true; // User cancelled (Esc / click outside / etc.)
-              break;
-            }
-          }
-
-          // Insert as a text node (not raw HTML) so any "<" or "&" the user
-          // typed into an Input token can't be misinterpreted as markup.
-          pillEl.replaceWith(document.createTextNode(expandedValue));
-        }
-
-        let expandedContent = container.innerHTML;
-
-        if (cancelled) {
+        if (resolved === null) {
+          // User cancelled a choice/input token popup (Esc / click outside).
           monitor.resume();
           return;
         }
 
-        // Locate the Cursor token's marker (if any) and translate it into a
-        // plain-text character offset, then strip it out of the content —
-        // done *before* Smart Case runs so the marker can never be mistaken
-        // for/interfere with finding the real first visible letter.
-        let cursorOffset: number | null = null;
-        const markerIndex = expandedContent.indexOf(CURSOR_MARKER);
-        if (markerIndex !== -1) {
-          const before = expandedContent.slice(0, markerIndex);
-          const beforeTmp = document.createElement('div');
-          beforeTmp.innerHTML = before;
-          cursorOffset = (beforeTmp.textContent || '').length;
-          expandedContent = expandedContent.split(CURSOR_MARKER).join('');
-        }
+        let expandedContent = resolved.content;
+        const cursorOffset = resolved.cursorOffset;
 
         // Apply Smart Case / Force Capitalize.
         // These are independent toggles: Force Capitalize must work even
@@ -306,14 +201,130 @@ export default defineContentScript({
       }
     };
 
+    /**
+     * Formulários (Forms) — inserts a single field's value, resolved
+     * through the exact same pipeline as a Flow's action (see spec §2/§3).
+     * `searchTyped` is whatever the user had typed for the Gatilho de
+     * Busca (prefix + query) — it gets deleted and replaced by the
+     * resolved content, the same way a Flow shortcut is.
+     */
+    const handleFormFieldInsert = async (form: Form, field: Form['fields'][number], searchTyped: string, element: HTMLElement) => {
+      monitor.pause();
+      try {
+        const context: ExpansionContext = {
+          tabUrl: window.location.href,
+          tabTitle: document.title,
+          clipboardHistory,
+        };
+
+        const resolved = await resolveActionBlockContent(field.value, element, {
+          choicePopup,
+          variables,
+          context,
+        });
+
+        if (resolved === null) {
+          monitor.resume();
+          return;
+        }
+
+        const isRichText = field.value.format === 'richtext';
+        TextInjector.inject(element, searchTyped, resolved.content, isRichText, resolved.cursorOffset);
+        monitor.clearBuffer();
+
+        sendMessage({ type: 'FORM_USED', payload: { formId: form.id } });
+      } catch (e) {
+        console.error('[SOTE] Form field insertion error:', e);
+      } finally {
+        monitor.resume();
+      }
+    };
+
     // 4. Setup Text Monitor
     let exactMatchTimeout: any = null;
+
+    // ── Gatilho de Busca ("Search Trigger") — spec §3/§4 ────────────────────
+    const searchPopup = new SearchPopup();
+    let searchSession: { element: HTMLElement; typed: string } | null = null;
+    // Sticks for the remainder of the current session once the user clicks
+    // the "tente ///" footer suggestion (spec §4.3), so they don't have to
+    // retype the prefix. Reset whenever a brand new session starts.
+    let scopeOverride: SearchScope | null = null;
+
+    const searchTriggerAllowed = (): boolean => {
+      if (!settings.globalEnabled) return false;
+      if (settings.snoozeUntil && Date.now() < settings.snoozeUntil) return false;
+      if (isBlocked(window.location.hostname, settings.blocklist || [])) return false;
+      return true;
+    };
+
+    searchPopup.onSelect(async (sel) => {
+      const session = searchSession;
+      searchSession = null;
+      scopeOverride = null;
+      if (!session) return;
+      if (sel.kind === 'flow') {
+        await handleTrigger(sel.flow, session.typed, session.element);
+      } else {
+        await handleFormFieldInsert(sel.form, sel.field, session.typed, session.element);
+      }
+    });
+
+    searchPopup.onCancel(() => {
+      searchSession = null;
+      scopeOverride = null;
+    });
+
+    const runSearchTrigger = (state: ReturnType<typeof detectSearchTrigger>, element: HTMLElement) => {
+      if (!state) {
+        if (searchPopup.isOpen()) {
+          searchPopup.close();
+          searchSession = null;
+          scopeOverride = null;
+        }
+        return;
+      }
+
+      if (!searchPopup.isOpen()) {
+        scopeOverride = null; // fresh session
+        searchPopup.open(element);
+      }
+      searchSession = { element, typed: state.typed };
+
+      const effectiveScope = scopeOverride || state.scope;
+      const cfg = settings.searchTrigger;
+      const { results, noFormResultsForSite } = buildSearchResults({
+        query: state.query,
+        scope: effectiveScope,
+        hostname: window.location.hostname,
+        forms,
+        flows,
+        includeFlows: cfg?.includeFlows !== false,
+      });
+
+      const footer =
+        effectiveScope === 'domain' && noFormResultsForSite && cfg?.globalPrefix
+          ? {
+              label: `Nenhum resultado para este site — tente ${cfg.globalPrefix}`,
+              onClick: () => {
+                scopeOverride = 'global';
+                runSearchTrigger(state, element);
+              },
+            }
+          : null;
+
+      searchPopup.update(results, footer);
+    };
 
     const monitor = new TextMonitor(
       (e, buffer, element) => {
         if (exactMatchTimeout) {
           clearTimeout(exactMatchTimeout);
           exactMatchTimeout = null;
+        }
+
+        if (searchTriggerAllowed()) {
+          runSearchTrigger(detectSearchTrigger(buffer, settings), element);
         }
 
         const match = detector.detectExactMatchMode(buffer);
@@ -336,6 +347,11 @@ export default defineContentScript({
         }
       },
       (e, keyName, buffer, element) => {
+        // While the search popup is open, Enter selects the highlighted
+        // result (handled by SearchPopup's own keydown listener) instead of
+        // falling through to Trigger-mode expansion.
+        if (searchPopup.isOpen()) return;
+
         const match = detector.detectTriggerMode(buffer);
         if (match) {
           e.preventDefault(); 
@@ -414,9 +430,13 @@ export default defineContentScript({
         e.preventDefault();
         
         commandPalette.open(
-          (flow) => {
+          (sel) => {
             const active = document.activeElement as HTMLElement;
-            handleTrigger(flow, '', active);
+            if (sel.kind === 'flow') {
+              handleTrigger(sel.flow, '', active);
+            } else {
+              handleFormFieldInsert(sel.form, sel.field, '', active);
+            }
           },
           () => {
             // onClose callback

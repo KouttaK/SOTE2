@@ -10,6 +10,7 @@
 
 import { browser } from 'wxt/browser';
 import { storage } from '../shared/storage/StorageService.js';
+import { domainMatchesAny } from '../shared/storage/helpers.js';
 import type { Message } from '../shared/messaging/types.js';
 import type { Settings } from '../shared/types/index.js';
 
@@ -64,6 +65,28 @@ export default defineBackground(() => {
 
       broadcastMessage({ type: 'SETTINGS_UPDATED', payload: settings });
       broadcastMessage({ type: 'FLOWS_UPDATED', payload: flows });
+    }
+
+    // Variables have their own key/broadcast, same reasoning as clipboard
+    // history: they change independently of settings/flows and shouldn't
+    // force a settings/flows re-fetch, but content scripts DO need to know
+    // about edits so {{KEY}} resolution at expansion time stays current.
+    const variablesChanged = Object.prototype.hasOwnProperty.call(changes, 'variables') ||
+      Object.keys(changes).some(k => k.startsWith('variables__'));
+    if (variablesChanged) {
+      const variables = await storage.getVariables();
+      broadcastMessage({ type: 'VARIABLES_UPDATED', payload: variables });
+    }
+
+    // Forms have their own key/broadcast, same reasoning as Variables:
+    // they change independently of settings/flows and shouldn't force a
+    // settings/flows re-fetch, but content scripts DO need fresh Forms for
+    // the Gatilho de Busca (search trigger) and the Palette.
+    const formsChanged = Object.prototype.hasOwnProperty.call(changes, 'forms') ||
+      Object.keys(changes).some(k => k.startsWith('forms__'));
+    if (formsChanged) {
+      const forms = await storage.getForms();
+      broadcastMessage({ type: 'FORMS_UPDATED', payload: forms });
     }
 
     // Clipboard history has its own key/broadcast so it doesn't get
@@ -133,6 +156,25 @@ async function handleMessage(message: Message, sender: any): Promise<any> {
       await storage.clearClipboardHistory();
       return { success: true };
 
+    case 'GET_VARIABLES':
+      return await storage.getVariables();
+
+    case 'GET_FORMS':
+      return await storage.getForms();
+
+    case 'SAVE_FORM':
+      await storage.saveForm(message.payload);
+      // storage.onChanged above broadcasts FORMS_UPDATED to every tab.
+      return { success: true };
+
+    case 'DELETE_FORM':
+      await storage.deleteForm(message.payload.id);
+      return { success: true };
+
+    case 'FORM_USED':
+      await storage.incrementFormStats(message.payload.formId);
+      return { success: true };
+
     default:
       console.warn('[SOTE] Unknown message type:', message);
       return null;
@@ -181,7 +223,7 @@ async function updateIcon(settingsCache?: Settings) {
     const urlStr = tabs[0]?.url;
     if (urlStr && (urlStr.startsWith('http://') || urlStr.startsWith('https://'))) {
       const url = new URL(urlStr);
-      if (isBlocked(url.hostname, settings.blocklist || [])) {
+      if (domainMatchesAny(url.hostname, settings.blocklist || [])) {
         await setIconState('blocked');
         return;
       }
@@ -230,20 +272,7 @@ async function setIconState(state: 'active' | 'disabled' | 'snoozed' | 'blocked'
   }
 }
 
-/** Helper to check blocklist */
-function isBlocked(hostname: string, blocklist: string[]): boolean {
-  for (const b of blocklist) {
-    if (b.startsWith('*.')) {
-      const domain = b.slice(2);
-      if (hostname === domain || hostname.endsWith('.' + domain)) return true;
-    } else {
-      if (hostname === b) return true;
-    }
-  }
-  return false;
-}
-
-// Update icon when tabs change to reflect blocklist status
+/** Update icon when tabs change to reflect blocklist status */
 browser.tabs.onActivated.addListener(() => updateIcon());
 browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.url && tab.active) updateIcon();

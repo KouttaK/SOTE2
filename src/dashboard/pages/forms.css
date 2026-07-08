@@ -1,0 +1,461 @@
+/**
+ * src/dashboard/pages/forms.css — "Formulários" page
+ *
+ * List + editor split view; classes are independently namespaced (frm-*)
+ * since every dashboard page keeps its own local copies of the shared
+ * primitives (form-group/btn-secondary/modal-*) rather than a global
+ * stylesheet — same convention already used by variables.css, settings.css, etc.
+ */
+
+#page-forms {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  inset: 0;
+  background-color: #0a0a0a;
+}
+
+/* Header */
+.frm-header {
+  background-color: #171717;
+  border-bottom: 1px solid #262626;
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.frm-header-title {
+  color: #fff;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.frm-header-subtitle {
+  color: #737373;
+  font-size: 0.75rem;
+  margin: 0.125rem 0 0 0;
+}
+
+.frm-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+.frm-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #0a0a0a;
+  border: 1px solid #404040;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  width: 14rem;
+}
+
+.frm-search svg {
+  color: #737373;
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.frm-search input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #d4d4d4;
+  font-size: 0.875rem;
+  flex: 1;
+}
+
+.btn-primary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  background-color: #ffffff;
+  color: #171717;
+  font-size: 0.875rem;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  flex-shrink: 0;
+  min-width: max-content;
+  white-space: nowrap;
+}
+.btn-primary:hover {
+  background-color: #f5f5f5;
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Main Area Layout */
+.frm-main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Left Sidebar - List */
+.frm-sidebar {
+  width: 20rem;
+  background-color: #171717;
+  border-right: 1px solid #262626;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+.frm-sidebar-header {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #262626;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.frm-sidebar-count {
+  font-size: 0.75rem;
+  color: #737373;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.frm-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.frm-card {
+  padding: 1rem;
+  border-bottom: 1px solid #262626;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.frm-card:hover {
+  background-color: #262626;
+}
+.frm-card.active {
+  background-color: #262626;
+  border-left: 2px solid #fff;
+  padding-left: calc(1rem - 2px);
+}
+
+.frm-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 0.375rem;
+}
+
+.frm-card-title {
+  font-size: 0.875rem;
+  margin: 0;
+  font-weight: 500;
+}
+.frm-card.active .frm-card-title { color: #fff; }
+.frm-card:not(.active) .frm-card-title { color: #d4d4d4; }
+
+.frm-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-bottom: 0.5rem;
+}
+
+.frm-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  background-color: #262626;
+  border: 1px solid #404040;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  color: #a3a3a3;
+}
+.frm-badge svg { width: 0.625rem; height: 0.625rem; }
+.frm-card.active .frm-badge { background-color: #404040; }
+
+.frm-badge.warn {
+  color: #f59e0b;
+  border-color: #78350f;
+}
+
+.frm-card-desc {
+  font-size: 0.75rem;
+  color: #737373;
+  line-height: 1.625;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+}
+
+/* Right Area - Editor */
+.frm-editor-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #0a0a0a;
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+.frm-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #737373;
+}
+.frm-empty-state svg { width: 3rem; height: 3rem; margin-bottom: 1rem; color: #404040; }
+.frm-empty-state h3 { color: #d4d4d4; margin: 0 0 0.5rem 0; font-size: 1rem; }
+
+.frm-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 48rem;
+}
+
+.frm-form-header {
+  display: flex;
+  align-items: center;
+}
+.frm-form-header h2 { color: #fff; margin: 0; font-size: 1.25rem; }
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.form-label {
+  color: #a3a3a3;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.form-hint {
+  color: #737373;
+  font-size: 0.75rem;
+  margin: 0;
+}
+.form-input {
+  background-color: #171717;
+  border: 1px solid #262626;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  color: #fff;
+  font-size: 0.875rem;
+  outline: none;
+}
+.form-input:focus { border-color: #525252; }
+
+/* Sites chips */
+.frm-sites-input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+.frm-sites-input-row .form-input { flex: 1; }
+
+.frm-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.frm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  background-color: #171717;
+  border: 1px solid #404040;
+  border-radius: 9999px;
+  padding: 0.25rem 0.375rem 0.25rem 0.75rem;
+  font-size: 0.8125rem;
+  color: #d4d4d4;
+}
+.frm-chip-remove {
+  background: transparent;
+  border: none;
+  color: #737373;
+  cursor: pointer;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+.frm-chip-remove:hover { background-color: #404040; color: #fff; }
+
+/* Fields list */
+.frm-fields-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.frm-field-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #171717;
+  border: 1px solid #262626;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.25rem;
+}
+.frm-field-row.dragging { opacity: 0.4; }
+.frm-field-row.drag-over { border-color: #737373; }
+
+.frm-field-drag-handle {
+  cursor: grab;
+  color: #525252;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.frm-field-drag-handle svg { width: 0.875rem; height: 0.875rem; }
+.frm-field-drag-handle:active { cursor: grabbing; }
+
+.frm-field-name-input {
+  background-color: #0a0a0a;
+  border: 1px solid #262626;
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.625rem;
+  color: #fff;
+  font-size: 0.8125rem;
+  outline: none;
+  flex: 1;
+  min-width: 0;
+}
+.frm-field-name-input:focus { border-color: #525252; }
+
+.frm-field-type-select {
+  background-color: #0a0a0a;
+  border: 1px solid #262626;
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.375rem;
+  color: #a3a3a3;
+  font-size: 0.75rem;
+  outline: none;
+  flex-shrink: 0;
+}
+
+.frm-field-actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.frm-field-btn {
+  width: 1.875rem;
+  height: 1.875rem;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid #404040;
+  color: #a3a3a3;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+.frm-field-btn svg { width: 0.75rem; height: 0.75rem; }
+.frm-field-btn:hover { background-color: #262626; color: #fff; }
+.frm-field-btn.danger:hover { background-color: #ef4444; border-color: #ef4444; color: #fff; }
+
+.frm-empty-fields {
+  color: #737373;
+  font-size: 0.8125rem;
+  padding: 1rem;
+  text-align: center;
+  border: 1px dashed #262626;
+  border-radius: 0.5rem;
+}
+
+.btn-danger {
+  background-color: transparent;
+  color: #ef4444;
+  border: 1px solid #ef4444;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.btn-danger:hover { background-color: #ef4444; color: #fff; }
+
+/* Modals (delete confirm + field value editor) */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(10, 10, 10, 0.8);
+  backdrop-filter: blur(4px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.modal-content {
+  background-color: #171717;
+  border: 1px solid #262626;
+  border-radius: 1rem;
+  width: 100%;
+  max-width: 28rem;
+  padding: 1.5rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header { margin-bottom: 1.5rem; }
+.modal-title { color: #fff; font-size: 1.125rem; margin: 0; }
+.modal-desc { color: #737373; font-size: 0.875rem; margin: 0.25rem 0 0 0; }
+.modal-footer { margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem; }
+.btn-secondary { background-color: #262626; color: #d4d4d4; border: 1px solid #404040; border-radius: 0.5rem; padding: 0.5rem 1rem; cursor: pointer; }
+.btn-secondary:hover { background-color: #404040; }
+.btn-danger-solid { background-color: #ef4444; color: #fff; border: none; border-radius: 0.5rem; padding: 0.5rem 1rem; cursor: pointer; }
+.btn-danger-solid:hover { background-color: #dc2626; }
+
+/* Field value editor modal — wider, hosts the full ActionBlock component */
+.frm-field-modal-content {
+  max-width: 44rem;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+.frm-field-modal-body {
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* The ActionBlock component's own header ("Step 3: Action...") is written
+   for the Flow editor's step-by-step framing and doesn't make sense
+   inside a single field's value modal — hide it here, toolbar+editor
+   underneath are still fully reused as-is. */
+.frm-field-modal-body .block-header {
+  display: none;
+}
+.frm-field-modal-body .block-card {
+  border: none;
+  padding: 0;
+}
