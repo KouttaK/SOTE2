@@ -8,6 +8,7 @@
     "build": "wxt build",
     "build:firefox": "wxt build -b firefox",
     "build:chrome": "wxt build -b chrome",
+    "zip:firefox": "wxt zip -b firefox",
     "test": "vitest run"
   },
   "keywords": [],
