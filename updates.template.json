@@ -1,0 +1,16 @@
+{
+  "addons": {
+    "sote2@example.com": {
+      "updates": [
+        {
+          "version": "1.0.0",
+          "update_link": "https://SEU-USUARIO.github.io/SEU-REPO/sote2-1.0.0.xpi",
+          "update_hash": "sha256:REPLACE_WITH_SHA256_OF_THE_XPI",
+          "applications": {
+            "gecko": { "strict_min_version": "109.0" }
+          }
+        }
+      ]
+    }
+  }
+}

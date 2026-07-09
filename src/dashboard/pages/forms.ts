@@ -280,11 +280,37 @@ export default class FormsPage implements Page {
     if (container) container.innerHTML = '';
   }
 
+  /**
+   * `Form.sites` / domainMatchesAny() only understand a bare hostname or a
+   * "*.domain" wildcard (see shared/storage/helpers.ts) — but it's very easy
+   * to paste a full address bar URL instead (e.g. copied straight out of the
+   * browser: "https://www.google.com/?zx=..." or a Chrome-style match
+   * pattern like "https://www.google.com/*"). Neither of those will ever
+   * match the plain hostname the content script checks against, so the site
+   * silently never triggers. Reduce anything URL-shaped down to just its
+   * hostname before storing it; "*.gmail.com"-style wildcards pass through
+   * unchanged since "*" is still accepted as a hostname label by the URL
+   * parser.
+   */
+  private normalizeSitePattern(raw: string): string {
+    const value = raw.trim();
+    if (!value) return '';
+
+    const candidate = value.includes('://') ? value : `https://${value}`;
+    try {
+      const hostname = new URL(candidate).hostname;
+      if (hostname) return hostname.toLowerCase();
+    } catch {
+      // Not URL-parseable — fall back to the raw (trimmed/lowercased) input.
+    }
+    return value.toLowerCase();
+  }
+
   private bindEditorEvents(area: HTMLElement) {
     const siteInput = area.querySelector<HTMLInputElement>('#frm-site-input')!;
 
     const addSite = () => {
-      const domain = siteInput.value.trim().toLowerCase();
+      const domain = this.normalizeSitePattern(siteInput.value);
       if (domain && !this.draftSites.includes(domain)) {
         this.draftSites.push(domain);
         siteInput.value = '';
