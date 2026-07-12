@@ -10,6 +10,11 @@ export class ChoicePopup {
   
   constructor() {
     this.host = document.createElement('div');
+    // Lets TextMonitor's document-level keydown/input listeners recognize
+    // and ignore keystrokes typed into this popup's own field (see
+    // TextMonitor.ts) — without this, Space/Tab/Enter typed here could leak
+    // through as a (stale) trigger-key match and steal focus back.
+    this.host.className = 'sote-choice-popup-host';
     this.host.style.position = 'absolute';
     this.host.style.zIndex = '2147483647'; // Max z-index
     this.shadow = this.host.attachShadow({ mode: 'open' });
@@ -119,7 +124,6 @@ export class ChoicePopup {
 
   public showForToken(token: Token, targetElement: HTMLElement): Promise<string | null> {
     return new Promise((resolve) => {
-      this.positionPopup(targetElement);
       document.body.appendChild(this.host);
 
       const container = document.createElement('div');
@@ -146,7 +150,7 @@ export class ChoicePopup {
           if (settled) return; // Promise already resolved, ignore further calls
           settled = true;
           if (autoSelectTimer) clearTimeout(autoSelectTimer);
-          document.removeEventListener('keydown', onKeyDown);
+          document.removeEventListener('keydown', onKeyDown, true);
           document.removeEventListener('mousedown', onDocMouseDown, true);
           this.close();
           resolve(value);
@@ -182,6 +186,7 @@ export class ChoicePopup {
         // Keyboard nav: arrows to move, Enter to confirm, Esc to cancel,
         // and number keys (1-9, 0) to jump straight to & confirm an option.
         const onKeyDown = (e: KeyboardEvent) => {
+          e.stopPropagation(); // prevent site scripts from intercepting the keystroke
           const items = list.querySelectorAll('.choice-item');
           if (e.key === 'ArrowDown') {
             e.preventDefault();
@@ -207,7 +212,7 @@ export class ChoicePopup {
             }
           }
         };
-        document.addEventListener('keydown', onKeyDown);
+        document.addEventListener('keydown', onKeyDown, true);
 
         // Click outside the popup cancels it.
         const onDocMouseDown = (e: MouseEvent) => {
@@ -236,32 +241,51 @@ export class ChoicePopup {
         const btn = document.createElement('button');
         btn.className = 'btn-submit';
         btn.textContent = 'Confirm';
+
+        // Focus guard: reclaims focus when a site script steals it (e.g.
+        // sites that listen for keydown and force-focus their own input).
+        // The guard is disabled *before* close() so the blur fired by
+        // removing the host doesn't try to refocus a detached element.
+        let focusGuardActive = true;
+        input.addEventListener('blur', () => {
+          if (!focusGuardActive) return;
+          requestAnimationFrame(() => {
+            if (document.body.contains(this.host)) input.focus();
+          });
+        });
+
         btn.addEventListener('click', () => {
+          focusGuardActive = false;
+          document.removeEventListener('keydown', onKeyDown, true);
           this.close();
           resolve(input.value);
         });
         container.appendChild(btn);
 
         const onKeyDown = (e: KeyboardEvent) => {
+          e.stopPropagation(); // prevent site scripts from intercepting the keystroke
           if (e.key === 'Enter') {
             e.preventDefault();
+            focusGuardActive = false;
+            document.removeEventListener('keydown', onKeyDown, true);
             this.close();
-            document.removeEventListener('keydown', onKeyDown);
             resolve(input.value);
           } else if (e.key === 'Escape') {
             e.preventDefault();
+            focusGuardActive = false;
+            document.removeEventListener('keydown', onKeyDown, true);
             this.close();
-            document.removeEventListener('keydown', onKeyDown);
             resolve(null);
           }
         };
-        document.addEventListener('keydown', onKeyDown);
+        document.addEventListener('keydown', onKeyDown, true);
         
         // Auto focus
         setTimeout(() => input.focus(), 10);
       }
 
       this.shadow.appendChild(container);
+      this.positionPopup(targetElement);
     });
   }
 
@@ -278,10 +302,40 @@ export class ChoicePopup {
   }
 
   private positionPopup(target: HTMLElement) {
+    const margin = 8;
     const rect = target.getBoundingClientRect();
-    this.host.style.top = `${rect.bottom + window.scrollY + 8}px`;
-    this.host.style.left = `${rect.left + window.scrollX}px`;
-    
-    // Simple viewport bounds check could be added here
+    // Real size now that the popup's content has actually been built and
+    // attached to the DOM (host is already position:absolute + appended,
+    // so this reflects its final rendered width/height).
+    const hostRect = this.host.getBoundingClientRect();
+    const viewportW = document.documentElement.clientWidth;
+    const viewportH = document.documentElement.clientHeight;
+
+    const spaceBelow = viewportH - rect.bottom;
+    const spaceAbove = rect.top;
+
+    // Prefer opening below the field (matches the original behaviour), but
+    // flip above it when there isn't enough room below — e.g. a text field
+    // pinned to the bottom of the screen (position: fixed), where
+    // rect.bottom sits right at the edge of the viewport and a "below"
+    // popup would render entirely off-screen.
+    let top: number;
+    if (hostRect.height + margin <= spaceBelow || spaceBelow >= spaceAbove) {
+      top = rect.bottom + margin;
+    } else {
+      top = rect.top - hostRect.height - margin;
+    }
+    // Final safety clamp: never let the popup render above or below the
+    // visible viewport, regardless of which side was picked above.
+    top = Math.max(margin, Math.min(top, viewportH - hostRect.height - margin));
+
+    let left = rect.left;
+    left = Math.max(margin, Math.min(left, viewportW - hostRect.width - margin));
+
+    // host is position:absolute, so its coordinates are relative to the
+    // document — add the current scroll offset on top of the
+    // viewport-relative numbers computed above.
+    this.host.style.top = `${top + window.scrollY}px`;
+    this.host.style.left = `${left + window.scrollX}px`;
   }
 }

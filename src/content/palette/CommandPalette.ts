@@ -45,6 +45,12 @@ export class CommandPalette {
   private isVisible: boolean = false;
   private previousFocus: HTMLElement | null = null;
   private keydownListener: (e: KeyboardEvent) => void;
+  /** Reactive focus guard — keeps focus on the search input even when a site
+   *  script steals it (e.g. sites that force-focus their own text fields on
+   *  every keydown). Disabled before close() so the blur fired by removing the
+   *  host doesn't try to refocus a detached element. */
+  private focusGuardActive = false;
+  private focusGuardHandler: (() => void) | null = null;
 
   constructor() {
     this.createDOM();
@@ -84,6 +90,20 @@ export class CommandPalette {
     this.filterResults('');
     
     document.addEventListener('keydown', this.keydownListener, true);
+
+    // Activate focus guard
+    this.focusGuardActive = true;
+    if (!this.focusGuardHandler) {
+      this.focusGuardHandler = () => {
+        if (!this.focusGuardActive) return;
+        requestAnimationFrame(() => {
+          if (this.isVisible && document.body.contains(this.host)) {
+            this.searchInput.focus();
+          }
+        });
+      };
+      this.searchInput.addEventListener('blur', this.focusGuardHandler);
+    }
     
     // Focus search input on next tick
     setTimeout(() => {
@@ -93,6 +113,10 @@ export class CommandPalette {
 
   public close() {
     if (!this.isVisible) return;
+
+    // Disable focus guard BEFORE removing the host, so the blur event fired
+    // by removing the element doesn't trigger a refocus on a detached node.
+    this.focusGuardActive = false;
     
     document.removeEventListener('keydown', this.keydownListener, true);
     

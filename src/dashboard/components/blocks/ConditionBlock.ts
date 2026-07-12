@@ -15,15 +15,25 @@
  * are removed.
  */
 
-import type { ConditionRule } from '../../../shared/types/index.js';
+import type { ConditionRule, ConditionCriterion } from '../../../shared/types/index.js';
 import { t } from '../../../shared/i18n/index.js';
 
+/** Escapes HTML-significant characters before interpolating user-typed rule
+ * values (e.g. the domain string) into an innerHTML attribute. */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 /**
- * Produces a short human-readable summary of a condition rule, used as the
- * label on the branch that comes out of the condition block in the flow
- * canvas (e.g. "SE · Domínio contém gmail.com").
+ * Produces a short human-readable summary of a single type/operator/value
+ * criterion (a rule's own primary check, or one entry of its `criteria`
+ * AND/OR group).
  */
-export function describeConditionRule(rule: ConditionRule): string {
+export function describeConditionCriterion(criterion: ConditionCriterion): string {
   const typeLabels: Record<string, string> = {
     domain: t('condition.domain'),
     time: t('condition.time'),
@@ -35,11 +45,11 @@ export function describeConditionRule(rule: ConditionRule): string {
     equals: t('condition.op.equals'),
     not_contains: t('condition.op.not_contains'),
   };
-  const typeLabel = typeLabels[rule.type] || rule.type;
+  const typeLabel = typeLabels[criterion.type] || criterion.type;
 
-  if (rule.type === 'time') {
+  if (criterion.type === 'time') {
     try {
-      const p = JSON.parse(rule.value || '{}');
+      const p = JSON.parse(criterion.value || '{}');
       if (p.op === 'between') return t('condition.preview.time_between', { from: p.from || '--:--', to: p.to || '--:--' });
       if (p.op === 'before') return t('condition.preview.time_before', { at: p.at || '--:--' });
       if (p.op === 'after') return t('condition.preview.time_after', { at: p.at || '--:--' });
@@ -47,9 +57,9 @@ export function describeConditionRule(rule: ConditionRule): string {
     return typeLabel;
   }
 
-  if (rule.type === 'weekday') {
+  if (criterion.type === 'weekday') {
     try {
-      const p = JSON.parse(rule.value || '{}');
+      const p = JSON.parse(criterion.value || '{}');
       const dayKeyToLabel: Record<string, string> = {
         Mon: t('weekday.mon'), Tue: t('weekday.tue'), Wed: t('weekday.wed'),
         Thu: t('weekday.thu'), Fri: t('weekday.fri'), Sat: t('weekday.sat'), Sun: t('weekday.sun'),
@@ -61,11 +71,30 @@ export function describeConditionRule(rule: ConditionRule): string {
     return typeLabel;
   }
 
-  if (rule.type === 'date') {
-    return t('condition.preview.date_is', { value: rule.value || '...' });
+  if (criterion.type === 'date') {
+    return t('condition.preview.date_is', { value: criterion.value || '...' });
   }
 
-  return `${typeLabel} ${opLabels[rule.operator] || rule.operator} "${rule.value || '...'}"`;
+  return `${typeLabel} ${opLabels[criterion.operator] || criterion.operator} "${criterion.value || '...'}"`;
+}
+
+/**
+ * Produces a short human-readable summary of a condition rule — its
+ * primary criterion, plus (if present) its AND/OR `criteria` group — used
+ * as the label on the branch that comes out of the condition block in the
+ * flow canvas (e.g. "SE · Domínio contém gmail.com E Horário entre 08:00
+ * e 18:00").
+ */
+export function describeConditionRule(rule: ConditionRule): string {
+  const parts = [describeConditionCriterion(rule)];
+  if (rule.criteria && rule.criteria.length > 0) {
+    const joinWord = (rule.combinator || 'AND') === 'OR' ? t('condition.criteria.or_word') : t('condition.criteria.and_word');
+    for (const criterion of rule.criteria) {
+      parts.push(describeConditionCriterion(criterion));
+    }
+    return parts.join(` ${joinWord} `);
+  }
+  return parts[0];
 }
 
 const ICONS = {
@@ -213,6 +242,97 @@ const COND_BLOCK_CSS = `
   font-size: 0.8125rem;
 }
 .else-card-body svg { width: 1rem; height: 1rem; color: #525252; flex-shrink: 0; }
+
+/* AND/OR ("E"/"OU") extra-criteria group — replaces the old "convert to
+   nested condition" affordance with something readable at a glance:
+   one shared combinator for the whole rule, plus one compact row per
+   extra criterion, each clearly labeled with the connector word. */
+.condition-criteria-group {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed #404040;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.cond-combinator-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+.cond-combinator-label {
+  font-size: 0.75rem;
+  color: #737373;
+}
+.cond-combinator-toggle {
+  display: inline-flex;
+  border: 1px solid #404040;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+.cond-combinator-btn {
+  background: #0a0a0a;
+  color: #a3a3a3;
+  border: none;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cond-combinator-btn:not(:last-child) { border-right: 1px solid #404040; }
+.cond-combinator-btn:hover { color: #d4d4d4; }
+.cond-combinator-btn.active { background: #ffffff; color: #171717; }
+
+.cond-extra-rows { display: flex; flex-direction: column; gap: 0.5rem; }
+.cond-extra-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.cond-extra-row-connector {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #737373;
+  min-width: 1.5rem;
+}
+.cond-remove-criterion-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid #404040;
+  background: #0a0a0a;
+  color: #737373;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cond-remove-criterion-btn svg { width: 0.625rem; height: 0.625rem; }
+.cond-remove-criterion-btn:hover { border-color: #ef4444; color: #ef4444; }
+
+.add-criterion-btn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  background: transparent;
+  border: 1px dashed #404040;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: #a3a3a3;
+  font-size: 0.75rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.add-criterion-btn svg { width: 0.625rem; height: 0.625rem; }
+.add-criterion-btn:hover { border-color: #737373; color: #fff; }
 `;
 
 let condStylesInjected = false;
@@ -314,18 +434,21 @@ export class ConditionRuleBlock {
           </div>
           <div class="rule-value-container condition-rule-row"></div>
         </div>
+        <div class="condition-criteria-group"></div>
       </div>
     `;
 
     const valueContainer = this.el.querySelector('.rule-value-container') as HTMLElement;
-    this.renderValueInput(rule, valueContainer);
+    this.renderValueInput(rule, valueContainer, () => this.opts.onChange());
 
     this.el.querySelector('.rule-type')!.addEventListener('change', (e) => {
       rule.type = (e.target as HTMLSelectElement).value as any;
       rule.value = '';
-      this.renderValueInput(rule, valueContainer);
+      this.renderValueInput(rule, valueContainer, () => this.opts.onChange());
       this.opts.onChange();
     });
+
+    this.renderCriteriaGroup();
 
     const menuItems: { label: string; icon: string; danger?: boolean; onClick: () => void }[] = [];
     if (this.opts.onAddSenaoSe) {
@@ -342,22 +465,109 @@ export class ConditionRuleBlock {
     bindHeaderMenu(this.el, menuItems);
   }
 
-  private renderValueInput(rule: ConditionRule, container: HTMLElement) {
+  private renderValueInput(target: ConditionCriterion, container: HTMLElement, onSave: () => void) {
     container.innerHTML = '';
-    if (rule.type === 'domain') this.renderDomainInputs(rule, container);
-    else if (rule.type === 'time') this.renderTimeInputs(rule, container);
-    else if (rule.type === 'weekday') this.renderWeekdayInputs(rule, container);
-    else if (rule.type === 'date') this.renderDateInputs(rule, container);
+    if (target.type === 'domain') this.renderDomainInputs(target, container, onSave);
+    else if (target.type === 'time') this.renderTimeInputs(target, container, onSave);
+    else if (target.type === 'weekday') this.renderWeekdayInputs(target, container, onSave);
+    else if (target.type === 'date') this.renderDateInputs(target, container, onSave);
   }
 
-  private renderDomainInputs(rule: ConditionRule, container: HTMLElement) {
+  /**
+   * Renders the "E" / "OU" additional-criteria group below the primary
+   * criterion — the redesigned replacement for the old "convert this
+   * branch into a nested condition" affordance. All criteria here combine
+   * with a single shared AND/OR operator (no mixed AND-of-ORs) and still
+   * lead to this same rule's one `action`, which is what makes it far
+   * easier to read than a separate nested Se/Senão Se/Senão tree.
+   */
+  private renderCriteriaGroup() {
+    const rule = this.data;
+    const groupEl = this.el.querySelector('.condition-criteria-group') as HTMLElement;
+    const criteria = rule.criteria || [];
+
+    let html = '';
+    if (criteria.length > 0) {
+      const combinator = rule.combinator || 'AND';
+      html += `
+        <div class="cond-combinator-row">
+          <span class="cond-combinator-label">${t('condition.criteria.match_label')}</span>
+          <div class="cond-combinator-toggle">
+            <button type="button" class="cond-combinator-btn ${combinator === 'AND' ? 'active' : ''}" data-c="AND">${t('condition.criteria.and')}</button>
+            <button type="button" class="cond-combinator-btn ${combinator === 'OR' ? 'active' : ''}" data-c="OR">${t('condition.criteria.or')}</button>
+          </div>
+        </div>
+      `;
+    }
+    html += `<div class="cond-extra-rows"></div>`;
+    html += `<button type="button" class="add-criterion-btn">${ICONS.plus} ${t('condition.criteria.add')}</button>`;
+    groupEl.innerHTML = html;
+
+    groupEl.querySelectorAll('.cond-combinator-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        rule.combinator = (btn as HTMLElement).dataset.c as 'AND' | 'OR';
+        this.opts.onChange();
+        this.renderCriteriaGroup();
+      });
+    });
+
+    const extraRowsEl = groupEl.querySelector('.cond-extra-rows') as HTMLElement;
+    criteria.forEach((criterion, idx) => {
+      const rowEl = document.createElement('div');
+      rowEl.className = 'cond-extra-row';
+      rowEl.innerHTML = `
+        <span class="cond-extra-row-connector">${(rule.combinator || 'AND') === 'OR' ? t('condition.criteria.or_word') : t('condition.criteria.and_word')}</span>
+        <div class="pill-select-wrap">
+          <select class="pill-select criterion-type">
+            <option value="domain"  ${criterion.type === 'domain'  ? 'selected' : ''}>${t('condition.domain')}</option>
+            <option value="time"    ${criterion.type === 'time'    ? 'selected' : ''}>${t('condition.time')}</option>
+            <option value="weekday" ${criterion.type === 'weekday' ? 'selected' : ''}>${t('condition.weekday')}</option>
+            <option value="date"    ${criterion.type === 'date'    ? 'selected' : ''}>${t('condition.date')}</option>
+          </select>
+        </div>
+        <div class="criterion-value-container condition-rule-row"></div>
+        <button type="button" class="cond-remove-criterion-btn" title="${t('condition.criteria.remove')}">${ICONS.trash}</button>
+      `;
+      extraRowsEl.appendChild(rowEl);
+
+      const valCont = rowEl.querySelector('.criterion-value-container') as HTMLElement;
+      this.renderValueInput(criterion, valCont, () => this.opts.onChange());
+
+      rowEl.querySelector('.criterion-type')!.addEventListener('change', (e) => {
+        criterion.type = (e.target as HTMLSelectElement).value as any;
+        criterion.value = '';
+        this.renderValueInput(criterion, valCont, () => this.opts.onChange());
+        this.opts.onChange();
+      });
+
+      rowEl.querySelector('.cond-remove-criterion-btn')!.addEventListener('click', () => {
+        rule.criteria!.splice(idx, 1);
+        if (rule.criteria!.length === 0) {
+          delete rule.criteria;
+          delete rule.combinator;
+        }
+        this.opts.onChange();
+        this.renderCriteriaGroup();
+      });
+    });
+
+    groupEl.querySelector('.add-criterion-btn')!.addEventListener('click', () => {
+      if (!rule.criteria) rule.criteria = [];
+      if (!rule.combinator) rule.combinator = 'AND';
+      rule.criteria.push({ type: 'domain', operator: 'contains', value: '' });
+      this.opts.onChange();
+      this.renderCriteriaGroup();
+    });
+  }
+
+  private renderDomainInputs(target: ConditionCriterion, container: HTMLElement, onSave: () => void) {
     const opWrap = document.createElement('div');
     opWrap.className = 'pill-select-wrap pill-select-wrap--op';
     opWrap.innerHTML = `
       <select class="pill-select rule-operator">
-        <option value="contains"     ${rule.operator === 'contains'     ? 'selected' : ''}>${t('condition.op.contains')}</option>
-        <option value="equals"       ${rule.operator === 'equals'       ? 'selected' : ''}>${t('condition.op.equals')}</option>
-        <option value="not_contains" ${rule.operator === 'not_contains' ? 'selected' : ''}>${t('condition.op.not_contains')}</option>
+        <option value="contains"     ${target.operator === 'contains'     ? 'selected' : ''}>${t('condition.op.contains')}</option>
+        <option value="equals"       ${target.operator === 'equals'       ? 'selected' : ''}>${t('condition.op.equals')}</option>
+        <option value="not_contains" ${target.operator === 'not_contains' ? 'selected' : ''}>${t('condition.op.not_contains')}</option>
       </select>
     `;
 
@@ -365,26 +575,26 @@ export class ConditionRuleBlock {
     valueWrap.className = 'pill-value';
     valueWrap.innerHTML = `
       ${ICONS.globe}
-      <input type="text" class="rule-value" value="${rule.value || ''}" placeholder="${t('condition.domain.placeholder')}" />
+      <input type="text" class="rule-value" value="${escapeHtml(target.value || '')}" placeholder="${t('condition.domain.placeholder')}" />
     `;
 
     container.appendChild(opWrap);
     container.appendChild(valueWrap);
 
     opWrap.querySelector('.rule-operator')!.addEventListener('change', (e) => {
-      rule.operator = (e.target as HTMLSelectElement).value as any;
-      this.opts.onChange();
+      target.operator = (e.target as HTMLSelectElement).value as any;
+      onSave();
     });
     valueWrap.querySelector('.rule-value')!.addEventListener('input', (e) => {
-      rule.value = (e.target as HTMLInputElement).value;
-      this.opts.onChange();
+      target.value = (e.target as HTMLInputElement).value;
+      onSave();
     });
   }
 
   // TIME — operator select + dynamic fields
-  private renderTimeInputs(rule: ConditionRule, container: HTMLElement) {
+  private renderTimeInputs(target: ConditionCriterion, container: HTMLElement, onSave: () => void) {
     let parsed: { op: string; from?: string; to?: string; at?: string } = { op: 'between' };
-    try { parsed = JSON.parse(rule.value || '{}'); } catch { /* */ }
+    try { parsed = JSON.parse(target.value || '{}'); } catch { /* */ }
     if (!parsed.op) parsed.op = 'between';
 
     const opWrap = document.createElement('div');
@@ -417,12 +627,12 @@ export class ConditionRuleBlock {
       if (op === 'between') {
         const from = (timeFields.querySelector('.time-from') as HTMLInputElement)?.value || '';
         const to   = (timeFields.querySelector('.time-to')   as HTMLInputElement)?.value || '';
-        rule.value = JSON.stringify({ op, from, to });
+        target.value = JSON.stringify({ op, from, to });
       } else {
         const at = (timeFields.querySelector('.time-at') as HTMLInputElement)?.value || '';
-        rule.value = JSON.stringify({ op, at });
+        target.value = JSON.stringify({ op, at });
       }
-      this.opts.onChange();
+      onSave();
     };
 
     const renderTimeFields = (op: string) => {
@@ -455,9 +665,9 @@ export class ConditionRuleBlock {
   }
 
   // WEEKDAY — operator select + day buttons
-  private renderWeekdayInputs(rule: ConditionRule, container: HTMLElement) {
+  private renderWeekdayInputs(target: ConditionCriterion, container: HTMLElement, onSave: () => void) {
     let parsed: { op: string; days: string[] } = { op: 'is', days: [] };
-    try { parsed = JSON.parse(rule.value || '{}'); } catch { /* */ }
+    try { parsed = JSON.parse(target.value || '{}'); } catch { /* */ }
     if (!parsed.op) parsed.op = 'is';
     if (!Array.isArray(parsed.days)) parsed.days = [];
 
@@ -493,8 +703,8 @@ export class ConditionRuleBlock {
     const save = () => {
       const op = (opWrap.querySelector('.weekday-op-select') as HTMLSelectElement).value;
       const days = Array.from(dayButtons.querySelectorAll('.day-btn.active')).map(b => (b as HTMLElement).dataset.day!);
-      rule.value = JSON.stringify({ op, days });
-      this.opts.onChange();
+      target.value = JSON.stringify({ op, days });
+      onSave();
     };
 
     opWrap.querySelector('.weekday-op-select')!.addEventListener('change', save);
@@ -507,20 +717,20 @@ export class ConditionRuleBlock {
   }
 
   // DATE — simple date picker
-  private renderDateInputs(rule: ConditionRule, container: HTMLElement) {
+  private renderDateInputs(target: ConditionCriterion, container: HTMLElement, onSave: () => void) {
     const valueWrap = document.createElement('div');
     valueWrap.className = 'pill-value';
     valueWrap.style.flex = '0 1 auto';
     valueWrap.style.minWidth = '10rem';
     valueWrap.innerHTML = `
       ${ICONS.calendar}
-      <input type="date" class="rule-value" value="${rule.value || ''}">
+      <input type="date" class="rule-value" value="${escapeHtml(target.value || '')}">
     `;
     container.appendChild(valueWrap);
 
     valueWrap.querySelector('.rule-value')!.addEventListener('change', (e) => {
-      rule.value = (e.target as HTMLInputElement).value;
-      this.opts.onChange();
+      target.value = (e.target as HTMLInputElement).value;
+      onSave();
     });
   }
 }

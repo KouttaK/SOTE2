@@ -27,7 +27,27 @@ export default defineConfig({
       gecko: {
         id: 'sote2@kouttak.github.io',
         update_url: 'https://kouttak.github.io/SOTE2/updates.json',
-        strict_min_version: '109.0'
+        // data_collection_permissions (below) only exists starting in
+        // Firefox 140 (desktop) / 142 (Android) — setting a lower
+        // strict_min_version here is what triggers AMO's "Manifest key
+        // not supported by the specified minimum Firefox version" alert.
+        // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/browser_specific_settings
+        strict_min_version: '140.0',
+        // Required by Mozilla for new submissions since Nov 3, 2025 —
+        // https://extensionworkshop.com/documentation/develop/firefox-builtin-data-consent/
+        // SOTE2 only reads/writes browser.storage locally and makes no
+        // network requests of its own, so it collects/transmits nothing.
+        // If that ever changes (e.g. adding real analytics/telemetry),
+        // this must be updated to list the actual data types collected.
+        data_collection_permissions: {
+          required: ['none']
+        }
+      },
+      // gecko_android would otherwise silently inherit gecko.strict_min_version
+      // (140), which is still one major short of the 142 Android needs for
+      // this same manifest key — so it gets its own explicit minimum.
+      gecko_android: {
+        strict_min_version: '142.0'
       }
     }
   }

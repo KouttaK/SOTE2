@@ -41,6 +41,70 @@
 .token-title { background-color: #eab308; border-color: #ca8a04; color: #171717; } /* Yellow */
 .token-title svg { color: #171717; }
 
+/* ── Tokens Preview (list of every token used + its configured value) ──── */
+.tokens-preview {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #262626;
+}
+.tokens-preview-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #737373;
+  margin: 0 0 0.5rem 0;
+}
+.tokens-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+.tokens-preview-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.625rem;
+  border-radius: 0.5rem;
+  background-color: #171717;
+  border: 1px solid #262626;
+  font-size: 0.8125rem;
+}
+.tokens-preview-item.is-editable {
+  cursor: pointer;
+  transition: border-color 150ms, background-color 150ms;
+}
+.tokens-preview-item.is-editable:hover {
+  border-color: #404040;
+  background-color: #1c1c1c;
+}
+.tokens-preview-dot {
+  flex-shrink: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+}
+.tokens-preview-type {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: #e5e5e5;
+  white-space: nowrap;
+}
+.tokens-preview-value {
+  color: #a3a3a3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tokens-preview-value em {
+  font-style: italic;
+  color: #737373;
+}
+.tokens-preview-sep {
+  color: #525252;
+  margin: 0 0.125rem;
+}
+
 /* ── Token Menu ────────────────────────────────────────────────────────── */
 .token-menu-overlay {
   position: absolute;
@@ -154,6 +218,48 @@
   font-size: 0.875rem; transition: all 150ms;
 }
 .btn-add-choice:hover { border-color: #737373; color: #d4d4d4; }
+
+/* Insert-variable button + dropdown, per Choice option row */
+.choice-var-wrap { position: relative; flex-shrink: 0; }
+.choice-var-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.375rem;
+  background-color: #171717;
+  border: 1px solid #404040;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+  width: 14rem;
+  max-height: 12rem;
+  overflow-y: auto;
+  z-index: 60;
+}
+.choice-var-menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #262626;
+  cursor: pointer;
+  text-align: left;
+}
+.choice-var-menu-item:last-child { border-bottom: none; }
+.choice-var-menu-item:hover { background-color: #262626; }
+.choice-var-menu-key { font-size: 0.8125rem; font-weight: 600; color: #5eead4; }
+.choice-var-menu-value {
+  font-size: 0.75rem;
+  color: #737373;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.choice-var-menu-empty { padding: 0.75rem; font-size: 0.8125rem; color: #737373; margin: 0; }
 
 /* ── Token modal form fields (Choice / Input / Date / Clipboard) ─────────
    These modals (BaseModal subclasses) build their bodies with plain

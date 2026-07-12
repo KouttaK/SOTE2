@@ -6,6 +6,16 @@ import { BaseModal } from './BaseModal.js';
 import type { Token } from '../../../../shared/types/index.js';
 import { t } from '../../../../shared/i18n/index.js';
 
+/** Escapes HTML-significant characters before interpolating an existing
+ * (user-typed) config value into an innerHTML attribute. */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 export class InputModal extends BaseModal {
   private onSaveCallback: (newConfig: { label: string, placeholder?: string }) => void;
   private labelInput!: HTMLInputElement;
@@ -22,11 +32,11 @@ export class InputModal extends BaseModal {
     this.body.innerHTML = `
       <div class="field-group" style="margin-bottom:1rem">
         <label>${t('token.input.field_label')}</label>
-        <input type="text" class="form-input" id="input-label" value="${label}" placeholder="${t('token.input.label_example')}">
+        <input type="text" class="form-input" id="input-label" value="${escapeHtml(label)}" placeholder="${t('token.input.label_example')}">
       </div>
       <div class="field-group">
         <label>${t('token.input.placeholder_optional')}</label>
-        <input type="text" class="form-input" id="input-placeholder" value="${placeholder}" placeholder="${t('token.input.placeholder_example')}">
+        <input type="text" class="form-input" id="input-placeholder" value="${escapeHtml(placeholder)}" placeholder="${t('token.input.placeholder_example')}">
       </div>
     `;
 

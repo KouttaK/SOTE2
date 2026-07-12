@@ -4,7 +4,8 @@
 
 import type { Page } from './index.js';
 import { storage } from '../../shared/storage/StorageService.js';
-import type { Flow, Block, TriggerBlock as ITriggerBlock, ConditionBlock as IConditionBlock, ActionBlock as IActionBlock, Settings } from '../../shared/types/index.js';
+import type { Flow, Block, TriggerBlock as ITriggerBlock, ConditionBlock as IConditionBlock, ActionBlock as IActionBlock, Settings, BranchTarget } from '../../shared/types/index.js';
+import { isConditionBlock } from '../../shared/types/index.js';
 import { router } from '../router.js';
 import { t } from '../../shared/i18n/index.js';
 import { TriggerBlock } from '../components/blocks/TriggerBlock.js';
@@ -43,7 +44,12 @@ export default class FlowEditorPage implements Page {
   private hasCondition = false;
   private conditionData: IConditionBlock | null = null; // rules[] + optional elseBranch, owned by the editor while a condition step exists
   private actionBlockInst: ActionBlock | null = null; // used only in the linear (no-condition) flow
-  private branchActionInsts: { kind: 'rule' | 'else'; index: number; inst: ActionBlock }[] = [];
+  // One entry per LEAF ActionBlock instance rendered anywhere in the branch
+  // tree (at any nesting depth). `commit()` writes the instance's live data
+  // back into its owning rule.action/elseBranch slot — the owner objects
+  // are already the real (nested) condition data by reference, so no extra
+  // bookkeeping about *where* in the tree a leaf lives is needed here.
+  private branchActionInsts: { inst: ActionBlock; commit: () => void }[] = [];
 
   // Keydown handler reference for removal
   private handleKeyDown!: (e: KeyboardEvent) => void;
@@ -239,22 +245,11 @@ export default class FlowEditorPage implements Page {
     const branches: PreviewBranch[] = [];
 
     if (this.hasCondition && this.conditionData) {
-      const condData = this.conditionData;
-      condData.rules.forEach((rule: ConditionRule, i: number) => {
-        const branchInst = this.branchActionInsts.find(b => b.kind === 'rule' && b.index === i);
-        branches.push({
-          tag: i === 0 ? t('condition.tag.if') : t('condition.tag.elseif'),
-          ruleDescription: describeConditionRule(rule),
-          action: branchInst ? branchInst.inst.getData() : rule.action,
-        });
-      });
-      if (condData.elseBranch) {
-        const branchInst = this.branchActionInsts.find(b => b.kind === 'else');
-        branches.push({
-          tag: t('condition.tag.else'),
-          action: branchInst ? branchInst.inst.getData() : condData.elseBranch,
-        });
-      }
+      // ActionBlock instances mutate the same data object passed to them
+      // in place, so rule.action / elseBranch already reflect any live
+      // unsaved edits — this walk can read straight from conditionData,
+      // recursing into nested conditions until it reaches a leaf action.
+      branches.push(...this.collectPreviewBranches(this.conditionData));
     } else if (this.actionBlockInst) {
       branches.push({ action: this.actionBlockInst.getData() });
     }
@@ -265,6 +260,43 @@ export default class FlowEditorPage implements Page {
     const variables = await storage.getVariables();
 
     new PreviewModal({ trigger: triggerData, settings: this.settings, branches, variables }).open();
+  }
+
+  /**
+   * Walks a (possibly nested) ConditionBlock and flattens it into one
+   * PreviewBranch per leaf action, building a "SE X → SENÃO SE Y → ..."
+   * path description as it descends so nested conditions are still
+   * legible in the flat preview list.
+   */
+  private collectPreviewBranches(condData: IConditionBlock, pathSoFar: string[] = []): PreviewBranch[] {
+    const result: PreviewBranch[] = [];
+
+    condData.rules.forEach((rule: ConditionRule, i: number) => {
+      const path = [...pathSoFar, describeConditionRule(rule)];
+      if (isConditionBlock(rule.action)) {
+        result.push(...this.collectPreviewBranches(rule.action, path));
+      } else {
+        result.push({
+          tag: pathSoFar.length === 0 ? (i === 0 ? t('condition.tag.if') : t('condition.tag.elseif')) : t('condition.tag.if'),
+          ruleDescription: path.join(' → '),
+          action: rule.action as IActionBlock,
+        });
+      }
+    });
+
+    if (condData.elseBranch) {
+      if (isConditionBlock(condData.elseBranch)) {
+        result.push(...this.collectPreviewBranches(condData.elseBranch, [...pathSoFar, t('condition.tag.else')]));
+      } else {
+        result.push({
+          tag: t('condition.tag.else'),
+          ruleDescription: pathSoFar.length ? pathSoFar.join(' → ') : undefined,
+          action: condData.elseBranch as IActionBlock,
+        });
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -293,17 +325,10 @@ export default class FlowEditorPage implements Page {
     blocks.push({ id: crypto.randomUUID(), type: 'trigger', data: triggerData });
     
     if (condData) {
-      // Each condition branch (Se / Senão Se / Senão) has its own dedicated
-      // ActionBlock instance rendered in the flow canvas — pull their data
-      // back into the matching rule/elseBranch before persisting.
-      this.branchActionInsts.forEach(({ kind, index, inst }) => {
-        const actionData = inst.getData();
-        if (kind === 'rule' && condData.rules[index]) {
-          condData.rules[index].action = actionData;
-        } else if (kind === 'else') {
-          condData.elseBranch = actionData;
-        }
-      });
+      // Every leaf ActionBlock rendered in the branch tree (at any nesting
+      // depth) has its own dedicated instance — pull each one's data back
+      // into its owning rule.action/elseBranch slot before persisting.
+      this.branchActionInsts.forEach(({ commit }) => commit());
       blocks.push({ id: crypto.randomUUID(), type: 'condition', data: condData });
     } else {
       const actionData = this.actionBlockInst!.getData();
@@ -394,7 +419,6 @@ export default class FlowEditorPage implements Page {
    */
   private renderBranches(container: Element) {
     if (!this.hasCondition || !this.conditionData) return;
-    const condData = this.conditionData;
 
     // Remove everything previously rendered after the trigger's connector
     // (i.e. re-render the whole branch section from scratch).
@@ -409,10 +433,6 @@ export default class FlowEditorPage implements Page {
 
     this.branchActionInsts = [];
 
-    const rebuild = () => {
-      this.markDirty();
-      this.renderBranches(container);
-    };
     const removeConditionEntirely = () => {
       this.hasCondition = false;
       this.conditionData = null;
@@ -424,6 +444,42 @@ export default class FlowEditorPage implements Page {
       this.markDirty();
       this.renderFlow();
     };
+
+    // A structural change anywhere in the branch tree (add/remove a rule,
+    // add/remove Else, convert a leaf into a nested condition or back)
+    // re-renders the *entire* branch section from currentFlow's live data,
+    // same as the top-level-only version used to — simplest correct thing
+    // to do given branches can now be arbitrarily deep.
+    const rebuild = () => {
+      this.markDirty();
+      this.renderBranches(container);
+    };
+
+    this.renderConditionFanout(container, this.conditionData, rebuild, removeConditionEntirely);
+  }
+
+  /**
+   * Renders one level of a Se / Senão Se / Senão fan-out into `parentEl`:
+   * one column per branch, each with its own condition card followed by
+   * whatever that branch leads to — a plain Action block, or (recursively)
+   * another nested fan-out, when `renderBranchTarget` finds the branch has
+   * been converted into a nested condition.
+   *
+   * `onRemoveThisFanout` is what runs when the *only* remaining rule in
+   * this particular fan-out is removed: at the top level that removes the
+   * condition step entirely; for a nested fan-out it instead collapses
+   * the nesting back into a plain Action block (see `renderBranchTarget`).
+   */
+  private renderConditionFanout(
+    parentEl: Element,
+    condData: IConditionBlock,
+    rebuild: () => void,
+    onRemoveThisFanout: () => void,
+  ) {
+    if (!condData.rules || condData.rules.length === 0) {
+      condData.rules = [{ type: 'domain', operator: 'contains', value: '', action: { format: 'plaintext', content: '', tokens: [] } }];
+    }
+
     const addSenaoSe = () => {
       condData.rules.push({ type: 'domain', operator: 'contains', value: '', action: { format: 'plaintext', content: '', tokens: [] } });
       rebuild();
@@ -450,7 +506,7 @@ export default class FlowEditorPage implements Page {
         onChange: () => this.markDirty(),
         onRemove: () => {
           if (isOnlyBranch) {
-            removeConditionEntirely();
+            onRemoveThisFanout();
           } else {
             condData.rules.splice(i, 1);
             rebuild();
@@ -462,9 +518,13 @@ export default class FlowEditorPage implements Page {
       col.appendChild(ruleCard.getElement());
       col.appendChild(this.createConnector());
 
-      const actionInst = new ActionBlock(rule.action, () => this.markDirty());
-      this.branchActionInsts.push({ kind: 'rule', index: i, inst: actionInst });
-      col.appendChild(actionInst.getElement());
+      this.renderBranchTarget(
+        col,
+        () => rule.action,
+        (target) => { rule.action = target; },
+        rebuild,
+        false, // rule branches: use the AND/OR criteria group inside ConditionRuleBlock instead
+      );
 
       row.appendChild(col);
     });
@@ -482,15 +542,91 @@ export default class FlowEditorPage implements Page {
       col.appendChild(elseCard.getElement());
       col.appendChild(this.createConnector());
 
-      const actionInst = new ActionBlock(condData.elseBranch, () => this.markDirty());
-      this.branchActionInsts.push({ kind: 'else', index: -1, inst: actionInst });
-      col.appendChild(actionInst.getElement());
+      this.renderBranchTarget(
+        col,
+        () => condData.elseBranch!,
+        (target) => { condData.elseBranch = target; },
+        rebuild,
+        true, // Senão has no rule of its own to attach AND/OR criteria to,
+              // so nesting a further Se/Senão Se/Senão inside it remains
+              // the only way to add conditioning after an Else.
+      );
 
       row.appendChild(col);
     }
 
     fanWrap.appendChild(row);
-    container.appendChild(fanWrap);
+    parentEl.appendChild(fanWrap);
+  }
+
+  /**
+   * Renders whatever a single branch (a rule's `action`, or an
+   * `elseBranch`) leads to, into `col`:
+   *  - a nested ConditionBlock → its own recursive fan-out, one level
+   *    deeper, with a way to collapse it back into a plain action; or
+   *  - a plain leaf ActionBlock → the normal Action editor, with an
+   *    affordance to convert it into a nested condition instead.
+   *
+   * `getTarget`/`setTarget` read and replace whatever this branch
+   * currently points to (owned by the caller's rule/elseBranch slot).
+   */
+  private renderBranchTarget(
+    col: HTMLElement,
+    getTarget: () => BranchTarget,
+    setTarget: (target: BranchTarget) => void,
+    rebuild: () => void,
+    allowNestedNew: boolean,
+  ) {
+    const target = getTarget();
+
+    if (isConditionBlock(target)) {
+      const nestedWrap = document.createElement('div');
+      nestedWrap.className = 'branch-nested-wrap';
+
+      const nestedHeader = document.createElement('div');
+      nestedHeader.className = 'branch-nested-header';
+      nestedHeader.innerHTML = `
+        <span class="branch-nested-badge">${ICONS.plus} ${t('condition.nested.badge')}</span>
+        <button type="button" class="branch-nested-remove" title="${t('condition.nested.remove')}">${ICONS.minus}</button>
+      `;
+      nestedHeader.querySelector('.branch-nested-remove')!.addEventListener('click', () => {
+        if (confirm(t('condition.confirm.remove_nested'))) {
+          setTarget({ format: 'plaintext', content: '', tokens: [] });
+          rebuild();
+        }
+      });
+      nestedWrap.appendChild(nestedHeader);
+
+      col.appendChild(nestedWrap);
+      this.renderConditionFanout(nestedWrap, target, rebuild, () => {
+        // The only rule in this nested condition was removed: collapse
+        // the nesting back into a single plain (empty) action.
+        setTarget({ format: 'plaintext', content: '', tokens: [] });
+        rebuild();
+      });
+      return;
+    }
+
+    const actionInst = new ActionBlock(target, () => this.markDirty());
+    this.branchActionInsts.push({ inst: actionInst, commit: () => setTarget(actionInst.getData()) });
+    col.appendChild(actionInst.getElement());
+
+    // Old saved flows may already have a nested ConditionBlock here (from
+    // before this redesign) — those keep rendering via the recursive
+    // fan-out above. For a still-plain leaf action, only the Else branch
+    // still offers converting it into a further nested condition: a rule
+    // branch's own AND/OR criteria group (in ConditionRuleBlock) covers
+    // that need now, and does it more legibly.
+    if (!allowNestedNew) return;
+
+    const nestWrap = document.createElement('div');
+    nestWrap.className = 'add-nested-condition-wrap';
+    nestWrap.innerHTML = `<button type="button" class="add-nested-condition-btn">${ICONS.plus} ${t('editor.condition.add_nested')}</button>`;
+    nestWrap.querySelector('button')!.addEventListener('click', () => {
+      setTarget({ rules: [{ type: 'domain', operator: 'contains', value: '', action: { format: 'plaintext', content: '', tokens: [] } }] });
+      rebuild();
+    });
+    col.appendChild(nestWrap);
   }
 
   private createConnector(): HTMLElement {

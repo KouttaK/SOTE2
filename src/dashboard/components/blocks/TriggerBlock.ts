@@ -72,7 +72,7 @@ export class TriggerBlock {
           <div class="input-wrap">
             <div class="input-field">
               <span>${usesPrefix ? escapeHtml(prefixChar) : ''}</span>
-              <input type="text" id="trigger-shortcut" value="${this.data.shortcut}" placeholder="${t('editor.trigger.shortcut_placeholder')}" />
+              <input type="text" id="trigger-shortcut" value="${escapeHtml(this.data.shortcut)}" placeholder="${t('editor.trigger.shortcut_placeholder')}" />
             </div>
             ${prefixHintHtml}
           </div>

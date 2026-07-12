@@ -12,6 +12,7 @@
  */
 
 import { storage } from '../shared/storage/StorageService.js';
+import { domainMatchesAny } from '../shared/storage/helpers.js';
 import type { Flow, Settings, Variable } from '../shared/types/index.js';
 import { sendMessage } from '../shared/messaging/client.js';
 
@@ -135,7 +136,7 @@ function renderBlockSiteBtn(domain: string | null, blocklist: string[]): void {
     return;
   }
 
-  const isBlocked = blocklist.includes(domain);
+  const isBlocked = domainMatchesAny(domain, blocklist);
   if (isBlocked) {
     blockBtnLabel.textContent = 'Site Muted';
     btnBlockSite.classList.add('is-active');
@@ -200,9 +201,9 @@ function resolveVariablesText(text: string): string {
 function buildSnippetRow(flow: Flow): HTMLDivElement {
   // Extract shortcut from first trigger block.
   const triggerBlock = flow.blocks.find((b) => b.type === 'trigger');
-  const shortcut = triggerBlock
-    ? `/${(triggerBlock.data as { shortcut: string }).shortcut}`
-    : `/${flow.name}`;
+  const shortcut = escapeHtml(
+    triggerBlock ? `/${(triggerBlock.data as { shortcut: string }).shortcut}` : `/${flow.name}`,
+  );
 
   // Extract preview text from first action block: strip the rich-text
   // HTML down to plain text, then resolve any {{KEY}} Global Variable

@@ -12,6 +12,14 @@ import { ClipboardModal } from '../tokens/modals/ClipboardModal.js';
 import { InputModal } from '../tokens/modals/InputModal.js';
 import { DateModal } from '../tokens/modals/DateModal.js';
 
+/** Escapes HTML-significant characters before interpolating user-controlled
+ * strings (Global Variable keys/values) into innerHTML. */
+function escapeHtml(str: string): string {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 const ICONS = {
   keyboard: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor"><path d="M64 64C28.7 64 0 92.7 0 128V384c0 35.3 28.7 64 64 64H512c35.3 0 64-28.7 64-64V128c0-35.3-28.7-64-64-64H64zm16 64h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H80c-8.8 0-16-7.2-16-16V144c0-8.8 7.2-16 16-16zM64 240c0-8.8 7.2-16 16-16h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H80c-8.8 0-16-7.2-16-16V240zm16 80h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H80c-8.8 0-16-7.2-16-16V336c0-8.8 7.2-16 16-16zm80-176c0-8.8 7.2-16 16-16h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H176c-8.8 0-16-7.2-16-16V144zm16 80h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H176c-8.8 0-16-7.2-16-16V240c0-8.8 7.2-16 16-16zM160 336c0-8.8 7.2-16 16-16H400c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H176c-8.8 0-16-7.2-16-16V336zM272 128h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H272c-8.8 0-16-7.2-16-16V144c0-8.8 7.2-16 16-16zM256 240c0-8.8 7.2-16 16-16h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H272c-8.8 0-16-7.2-16-16V240zM368 128h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H368c-8.8 0-16-7.2-16-16V144c0-8.8 7.2-16 16-16zM352 240c0-8.8 7.2-16 16-16h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H368c-8.8 0-16-7.2-16-16V240zM464 128h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H464c-8.8 0-16-7.2-16-16V144c0-8.8 7.2-16 16-16zM448 240c0-8.8 7.2-16 16-16h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H464c-8.8 0-16-7.2-16-16V240zm16 80h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H464c-8.8 0-16-7.2-16-16V336c0-8.8 7.2-16 16-16z"/></svg>`,
   listUl: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M64 144a48 48 0 1 0 0-96 48 48 0 1 0 0 96zM192 64c-17.7 0-32 14.3-32 32s14.3 32 32 32H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H192zm0 160c-17.7 0-32 14.3-32 32s14.3 32 32 32H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H192zm0 160c-17.7 0-32 14.3-32 32s14.3 32 32 32H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H192zM64 464a48 48 0 1 0 0-96 48 48 0 1 0 0 96zm48-208a48 48 0 1 0 -96 0 48 48 0 1 0 96 0z"/></svg>`,
@@ -107,6 +115,11 @@ export class ActionBlock {
         </div>
 
         <div class="rt-editor-area" contenteditable="true" id="rt-editor"></div>
+
+        <div class="tokens-preview" id="tokens-preview" style="display:none;">
+          <p class="tokens-preview-title">${t('action.block.tokens_preview.title')}</p>
+          <div class="tokens-preview-list" id="tokens-preview-list"></div>
+        </div>
       </div>
     `;
 
@@ -121,6 +134,7 @@ export class ActionBlock {
     this.bindHeaderMenu();
     this.bindEvents();
     this.setupObserver();
+    this.renderTokensPreview();
   }
 
   private bindHeaderMenu() {
@@ -141,6 +155,7 @@ export class ActionBlock {
         this.editorEl.innerHTML = '<p><br></p>';
         this.data.content = '';
         this.data.tokens = [];
+        this.renderTokensPreview();
         this.onChange();
       }
     });
@@ -221,6 +236,7 @@ export class ActionBlock {
       });
 
       if (tokensRemoved) {
+        this.renderTokensPreview();
         this.onChange();
       }
     });
@@ -326,11 +342,11 @@ export class ActionBlock {
       `;
     } else {
       this.variableMenuEl.innerHTML = this.variables.map((v) => /* html */ `
-        <div class="token-menu-item" data-key="${v.key}">
+        <div class="token-menu-item" data-key="${escapeHtml(v.key)}">
           <div class="token-menu-icon" style="background-color:#0d9488;">${ICONS.variable}</div>
           <div class="token-menu-text">
-            <p>{{${v.key}}}</p>
-            <span>${(v.value || '').slice(0, 40)}</span>
+            <p>{{${escapeHtml(v.key)}}}</p>
+            <span>${escapeHtml((v.value || '').slice(0, 40))}</span>
           </div>
         </div>
       `).join('');
@@ -425,6 +441,7 @@ export class ActionBlock {
     const space = document.createTextNode('\u00A0');
     pill.parentNode?.insertBefore(space, pill.nextSibling);
 
+    this.renderTokensPreview();
     this.onChange();
   }
 
@@ -484,6 +501,7 @@ export class ActionBlock {
         
         pillEl.replaceWith(newPill);
         this.attachPillInteractivity(newPill, token);
+        this.renderTokensPreview();
         this.onChange();
       };
 
@@ -497,6 +515,89 @@ export class ActionBlock {
   private getCursorIndex(id: string): number {
     const cursors = this.data.tokens.filter(t => t.type === 'cursor');
     return cursors.findIndex(t => t.id === id) + 1;
+  }
+
+  /**
+   * Human-readable preview of a token's *configured value* — as opposed to
+   * TokenPill's short in-line label, this is meant to be read at a glance
+   * in the tokens list below the editor, without opening each token's
+   * modal one by one. All user-typed config (choice options, input
+   * label/placeholder, date format) is HTML-escaped before insertion.
+   */
+  private describeTokenValue(token: Token): string {
+    const cfg = (token.config || {}) as Record<string, unknown>;
+    switch (token.type) {
+      case 'choice': {
+        const opts = (cfg.options as string[]) || [];
+        return opts.length
+          ? opts.map((o) => escapeHtml(o)).join(' <span class="tokens-preview-sep">·</span> ')
+          : `<em>${t('action.block.tokens_preview.no_options')}</em>`;
+      }
+      case 'input': {
+        const label = escapeHtml((cfg.label as string) || '');
+        const placeholder = cfg.placeholder ? escapeHtml(cfg.placeholder as string) : '';
+        if (!label) return `<em>${t('action.block.tokens_preview.no_label')}</em>`;
+        return placeholder
+          ? `${label} <span class="tokens-preview-sep">·</span> ${t('token.input.placeholder_field')}: ${placeholder}`
+          : label;
+      }
+      case 'date':
+        return escapeHtml((cfg.format as string) || 'DD/MM/YYYY');
+      case 'clipboard':
+        return `#${Number(cfg.index) || 1}`;
+      case 'cursor':
+        return t('token.cursor.desc');
+      case 'url':
+        return t('token.url.desc');
+      case 'title':
+        return t('token.title.desc');
+      default:
+        return '';
+    }
+  }
+
+  /**
+   * Re-renders the "tokens used" preview list below the editor — every
+   * token currently in this.data.tokens, with its type and configured
+   * value, so the user can see what each pill actually expands to without
+   * clicking into each one. Hidden entirely when there are no tokens.
+   * Called after every operation that adds/edits/removes a token.
+   */
+  private renderTokensPreview() {
+    const container = this.el.querySelector<HTMLElement>('#tokens-preview');
+    const list = this.el.querySelector<HTMLElement>('#tokens-preview-list');
+    if (!container || !list) return;
+
+    if (this.data.tokens.length === 0) {
+      container.style.display = 'none';
+      list.innerHTML = '';
+      return;
+    }
+    container.style.display = '';
+
+    const editableTypes = new Set(['choice', 'clipboard', 'input', 'date']);
+
+    list.innerHTML = this.data.tokens.map((token) => {
+      const isEditable = editableTypes.has(token.type);
+      return /* html */ `
+        <div class="tokens-preview-item${isEditable ? ' is-editable' : ''}" data-token-id="${token.id}">
+          <span class="tokens-preview-dot token-${token.type}"></span>
+          <span class="tokens-preview-type">${t(`token.${token.type}`)}</span>
+          <span class="tokens-preview-value">${this.describeTokenValue(token)}</span>
+        </div>
+      `;
+    }).join('');
+
+    // Clicking a row opens the same edit modal as clicking the pill itself
+    // in the editor — just forward the click instead of duplicating the
+    // modal-opening logic already in attachPillInteractivity().
+    list.querySelectorAll<HTMLElement>('.tokens-preview-item.is-editable').forEach((row) => {
+      row.addEventListener('click', () => {
+        const id = row.dataset.tokenId!;
+        const pill = this.editorEl.querySelector<HTMLElement>(`.token-pill[data-token-id="${id}"]`);
+        pill?.click();
+      });
+    });
   }
 
   private reindexCursors() {

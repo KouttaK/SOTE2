@@ -76,6 +76,22 @@ export default class FlowsPage implements Page {
   private sortHandler!: (e: Event) => void;
   private currentSort: 'Category' | 'Name' | 'Usage' = 'Category';
 
+  /** Escapes HTML-significant characters before interpolating user-controlled
+   * strings (flow/folder names, shortcuts, variable values) into innerHTML. */
+  private escapeHTML(str: string): string {
+    return str.replace(
+      /[&<>'"]/g,
+      (tag) =>
+        ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          "'": '&#39;',
+          '"': '&quot;',
+        }[tag] || tag),
+    );
+  }
+
   render(): HTMLElement {
     this.el = document.createElement('div');
     this.el.id = 'page-flows';
@@ -270,7 +286,7 @@ export default class FlowsPage implements Page {
       const count = this.allFlows.filter(f => f.folderId === folder.id).length;
       const btn = document.createElement('button');
       btn.className = `folder-tab ${this.currentFolderFilter === folder.id ? 'is-active' : ''}`;
-      btn.innerHTML = `${folder.name} <span class="folder-count">${count}</span>`;
+      btn.innerHTML = `${this.escapeHTML(folder.name)} <span class="folder-count">${count}</span>`;
       btn.onclick = () => {
         this.currentFolderFilter = folder.id;
         this.renderFolders();
@@ -377,7 +393,7 @@ export default class FlowsPage implements Page {
 
       const trigger = flow.blocks.find(b => b.type === 'trigger');
       const action = flow.blocks.find(b => b.type === 'action');
-      const shortcutText = trigger ? (trigger.data as any).shortcut : flow.name;
+      const shortcutText = this.escapeHTML(trigger ? (trigger.data as any).shortcut : flow.name);
       // action.content is rich HTML (e.g. "<p>Hello</p><p>World</p>") coming
       // straight out of the contenteditable Action-block editor. Slicing
       // that HTML as if it were plain text and dropping it into another
@@ -387,11 +403,11 @@ export default class FlowsPage implements Page {
       // to .row-preview. Strip tags down to plain text first so there's only
       // ever a single text node to truncate and display.
       const previewText = action
-        ? resolveVariablesText(htmlToPreviewText((action.data as any).content), this.allVariables).slice(0, 50)
+        ? this.escapeHTML(resolveVariablesText(htmlToPreviewText((action.data as any).content), this.allVariables).slice(0, 50))
         : t('flows.preview_empty');
       
       const folder = this.allFolders.find(f => f.id === flow.folderId);
-      const folderName = folder ? folder.name : t('flows.folder.none');
+      const folderName = this.escapeHTML(folder ? folder.name : t('flows.folder.none'));
       
       const usagePct = ((flow.stats.usageCount || 0) / maxUsage) * 100;
 

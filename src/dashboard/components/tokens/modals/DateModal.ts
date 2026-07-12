@@ -6,6 +6,16 @@ import { BaseModal } from './BaseModal.js';
 import type { Token } from '../../../../shared/types/index.js';
 import { t } from '../../../../shared/i18n/index.js';
 
+/** Escapes HTML-significant characters before interpolating an existing
+ * (user-typed) config value into an innerHTML attribute. */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 export class DateModal extends BaseModal {
   private onSaveCallback: (newConfig: { format: string }) => void;
   private inputEl!: HTMLInputElement;
@@ -24,7 +34,7 @@ export class DateModal extends BaseModal {
           ${t('token.date.format_available')}<br>
           ${t('token.date.format_examples')} <code>DD/MM/YYYY</code> ${t('common.or')} <code>YYYY-MM-DD HH:mm</code>
         </p>
-        <input type="text" class="form-input" id="date-format" value="${format}">
+        <input type="text" class="form-input" id="date-format" value="${escapeHtml(format)}">
       </div>
     `;
 

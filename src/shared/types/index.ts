@@ -20,14 +20,59 @@ export interface TriggerBlock {
 
 export interface ConditionBlock {
   rules: ConditionRule[];
-  elseBranch?: ActionBlock;
+  elseBranch?: BranchTarget;
 }
 
 export interface ConditionRule {
   type: 'domain' | 'time' | 'weekday' | 'date' | 'field_type' | 'field_content';
   operator: 'equals' | 'contains' | 'not_contains' | 'before' | 'after';
   value: string;
-  action: ActionBlock;
+  action: BranchTarget;
+  /**
+   * Additional criteria checked alongside the primary type/operator/value
+   * above, as a single AND ("E") or OR ("OU") group — e.g. "Domínio contém
+   * X E Horário entre Y" — all leading to the same `action`.
+   *
+   * This replaces nested conditions as the way to combine more than one
+   * check before running a single action: previously the only way to test
+   * a second condition was to convert the whole branch into another full
+   * nested Se/Senão Se/Senão tree (see `BranchTarget` below), which was
+   * confusing to read for what is conceptually just "match all/any of
+   * these". Old flows that already used a nested ConditionBlock for this
+   * keep working exactly as before (still resolved recursively at
+   * runtime, still rendered as a nested fan-out in the editor) — this
+   * field is purely an additive, simpler alternative for new rules.
+   */
+  criteria?: ConditionCriterion[];
+  /** How `criteria` combine with the primary criterion above and with each
+   * other. Only meaningful when `criteria` is non-empty. Defaults to 'AND'
+   * when omitted. */
+  combinator?: 'AND' | 'OR';
+}
+
+/** A single type/operator/value check — the shape shared by a rule's own
+ * primary criterion and each entry in its `criteria` group. */
+export interface ConditionCriterion {
+  type: 'domain' | 'time' | 'weekday' | 'date' | 'field_type' | 'field_content';
+  operator: 'equals' | 'contains' | 'not_contains' | 'before' | 'after';
+  value: string;
+}
+
+/**
+ * What a branch (a rule's `action`, or a ConditionBlock's `elseBranch`)
+ * ultimately leads to: either a leaf ActionBlock (the normal case), or —
+ * to support nested conditions — another whole ConditionBlock whose own
+ * rules/elseBranch are evaluated in turn. This recursive union is what
+ * lets "Se X, então Se Y, então Z" trees be built to arbitrary depth
+ * while staying 100% backward-compatible with existing saved Flows: an
+ * old rule's `action` is always a plain ActionBlock (no `rules` array),
+ * so `isConditionBlock()` below correctly treats it as a leaf.
+ */
+export type BranchTarget = ActionBlock | ConditionBlock;
+
+/** Narrows a BranchTarget to a nested ConditionBlock (as opposed to a leaf ActionBlock). */
+export function isConditionBlock(target: BranchTarget | null | undefined): target is ConditionBlock {
+  return !!target && Array.isArray((target as ConditionBlock).rules);
 }
 
 export interface ActionBlock {

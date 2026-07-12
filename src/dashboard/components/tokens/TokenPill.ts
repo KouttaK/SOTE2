@@ -27,9 +27,9 @@ export class TokenPill {
     } else if (token.type === 'clipboard' && token.config?.index) {
       label = `${label} ${token.config.index}`;
     } else if (token.type === 'date' && token.config?.format) {
-      label = `${label} (${token.config.format})`;
+      label = `${label} (${escapeHtmlAttr(String(token.config.format))})`;
     } else if (token.type === 'input' && token.config?.label) {
-      label = `${label} (${token.config.label})`;
+      label = `${label} (${escapeHtmlAttr(String(token.config.label))})`;
     } else if (token.type === 'choice' && token.config?.options) {
       label = `${label} (${(token.config.options as string[]).length})`;
     }

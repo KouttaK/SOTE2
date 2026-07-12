@@ -39,9 +39,15 @@ export class SearchPopup {
 
   private boundKeyDown = this.handleKeyDown.bind(this);
   private boundMouseDown = this.handleDocMouseDown.bind(this);
+  private anchor_: HTMLElement | null = null;
 
   constructor() {
     this.host = document.createElement('div');
+    // Same reasoning as ChoicePopup: lets TextMonitor recognize and ignore
+    // its own overlay, in case a keydown ever lands on this popup's own
+    // elements (results list, footer button) instead of the underlying
+    // page field.
+    this.host.className = 'sote-search-popup-host';
     this.host.style.position = 'absolute';
     this.host.style.zIndex = '2147483647';
     this.shadow = this.host.attachShadow({ mode: 'open' });
@@ -66,7 +72,9 @@ export class SearchPopup {
     this.mode = 'results';
     this.submenuForm = null;
     this.activeIndex = 0;
-    this.positionPopup(anchor);
+    this.anchor_ = anchor;
+    // Append to the DOM *before* positioning so that the popup has real
+    // dimensions for the flip-above / clamp calculations.
     document.body.appendChild(this.host);
     document.addEventListener('keydown', this.boundKeyDown, true);
     // Registered on the next tick so the very keystroke that opened the
@@ -87,6 +95,7 @@ export class SearchPopup {
   public close(): void {
     if (!this.open_) return;
     this.open_ = false;
+    this.anchor_ = null;
     document.removeEventListener('keydown', this.boundKeyDown, true);
     document.removeEventListener('mousedown', this.boundMouseDown, true);
     if (this.host.parentNode) this.host.parentNode.removeChild(this.host);
@@ -176,6 +185,13 @@ export class SearchPopup {
     this.shadow.innerHTML = '';
     this.injectStyles();
     this.shadow.appendChild(container);
+
+    // Reposition after every render because the popup height changes as
+    // the number of results changes.  The host is already in the DOM at
+    // this point, so getBoundingClientRect returns real dimensions.
+    if (this.anchor_) {
+      this.positionPopup(this.anchor_);
+    }
   }
 
   private titleFor(item: SearchResultItem): string {
@@ -267,9 +283,39 @@ export class SearchPopup {
   }
 
   private positionPopup(target: HTMLElement): void {
+    const margin = 8;
     const rect = target.getBoundingClientRect();
-    this.host.style.top = `${rect.bottom + window.scrollY + 6}px`;
-    this.host.style.left = `${rect.left + window.scrollX}px`;
+    // Real size now that the popup's content has been built and attached to
+    // the DOM (host is already position:absolute + appended, so this
+    // reflects its final rendered width/height).
+    const hostRect = this.host.getBoundingClientRect();
+    const viewportW = document.documentElement.clientWidth;
+    const viewportH = document.documentElement.clientHeight;
+
+    const spaceBelow = viewportH - rect.bottom;
+    const spaceAbove = rect.top;
+
+    // Prefer opening below the field, but flip above it when there isn't
+    // enough room below (e.g. a text field pinned to the bottom of the
+    // screen).
+    let top: number;
+    if (hostRect.height + margin <= spaceBelow || spaceBelow >= spaceAbove) {
+      top = rect.bottom + margin;
+    } else {
+      top = rect.top - hostRect.height - margin;
+    }
+    // Final safety clamp: never let the popup render above or below the
+    // visible viewport, regardless of which side was picked above.
+    top = Math.max(margin, Math.min(top, viewportH - hostRect.height - margin));
+
+    let left = rect.left;
+    left = Math.max(margin, Math.min(left, viewportW - hostRect.width - margin));
+
+    // host is position:absolute, so its coordinates are relative to the
+    // document — add the current scroll offset on top of the
+    // viewport-relative numbers computed above.
+    this.host.style.top = `${top + window.scrollY}px`;
+    this.host.style.left = `${left + window.scrollX}px`;
   }
 
   private injectStyles(): void {

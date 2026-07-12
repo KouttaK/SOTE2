@@ -696,6 +696,92 @@
   margin: 0.5rem 0;
 }
 
+/* ── Nested Conditions ──────────────────────────────────────────────────
+   A branch (Se / Senão Se / Senão) can be converted into its own nested
+   Se/Senão Se/Senão tree instead of a plain Action block. The nested
+   fan-out reuses .branch-fanout/.branch-row/.branch-col recursively, so
+   it visually looks like a smaller version of the top-level one, wrapped
+   in a dashed container to make the nesting boundary clear. Because a
+   nested fan-out can itself grow wider than its parent's 32rem column,
+   the column relaxes its width constraint as soon as it contains one. */
+
+.branch-col:has(.branch-nested-wrap) {
+  width: auto;
+  max-width: none;
+}
+
+.branch-nested-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 1px dashed #525252;
+  border-radius: 0.75rem;
+  padding: 0.75rem 0.5rem 0.5rem;
+  background-color: rgba(115, 115, 115, 0.05);
+}
+
+.branch-nested-wrap .branch-fanout { padding-bottom: 0; }
+.branch-nested-wrap .branch-row { border-top: none; padding-top: 1rem; margin: 0; }
+.branch-nested-wrap .branch-col { width: 26rem; }
+.branch-nested-wrap .branch-col:has(.branch-nested-wrap) { width: auto; }
+
+.branch-nested-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  margin-bottom: 0.25rem;
+}
+.branch-nested-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #a3a3a3;
+}
+.branch-nested-badge svg { width: 0.625rem; height: 0.625rem; }
+.branch-nested-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid #404040;
+  background: transparent;
+  color: #737373;
+  cursor: pointer;
+  transition: all 150ms;
+}
+.branch-nested-remove:hover { border-color: #ef4444; color: #ef4444; }
+.branch-nested-remove svg { width: 0.625rem; height: 0.625rem; }
+
+.add-nested-condition-wrap {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+.add-nested-condition-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px dashed #404040;
+  background-color: transparent;
+  color: #737373;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 150ms;
+}
+.add-nested-condition-btn:hover { border-color: #737373; color: #d4d4d4; }
+.add-nested-condition-btn svg { width: 0.625rem; height: 0.625rem; }
+
 /* ── Condition Rule Inputs ───────────────────────────────────────────────
    The type/operator <select>s, value pills, time-range pair, and weekday
    toggle buttons rendered by ConditionRuleBlock had no CSS at all — bare

@@ -123,18 +123,38 @@ function snippetAround(haystack: string, query: string, radius = 30): string {
   return (start > 0 ? '…' : '') + haystack.slice(start, end) + (end < haystack.length ? '…' : '');
 }
 
-/** All ActionBlock contents reachable from a Flow (main action + every condition branch), for the §4 "conteúdo do Action" content-match. */
+/**
+ * Collects every leaf ActionBlock's content reachable from a condition,
+ * recursing into nested ConditionBlocks (a branch whose `action` or
+ * `elseBranch` is itself another Se/Senão Se/Senão tree) to arbitrary
+ * depth.
+ */
+function collectConditionContents(cond: any, parts: string[]): void {
+  for (const rule of cond?.rules || []) {
+    const target = rule.action;
+    if (!target) continue;
+    if (Array.isArray(target.rules)) {
+      collectConditionContents(target, parts);
+    } else if (target.content) {
+      parts.push(target.content);
+    }
+  }
+  const elseBranch = cond?.elseBranch;
+  if (elseBranch) {
+    if (Array.isArray(elseBranch.rules)) {
+      collectConditionContents(elseBranch, parts);
+    } else if (elseBranch.content) {
+      parts.push(elseBranch.content);
+    }
+  }
+}
+
+/** All ActionBlock contents reachable from a Flow (main action + every condition branch, including nested ones), for the §4 "conteúdo do Action" content-match. */
 function collectFlowContents(flow: Flow): string {
   const parts: string[] = [];
   for (const block of flow.blocks) {
     if (block.type === 'action') parts.push((block.data as any).content || '');
-    if (block.type === 'condition') {
-      const cond = block.data as any;
-      for (const rule of cond.rules || []) {
-        if (rule.action?.content) parts.push(rule.action.content);
-      }
-      if (cond.elseBranch?.content) parts.push(cond.elseBranch.content);
-    }
+    if (block.type === 'condition') collectConditionContents(block.data as any, parts);
   }
   return stripHtml(parts.join(' '));
 }
