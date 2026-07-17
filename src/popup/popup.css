@@ -1,6 +1,11 @@
 /*
  * popup.css — SOTE Popup Styles
- * Replicação pixel a pixel de ref_pages/SOTE/popup.htm
+ * Tema escuro, alinhado com o resto do dashboard (dashboard.css, flows.css,
+ * settings.css etc.): fundo #0a0a0a/#171717, superfícies elevadas #262626,
+ * bordas #404040, texto branco/cinza-claro. Anteriormente era uma réplica
+ * pixel a pixel do mockup de tema claro em ref_pages/SOTE/popup.htm — a
+ * paleta abaixo usa a mesma escala neutral (Tailwind) já usada em todo o
+ * resto da extensão, só que na ponta escura da escala em vez da clara.
  * Importa variables.css para acesso aos tokens do design system.
  */
 
@@ -54,23 +59,24 @@ ol, ul { list-style: none; margin: 0; padding: 0; }
 svg { display: block; }
 
 /* ── Popup card container ─────────────────────────────────────────────────── */
-/* Exactamente: bg-white rounded-2xl shadow-2xl border border-neutral-200 overflow-hidden width:350px */
+/* bg #171717 (neutral-900, mesma superfície "raised" usada pela sidebar/
+   header/cards do dashboard) rounded-2xl shadow-2xl border #404040 width:350px */
 
 #popup-card {
   width: 350px;
-  background-color: #ffffff;
+  background-color: #171717;
   border-radius: 1rem;               /* rounded-2xl */
-  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25); /* shadow-2xl */
-  border: 1px solid #e5e5e5;        /* border-neutral-200 */
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5); /* shadow-2xl, mais forte p/ ficar visível sobre o chrome escuro do navegador */
+  border: 1px solid #404040;        /* neutral-700 */
   overflow: hidden;
 }
 
 /* ── Header ──────────────────────────────────────────────────────────────── */
-/* px-4 pt-4 pb-3 border-b border-neutral-100 flex items-center justify-between */
+/* px-4 pt-4 pb-3 border-b border-neutral-800 flex items-center justify-between */
 
 #popup-header {
   padding: 1rem 1rem 0.75rem;
-  border-bottom: 1px solid #f5f5f5; /* border-neutral-100 */
+  border-bottom: 1px solid #262626; /* neutral-800 */
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -83,11 +89,12 @@ svg { display: block; }
   gap: 0.625rem;
 }
 
-/* Logo icon: w-7 h-7 bg-neutral-900 rounded-lg flex items-center justify-center */
+/* Logo icon: w-7 h-7 bg-neutral-800 rounded-lg — mesmo tratamento do
+   .dash-logo-icon da sidebar (ícone "elevado" sobre o card "raised") */
 .popup-logo-icon {
   width: 1.75rem;
   height: 1.75rem;
-  background-color: #171717;   /* neutral-900 */
+  background-color: #262626;   /* neutral-800 */
   border-radius: 0.5rem;       /* rounded-lg */
   display: flex;
   align-items: center;
@@ -101,21 +108,22 @@ svg { display: block; }
   letter-spacing: -0.025em; /* tracking-tight */
 }
 
-/* SOTE wordmark: text-neutral-900 text-base tracking-widest */
+/* SOTE wordmark: text-white text-base tracking-widest */
 .popup-wordmark {
-  color: #171717;
+  color: #ffffff;
   font-size: 1rem;
   letter-spacing: 0.1em;
 }
 
-/* Version badge: inline-flex items-center px-1.5 py-0.5 rounded-full bg-neutral-100 border border-neutral-200 text-neutral-500 text-xs */
+/* Version badge: mesmo tratamento do .dash-nav-badge (bg neutral-800,
+   border neutral-700, texto neutral-500) */
 .popup-version-badge {
   display: inline-flex;
   align-items: center;
   padding: 0.125rem 0.375rem;
   border-radius: 9999px;
-  background-color: #f5f5f5;   /* neutral-100 */
-  border: 1px solid #e5e5e5;   /* neutral-200 */
+  background-color: #262626;   /* neutral-800 */
+  border: 1px solid #404040;   /* neutral-700 */
   color: #737373;               /* neutral-500 */
   font-size: 0.75rem;
 }
@@ -132,8 +140,9 @@ svg { display: block; }
   color: #737373; /* neutral-500 */
 }
 
-/* Toggle track: relative w-11 h-6 rounded-full cursor-pointer flex items-center px-0.5 */
-/* OFF state: bg-neutral-200; ON state: bg-neutral-900 */
+/* Toggle track — mesmo comportamento do .settings-toggle usado em
+   Configurações: OFF = neutral-700 c/ knob neutral-400; ON = branco c/
+   knob neutral-900 (alto contraste, "inverte" a cor do knob) */
 
 .popup-toggle-track {
   position: relative;
@@ -144,30 +153,33 @@ svg { display: block; }
   display: flex;
   align-items: center;
   padding: 0 0.125rem;
-  background-color: #e5e5e5;   /* neutral-200 — OFF */
+  background-color: #404040;   /* neutral-700 — OFF */
   transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .popup-toggle-track.is-on {
-  background-color: #171717;   /* neutral-900 — ON */
+  background-color: #ffffff;   /* branco — ON */
 }
 
-/* Toggle knob: w-5 h-5 bg-white rounded-full shadow-md */
+/* Toggle knob: w-5 h-5 rounded-full shadow-md */
 .popup-toggle-knob {
   width: 1.25rem;    /* w-5 */
   height: 1.25rem;   /* h-5 */
-  background-color: #ffffff;
+  background-color: #a3a3a3;  /* neutral-400 — visível sobre o track escuro (OFF) */
   border-radius: 9999px;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); /* shadow-md */
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3); /* shadow-md */
   transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1),
-              margin-left 150ms cubic-bezier(0.4, 0, 0.2, 1);
+              margin-left 150ms cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
   /* OFF: pushed left */
   margin-left: 0;
 }
 
 .popup-toggle-track.is-on .popup-toggle-knob {
-  /* ON: pushed to right — track is 44px, padding 2px each side, knob 20px → shift 20px */
+  /* ON: pushed to right — track é 44px, padding 2px de cada lado, knob 20px → desloca 20px.
+     Cor escura para se destacar sobre o track branco (ON). */
   margin-left: 1.25rem;
+  background-color: #171717;  /* neutral-900 */
 }
 
 /* ── Body ─────────────────────────────────────────────────────────────────── */
@@ -200,7 +212,9 @@ svg { display: block; }
   gap: 0.5rem;
 }
 
-/* Pause button base: flex flex-col items-center gap-1.5 px-2 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 hover:border-neutral-300 transition-colors */
+/* Pause button base: superfície "elevated" (neutral-800) sobre o card
+   "raised" (neutral-900), com borda neutral-700 — igual ao padrão usado
+   em .token-menu-item/.choice-var-menu-item no resto do app. */
 
 .pause-btn {
   display: flex;
@@ -209,8 +223,8 @@ svg { display: block; }
   gap: 0.375rem;
   padding: 0.625rem 0.5rem;
   border-radius: 0.75rem;    /* rounded-xl */
-  border: 1px solid #e5e5e5; /* neutral-200 */
-  background-color: #fafafa; /* neutral-50 */
+  border: 1px solid #404040; /* neutral-700 */
+  background-color: #262626; /* neutral-800 */
   transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
               border-color    150ms cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
@@ -218,25 +232,25 @@ svg { display: block; }
 }
 
 .pause-btn:hover {
-  background-color: #f5f5f5; /* neutral-100 */
-  border-color: #d4d4d4;     /* neutral-300 */
+  background-color: #303030;
+  border-color: #525252;     /* neutral-600 */
 }
 
-/* Active/snooze state: darker to give visual feedback */
+/* Active/snooze state: mais clara, para dar retorno visual */
 .pause-btn.is-active {
-  background-color: #f5f5f5;
-  border-color: #a3a3a3; /* neutral-400 */
+  background-color: #404040;
+  border-color: #737373; /* neutral-500 */
 }
 
 .pause-btn svg {
-  color: #525252; /* neutral-600 — text-neutral-600 text-sm → 14px */
+  color: #a3a3a3; /* neutral-400 */
   width: 0.875rem;
   height: 0.875rem;
 }
 
 .pause-btn span {
   font-size: 0.75rem;
-  color: #404040;       /* neutral-700 */
+  color: #d4d4d4;       /* neutral-300 */
   text-align: center;
   line-height: 1.25;
 }
@@ -261,13 +275,13 @@ svg { display: block; }
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
   border-radius: 0.75rem;
-  border: 1px solid #e5e5e5;
-  background-color: #fafafa;
+  border: 1px solid #404040;
+  background-color: #262626;
 }
 
 .snooze-info-text {
   font-size: 0.75rem;
-  color: #737373;  /* neutral-500 */
+  color: #a3a3a3;  /* neutral-400 */
 }
 
 /* Cancel snooze — same visual as dashboard link but smaller */
@@ -279,37 +293,37 @@ svg { display: block; }
   width: 100%;
   padding: 0.5rem 0;
   border-radius: 0.75rem;
-  border: 1px solid #e5e5e5;
-  background-color: #fafafa;
+  border: 1px solid #404040;
+  background-color: #262626;
   transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
               border-color    150ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .snooze-cancel-btn:hover {
-  background-color: #f5f5f5;
-  border-color: #d4d4d4;
+  background-color: #303030;
+  border-color: #525252;
 }
 
 .snooze-cancel-btn span {
   font-size: 0.75rem;
-  color: #404040;
+  color: #d4d4d4;
 }
 
 /* ── Search bar ───────────────────────────────────────────────────────────── */
-/* flex items-center gap-2 border border-neutral-200 rounded-xl px-3 py-2 bg-neutral-50 */
+/* flex items-center gap-2 border border-neutral-700 rounded-xl px-3 py-2 bg-neutral-800 */
 
 #popup-search .search-wrap {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  border: 1px solid #e5e5e5;
+  border: 1px solid #404040;
   border-radius: 0.75rem;    /* rounded-xl */
   padding: 0.5rem 0.75rem;
-  background-color: #fafafa;
+  background-color: #262626;
 }
 
 #popup-search svg {
-  color: #a3a3a3;    /* neutral-400 */
+  color: #737373;    /* neutral-500 */
   width: 0.75rem;
   height: 0.75rem;
   flex-shrink: 0;
@@ -319,22 +333,22 @@ svg { display: block; }
   flex: 1;
   min-width: 0;
   font-size: 0.875rem;
-  color: #404040;    /* neutral-700 */
+  color: #f5f5f5;    /* neutral-100 */
 }
 
 #popup-search input::placeholder {
-  color: #a3a3a3;    /* neutral-400 */
+  color: #737373;    /* neutral-500 */
 }
 
-/* kbd: text-xs text-neutral-400 border border-neutral-200 rounded px-1 py-0.5 bg-white */
+/* kbd: text-xs text-neutral-400 border border-neutral-700 rounded px-1 py-0.5 bg-neutral-900 */
 
 #popup-search kbd {
   font-size: 0.75rem;
   color: #a3a3a3;
-  border: 1px solid #e5e5e5;
+  border: 1px solid #404040;
   border-radius: 0.25rem;
   padding: 0.125rem 0.25rem;
-  background-color: #ffffff;
+  background-color: #171717;
   flex-shrink: 0;
   font-family: var(--font-family-base);
 }
@@ -347,7 +361,9 @@ svg { display: block; }
   gap: 0.375rem; /* space-y-1.5 */
 }
 
-/* Snippet row: flex items-center gap-3 px-3 py-2 rounded-xl border border-neutral-100 bg-white hover:border-neutral-200 hover:bg-neutral-50 transition-colors group */
+/* Snippet row: mesma cor do card em repouso (só a borda sutil separa),
+   fica "elevated" (neutral-800) no hover — replica exatamente o padrão
+   já usado em .flows-row no resto do dashboard. */
 
 .snippet-row {
   display: flex;
@@ -355,24 +371,24 @@ svg { display: block; }
   gap: 0.75rem;
   padding: 0.5rem 0.75rem;
   border-radius: 0.75rem;    /* rounded-xl */
-  border: 1px solid #f5f5f5; /* border-neutral-100 */
-  background-color: #ffffff;
+  border: 1px solid #262626; /* neutral-800 */
+  background-color: #171717;
   transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
               border-color    150ms cubic-bezier(0.4, 0, 0.2, 1);
   cursor: default;
 }
 
 .snippet-row:hover {
-  border-color: #e5e5e5;    /* neutral-200 */
-  background-color: #fafafa; /* neutral-50 */
+  border-color: #404040;    /* neutral-700 */
+  background-color: #262626; /* neutral-800 */
 }
 
-/* Icon box: w-7 h-7 bg-neutral-100 rounded-lg flex items-center justify-center flex-shrink-0 */
+/* Icon box: w-7 h-7 bg-neutral-700 rounded-lg flex items-center justify-center flex-shrink-0 */
 
 .snippet-icon-box {
   width: 1.75rem;
   height: 1.75rem;
-  background-color: #f5f5f5;  /* neutral-100 */
+  background-color: #404040;  /* neutral-700 */
   border-radius: 0.5rem;
   display: flex;
   align-items: center;
@@ -381,7 +397,7 @@ svg { display: block; }
 }
 
 .snippet-icon-box svg {
-  color: #737373;   /* neutral-500 */
+  color: #d4d4d4;   /* neutral-300 */
   width: 0.75rem;
   height: 0.75rem;
 }
@@ -394,20 +410,20 @@ svg { display: block; }
 
 .snippet-shortcut {
   font-size: 0.875rem;
-  color: #262626;    /* neutral-800 */
+  color: #f5f5f5;    /* neutral-100 */
   margin: 0;
 }
 
 .snippet-preview {
   font-size: 0.75rem;
-  color: #a3a3a3;    /* neutral-400 */
+  color: #737373;    /* neutral-500 */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   margin: 0;
 }
 
-/* Copy button: w-6 h-6 flex items-center justify-center rounded-lg border border-neutral-200 bg-neutral-50 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors flex-shrink-0 */
+/* Copy button: w-6 h-6 flex items-center justify-center rounded-lg border border-neutral-700 bg-neutral-800 text-neutral-500 hover:text-white hover:bg-neutral-700 transition-colors flex-shrink-0 */
 
 .snippet-copy-btn {
   width: 1.5rem;
@@ -416,17 +432,17 @@ svg { display: block; }
   align-items: center;
   justify-content: center;
   border-radius: 0.5rem;
-  border: 1px solid #e5e5e5;
-  background-color: #fafafa;
-  color: #a3a3a3;    /* neutral-400 */
+  border: 1px solid #404040;
+  background-color: #262626;
+  color: #737373;    /* neutral-500 */
   flex-shrink: 0;
   transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
               color            150ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .snippet-copy-btn:hover {
-  color: #404040;             /* neutral-700 */
-  background-color: #f5f5f5; /* neutral-100 */
+  color: #ffffff;
+  background-color: #404040; /* neutral-700 */
 }
 
 .snippet-copy-btn svg {
@@ -435,15 +451,15 @@ svg { display: block; }
 }
 
 /* ── Footer ───────────────────────────────────────────────────────────────── */
-/* px-4 pt-2 pb-4 border-t border-neutral-100 mt-1 */
+/* px-4 pt-2 pb-4 border-t border-neutral-800 mt-1 */
 
 #popup-footer {
   padding: 0.5rem 1rem 1rem;
-  border-top: 1px solid #f5f5f5; /* border-neutral-100 */
+  border-top: 1px solid #262626; /* neutral-800 */
   margin-top: 0.25rem;
 }
 
-/* Dashboard link: flex items-center justify-center gap-2 w-full py-2 rounded-xl border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 hover:border-neutral-300 transition-colors */
+/* Dashboard link: flex items-center justify-center gap-2 w-full py-2 rounded-xl border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 hover:border-neutral-600 transition-colors */
 
 #btn-open-dashboard {
   display: flex;
@@ -453,25 +469,25 @@ svg { display: block; }
   width: 100%;
   padding: 0.5rem 0;
   border-radius: 0.75rem;     /* rounded-xl */
-  border: 1px solid #e5e5e5;  /* neutral-200 */
-  background-color: #fafafa;  /* neutral-50 */
+  border: 1px solid #404040;  /* neutral-700 */
+  background-color: #262626;  /* neutral-800 */
   transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
               border-color    150ms cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
 }
 
 #btn-open-dashboard:hover {
-  background-color: #f5f5f5; /* neutral-100 */
-  border-color: #d4d4d4;     /* neutral-300 */
+  background-color: #303030;
+  border-color: #525252;     /* neutral-600 */
 }
 
 #btn-open-dashboard span {
   font-size: 0.875rem;
-  color: #404040;  /* neutral-700 */
+  color: #d4d4d4;  /* neutral-300 */
 }
 
 #btn-open-dashboard svg {
-  color: #737373;  /* neutral-500 */
+  color: #a3a3a3;  /* neutral-400 */
   width: 0.75rem;
   height: 0.75rem;
 }
@@ -483,7 +499,8 @@ svg { display: block; }
   bottom: 0.75rem;
   left: 50%;
   transform: translateX(-50%);
-  background-color: #171717;
+  background-color: #262626;
+  border: 1px solid #404040;
   color: #ffffff;
   font-size: 0.75rem;
   padding: 0.375rem 0.875rem;
@@ -504,8 +521,8 @@ svg { display: block; }
    The active snooze button gets a subtle indicator. */
 
 .pause-btn.snooze-active-indicator {
-  border-color: #a3a3a3;
-  background-color: #f5f5f5;
+  border-color: #737373;
+  background-color: #404040;
 }
 
 /* ── Mute-site row (no in original but required by spec) ─────────────────── */

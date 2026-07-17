@@ -2,7 +2,8 @@
  * src/content/engine/ChoicePopup.ts
  */
 
-import type { Token } from '../../shared/types/index.js';
+import type { Token, Variable } from '../../shared/types/index.js';
+import { resolveVariablesInText } from '../../shared/utils/variableResolver.js';
 
 export class ChoicePopup {
   private host!: HTMLDivElement;
@@ -122,7 +123,7 @@ export class ChoicePopup {
     this.shadow.appendChild(style);
   }
 
-  public showForToken(token: Token, targetElement: HTMLElement): Promise<string | null> {
+  public showForToken(token: Token, targetElement: HTMLElement, variables: Variable[] = []): Promise<string | null> {
     return new Promise((resolve) => {
       document.body.appendChild(this.host);
 
@@ -138,7 +139,12 @@ export class ChoicePopup {
         const list = document.createElement('div');
         list.className = 'choice-list';
 
-        const options = (token.config?.options as string[]) || ['Error: No options'];
+        const rawOptions = (token.config?.options as string[]) || ['Error: No options'];
+        // Choice options can reference global variables too (e.g. "Olá
+        // {{NOME_CLIENTE}}, tudo bem?") — resolve them once, up front, so
+        // both what's shown in the list and what gets returned/injected
+        // are the real value, never the raw "{{...}}" placeholder.
+        const options = rawOptions.map((opt) => resolveVariablesInText(opt, false, variables));
         let activeIndex = 0;
         let settled = false;
 
@@ -229,13 +235,13 @@ export class ChoicePopup {
       } else if (token.type === 'input') {
         const title = document.createElement('p');
         title.className = 'popup-title';
-        title.textContent = (token.config?.label as string) || 'Enter value';
+        title.textContent = resolveVariablesInText((token.config?.label as string) || 'Enter value', false, variables);
         container.appendChild(title);
 
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'input-field';
-        input.placeholder = (token.config?.placeholder as string) || '';
+        input.placeholder = resolveVariablesInText((token.config?.placeholder as string) || '', false, variables);
         container.appendChild(input);
 
         const btn = document.createElement('button');

@@ -16,6 +16,8 @@
 import type { ActionBlock, Token, Variable } from '../../shared/types/index.js';
 import { ChoicePopup } from './ChoicePopup.js';
 import { expandToken, ExpansionContext } from './tokenExpander.js';
+import { TextInjector } from './TextInjector.js';
+import { resolveVariablesInText } from '../../shared/utils/variableResolver.js';
 
 export interface ResolvedActionContent {
   /** Final content — HTML for richtext actions, plain text otherwise. Cursor marker already stripped. */
@@ -68,24 +70,6 @@ function resolveTokenForPill(pillEl: Element, tokens: Token[]): Token | null {
 }
 
 /**
- * Replaces every `{{KEY}}` occurrence in `text` with the matching Global
- * Variable's value. Unknown keys are left untouched (raw `{{KEY}}` stays in
- * the output) so a typo or a deleted variable doesn't silently swallow the
- * token. When `escapeHtml` is true (richtext actions), the value's own
- * `&`/`<`/`>` are entity-escaped first.
- */
-function resolveVariablesInText(text: string, escapeHtml: boolean, variables: Variable[]): string {
-  if (!variables?.length || !text.includes('{{')) return text;
-  const map = new Map(variables.map((v) => [v.key, v.value]));
-  return text.replace(/\{\{\s*([A-Z0-9_]+)\s*\}\}/g, (match, key: string) => {
-    const value = map.get(key);
-    if (value === undefined) return match;
-    if (!escapeHtml) return value;
-    return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  });
-}
-
-/**
  * Resolves `actionBlock` into final injectable content. Returns `null` if
  * the user cancelled a choice/input token popup (Esc / click outside).
  */
@@ -102,6 +86,7 @@ export async function resolveActionBlockContent(
   const pillEls = Array.from(container.querySelectorAll('.token-pill'));
 
   let cursorMarkerPlaced = false;
+  let anchorPlaced = false;
 
   for (const pillEl of pillEls) {
     const token = resolveTokenForPill(pillEl, actionBlock.tokens || []);
@@ -120,8 +105,19 @@ export async function resolveActionBlockContent(
     let expandedValue = await expandToken(token, deps.context);
 
     if (expandedValue === null) {
-      expandedValue = await deps.choicePopup.showForToken(token, element);
+      // About to hand focus off to the ChoicePopup for a while — some
+      // sites' custom rich-text editors (TipTap/ProseMirror, Slate,
+      // Draft.js...) don't reliably restore the caret to where it was once
+      // `element` regains focus, so drop an invisible anchor at the *real*
+      // current position first (only once — the first popup is the only
+      // point where `element` still definitely has the right caret).
+      if (!anchorPlaced) {
+        anchorPlaced = TextInjector.placeContentEditableAnchor(element);
+      }
+
+      expandedValue = await deps.choicePopup.showForToken(token, element, deps.variables);
       if (expandedValue === null) {
+        if (anchorPlaced) TextInjector.removeContentEditableAnchor(element);
         return null; // user cancelled
       }
     }

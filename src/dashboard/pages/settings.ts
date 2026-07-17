@@ -24,7 +24,8 @@ const ICONS = {
   clipboard: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor"><path d="M192 0c-41.8 0-77.4 26.7-90.5 64H64C28.7 64 0 92.7 0 128V448c0 35.3 28.7 64 64 64H320c35.3 0 64-28.7 64-64V128c0-35.3-28.7-64-64-64H282.5C269.4 26.7 233.8 0 192 0zm0 64a32 32 0 1 1 0 64 32 32 0 1 1 0-64zM112 192H272c8.8 0 16 7.2 16 16s-7.2 16-16 16H112c-8.8 0-16-7.2-16-16s7.2-16 16-16z"/></svg>`,
   eye: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor"><path d="M288 32c-80.8 0-146.1 39.3-196.2 82.5C42.1 157.2 8.3 208 1.2 231.1c-1.6 5.5-1.6 11.4 0 16.9C8.3 271.1 42.1 321.9 91.8 364.6C141.9 407.8 207.2 447.1 288 447.1s146.1-39.3 196.2-82.5c49.7-42.7 83.5-93.5 90.6-116.6c1.6-5.5 1.6-11.4 0-16.9c-7.1-23.1-40.9-73.9-90.6-116.6C434.1 71.3 368.8 32 288 32zM144 256a144 144 0 1 1 288 0 144 144 0 1 1 -288 0zm144-64c0 35.3-28.7 64-64 64c-7.1 0-13.9-1.2-20.3-3.3c-5.5-1.8-11.9 1.6-11.7 7.4c.3 6.9 1.3 13.8 3.2 20.7c13.7 51.2 66.4 81.6 117.6 67.9s81.6-66.4 67.9-117.6c-11.1-41.5-47.8-69.4-88.6-71.1c-5.8-.2-9.2 6.1-7.4 11.7c2.1 6.4 3.3 13.2 3.3 20.3z"/></svg>`,
   folder: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M64 480H448c35.3 0 64-28.7 64-64V160c0-35.3-28.7-64-64-64H288c-18.9 0-36.8-7.3-50.5-20.4L205.8 44.1C196.2 34.1 182.7 28 168.4 28H64C28.7 28 0 56.7 0 92v324c0 35.3 28.7 64 64 64z"/></svg>`,
-  search: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"/></svg>`
+  search: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"/></svg>`,
+  pointer: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" fill="currentColor"><path d="M0 55.2V426c0 12.2 9.9 22 22 22c6.3 0 12.4-2.7 16.6-7.5L121.2 346l58.1 116.3c7.9 15.8 27.1 22.2 42.9 14.3s22.2-27.1 14.3-42.9L179.4 320H297.9c12.2 0 22.1-9.9 22.1-22.1c0-6.3-2.7-12.3-7.4-16.5L38.6 37.9C34.3 34.1 28.9 32 23.2 32C10.4 32 0 42.4 0 55.2z"/></svg>`
 };
 
 export default class SettingsPage implements Page {
@@ -340,6 +341,31 @@ export default class SettingsPage implements Page {
             </div>
           </section>
 
+          <!-- Context Menu Section -->
+          <section class="settings-section">
+            <div class="settings-section-header">
+              <div class="settings-section-icon">${ICONS.pointer}</div>
+              <div>
+                <h2 class="settings-section-title">${t('settings.context_menu.title')}</h2>
+                <p class="settings-section-desc">${t('settings.context_menu.desc')}</p>
+              </div>
+            </div>
+            <div class="settings-section-content">
+              <div class="settings-row">
+                <div class="settings-row-left">
+                  <div class="settings-row-icon">${ICONS.pointer}</div>
+                  <div>
+                    <p class="settings-row-title">${t('settings.context_menu.enable_label')}</p>
+                    <p class="settings-row-desc">${t('settings.context_menu.enable_desc')}</p>
+                  </div>
+                </div>
+                <div class="settings-toggle" id="toggle-context-menu">
+                  <div class="settings-toggle-knob"></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
           <!-- Danger Zone -->
           <section class="settings-section danger-zone">
             <div class="settings-section-header">
@@ -431,10 +457,15 @@ export default class SettingsPage implements Page {
 
     const langSelect = this.el.querySelector('#setting-language') as HTMLSelectElement;
     langSelect.value = this.settings.language || getLanguage();
-    langSelect.addEventListener('change', (e) => {
+    langSelect.addEventListener('change', async (e) => {
       this.settings.language = (e.target as HTMLSelectElement).value;
-      this.updateSetting('language', this.settings.language);
-      // Reload page to apply language
+      // Must finish writing to storage BEFORE reloading — reload() tears
+      // down this page immediately, so a fire-and-forget save here was a
+      // race the reload almost always won, silently discarding the language
+      // change (the page would come back showing the OLD language, since
+      // initI18n() on the fresh load reads whatever was last actually
+      // persisted).
+      await this.updateSetting('language', this.settings.language);
       window.location.reload();
     });
 
@@ -543,6 +574,17 @@ export default class SettingsPage implements Page {
         await storage.disableSync();
         if (syncText) syncText.textContent = t('settings.sync.desc');
       }
+    });
+
+    // Context Menu Toggle — the background script listens for this
+    // settings change and (re)creates/removes the right-click menu item.
+    const toggleContextMenu = this.el.querySelector('#toggle-context-menu')!;
+    toggleContextMenu.classList.toggle('active', this.settings.contextMenuEnabled !== false);
+    toggleContextMenu.addEventListener('click', async () => {
+      const enabled = this.settings.contextMenuEnabled === false; // toggling from off -> on
+      this.settings.contextMenuEnabled = enabled;
+      toggleContextMenu.classList.toggle('active', enabled);
+      await storage.saveSettings({ contextMenuEnabled: enabled });
     });
 
     // Blocklist

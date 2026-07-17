@@ -201,6 +201,10 @@ export interface Settings {
   /** Max number of items kept in the clipboard history (default 10, max 50). */
   clipboardHistoryMax?: number;
   searchTrigger: SearchTriggerSettings;
+  /** Whether SOTE adds its right-click context menu options (e.g. "Create
+   * shortcut from selection"). Defaults to true; the background script
+   * removes/recreates the menu whenever this changes. */
+  contextMenuEnabled?: boolean;
 }
 
 export interface StorageSchema {

@@ -13,12 +13,25 @@ import { storage } from '../shared/storage/StorageService.js';
 import { domainMatchesAny } from '../shared/storage/helpers.js';
 import type { Message } from '../shared/messaging/types.js';
 import type { Settings } from '../shared/types/index.js';
+import { t, initI18n } from '../shared/i18n/index.js';
+
+/** Local-storage-only key (never synced/exported) used to hand the
+ * selected text off to the dashboard when "Criar atalho com a seleção" is
+ * clicked — the background script can't open the editor UI itself, so it
+ * stashes the text here and opens '#/editor/new', which picks it up once
+ * on mount (see editor.ts) and removes the key right away. */
+const PENDING_SELECTION_KEY = '__sote_pending_selection__';
+const CONTEXT_MENU_ID = 'sote-create-flow-from-selection';
 
 export default defineBackground(() => {
   console.log('[SOTE] Background script initialized');
 
   // 1. Initial Icon Setup
   updateIcon();
+
+  // 1b. Context menu ("Criar atalho com a seleção") — needs the current
+  // language for its title, and respects the contextMenuEnabled setting.
+  initI18n().then(() => updateContextMenus());
 
   // 2. Listen to Message Requests
   browser.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
@@ -42,6 +55,26 @@ export default defineBackground(() => {
     }
   });
 
+  // 3b. Context menu clicks
+  try {
+    browser.contextMenus.onClicked.addListener(async (info, tab) => {
+      if (info.menuItemId !== CONTEXT_MENU_ID) return;
+
+      const selectionText = (info.selectionText || '').trim();
+      if (!selectionText) return;
+
+      // Stash the text for the editor to pick up once, then open it to a
+      // brand-new flow. We can't build/populate the editor UI from here —
+      // it lives in the dashboard document, a completely separate context.
+      await browser.storage.local.set({ [PENDING_SELECTION_KEY]: selectionText });
+      await browser.tabs.create({
+        url: browser.runtime.getURL('/dashboard.html') + '#/editor/new',
+      });
+    });
+  } catch (err) {
+    console.error('[SOTE] Failed to register context menu click listener:', err);
+  }
+
   // 4. Listen to Storage Changes to Broadcast
   // We only care about specific keys that affect content scripts
   browser.storage.onChanged.addListener(async (changes, areaName) => {
@@ -62,6 +95,8 @@ export default defineBackground(() => {
       const flows = await storage.getFlows();
 
       updateIcon(settings);
+      await initI18n();
+      await updateContextMenus(settings);
 
       broadcastMessage({ type: 'SETTINGS_UPDATED', payload: settings });
       broadcastMessage({ type: 'FLOWS_UPDATED', payload: flows });
@@ -196,6 +231,34 @@ async function broadcastMessage(message: Message) {
     }
   } catch (err) {
     console.error('[SOTE] Broadcast error:', err);
+  }
+}
+
+/**
+ * (Re)creates SOTE's right-click context menu items, or removes them
+ * entirely when disabled in Settings. Called on startup and whenever
+ * settings change (the toggle itself, or the language — the title needs
+ * re-translating).
+ */
+async function updateContextMenus(settingsCache?: Settings) {
+  try {
+    const settings = settingsCache || await storage.getSettings();
+
+    // removeAll() first either way: if disabled, that's the whole job; if
+    // enabled, it avoids "duplicate id" errors from creating over an
+    // already-existing item (e.g. on a settings change that isn't a
+    // clean extension restart).
+    await browser.contextMenus.removeAll();
+
+    if (settings.contextMenuEnabled === false) return;
+
+    browser.contextMenus.create({
+      id: CONTEXT_MENU_ID,
+      title: t('contextmenu.create_flow_from_selection'),
+      contexts: ['selection'],
+    });
+  } catch (err) {
+    console.error('[SOTE] Context menu setup error:', err);
   }
 }
 

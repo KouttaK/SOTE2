@@ -21,10 +21,10 @@
   --color-bg-elevated:  #262626; /* neutral-800 — items ativos, hover states */
   --color-bg-overlay:   #404040; /* neutral-700 — badges, toggles, chips */
 
-  /* Popup (tema claro) — extraído de ref_pages/SOTE/popup.htm */
-  --color-bg-popup:         #ffffff; /* white  — card do popup */
-  --color-bg-popup-muted:   #fafafa; /* neutral-50  — fundo de itens */
-  --color-bg-popup-subtle:  #f5f5f5; /* neutral-100 — hover em itens leves */
+  /* Popup (tema escuro) — alinhado com o resto do dashboard */
+  --color-bg-popup:         #171717; /* neutral-900 — card do popup */
+  --color-bg-popup-muted:   #262626; /* neutral-800 — fundo de itens elevados */
+  --color-bg-popup-subtle:  #404040; /* neutral-700 — hover/estado ativo */
 
   /* Bordas */
   --color-border-strong:  #525252; /* neutral-600 */
@@ -32,10 +32,10 @@
   --color-border-subtle:  #262626; /* neutral-800 */
   --color-border-faint:   #171717; /* neutral-900 */
 
-  /* Bordas claras (popup) */
-  --color-border-light-strong:  #d4d4d4; /* neutral-300 */
-  --color-border-light-default: #e5e5e5; /* neutral-200 */
-  --color-border-light-subtle:  #f5f5f5; /* neutral-100 */
+  /* Bordas do popup (tema escuro) */
+  --color-border-light-strong:  #525252; /* neutral-600 */
+  --color-border-light-default: #404040; /* neutral-700 */
+  --color-border-light-subtle:  #262626; /* neutral-800 */
 
   /* Texto — escala escura (dashboard) */
   --color-text-primary:   #ffffff; /* white */
@@ -45,12 +45,12 @@
   --color-text-faint:     #737373; /* neutral-500 */
   --color-text-disabled:  #525252; /* neutral-600 */
 
-  /* Texto — escala clara (popup) */
-  --color-text-popup-primary:   #171717; /* neutral-900 */
-  --color-text-popup-secondary: #262626; /* neutral-800 */
-  --color-text-popup-tertiary:  #404040; /* neutral-700 */
-  --color-text-popup-muted:     #737373; /* neutral-500 */
-  --color-text-popup-faint:     #a3a3a3; /* neutral-400 */
+  /* Texto do popup (tema escuro — mesma escala do dashboard) */
+  --color-text-popup-primary:   #ffffff; /* white */
+  --color-text-popup-secondary: #f5f5f5; /* neutral-100 */
+  --color-text-popup-tertiary:  #d4d4d4; /* neutral-300 */
+  --color-text-popup-muted:     #a3a3a3; /* neutral-400 */
+  --color-text-popup-faint:     #737373; /* neutral-500 */
 
   /* Acento / CTA — extraído de home.htm: botão "Create New Flow" */
   --color-cta-bg:      #ffffff; /* white */

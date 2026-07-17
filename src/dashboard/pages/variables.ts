@@ -4,6 +4,7 @@
 import type { Page } from './index.js';
 import { storage } from '../../shared/storage/StorageService.js';
 import type { Variable, Flow, Block, ActionBlock } from '../../shared/types/index.js';
+import { t, getLanguage } from '../../shared/i18n/index.js';
 import './variables.css';
 
 const ICONS = {
@@ -38,8 +39,8 @@ export default class VariablesPage implements Page {
       <main class="vars-main">
         <div class="vars-title-row">
           <div>
-            <h1 class="vars-header-title">Global Variables</h1>
-            <p class="vars-header-subtitle">Manage shared key-value pairs used across all flows</p>
+            <h1 class="vars-header-title">${t('variables.title')}</h1>
+            <p class="vars-header-subtitle">${t('variables.subtitle')}</p>
           </div>
         </div>
 
@@ -47,10 +48,9 @@ export default class VariablesPage implements Page {
         <div class="vars-banner" id="vars-banner">
           <div class="vars-banner-icon">${ICONS.globe}</div>
           <div class="vars-banner-content">
-            <p class="title">How it works</p>
+            <p class="title">${t('variables.banner.title')}</p>
             <p class="desc">
-              Global variables let you define a value once and reuse it in multiple flows using the syntax <span class="tag">{{YOUR_VARIABLE_KEY}}</span>.
-              If you update the variable here, it will automatically update in all flows where it's used.
+              ${t('variables.banner.desc', { tagExample: '<span class="tag">{{YOUR_VARIABLE_KEY}}</span>' })}
             </p>
           </div>
           <button class="vars-banner-close" id="btn-close-banner">${ICONS.times}</button>
@@ -62,14 +62,14 @@ export default class VariablesPage implements Page {
             <div class="vars-stat-icon">${ICONS.database}</div>
             <div class="vars-stat-info">
               <p class="val" id="stat-total-vars">0</p>
-              <p class="lbl">Total Variables</p>
+              <p class="lbl">${t('variables.stats.total')}</p>
             </div>
           </div>
           <div class="vars-stat-card">
             <div class="vars-stat-icon">${ICONS.network}</div>
             <div class="vars-stat-info">
               <p class="val" id="stat-total-uses">0</p>
-              <p class="lbl">Total Usages in Flows</p>
+              <p class="lbl">${t('variables.stats.total_uses')}</p>
             </div>
           </div>
         </div>
@@ -77,10 +77,10 @@ export default class VariablesPage implements Page {
         <!-- Table -->
         <div class="vars-table-wrap">
           <div class="vars-table-header">
-            <span class="col-3">Key</span>
-            <span class="col-5">Value</span>
-            <span class="col-1 text-center">Flows</span>
-            <span class="col-2 text-right">Last Updated</span>
+            <span class="col-3">${t('variables.table.key')}</span>
+            <span class="col-5">${t('variables.table.value')}</span>
+            <span class="col-1 text-center">${t('variables.table.flows')}</span>
+            <span class="col-2 text-right">${t('variables.table.last_updated')}</span>
             <span class="col-1"></span>
           </div>
           <div id="vars-table-body">
@@ -178,12 +178,12 @@ export default class VariablesPage implements Page {
         totalUses += usageCount;
 
         const date = new Date(v.updatedAt || Date.now());
-        const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const dateStr = date.toLocaleDateString(getLanguage(), { month: 'short', day: 'numeric', year: 'numeric' });
 
         return /* html */ `
           <div class="vars-table-row">
             <div class="col-3">
-              <button class="var-key-pill" data-key="${v.key}" title="Copy to clipboard">
+              <button class="var-key-pill" data-key="${v.key}" title="${t('variables.copy_title')}">
                 ${ICONS.code}
                 <span class="var-key-text">{{${v.key}}}</span>
               </button>
@@ -198,10 +198,10 @@ export default class VariablesPage implements Page {
               <span class="var-date">${dateStr}</span>
             </div>
             <div class="col-1 var-actions">
-              <button class="btn-icon" data-edit="${v.id}" title="Edit Variable">
+              <button class="btn-icon" data-edit="${v.id}" title="${t('variables.edit_title')}">
                 ${ICONS.pencil}
               </button>
-              <button class="btn-icon danger" data-delete="${v.id}" title="Delete Variable">
+              <button class="btn-icon danger" data-delete="${v.id}" title="${t('variables.delete_title')}">
                 ${ICONS.trash}
               </button>
             </div>
@@ -220,7 +220,7 @@ export default class VariablesPage implements Page {
           navigator.clipboard.writeText(`{{${key}}}`);
           // visual feedback
           const original = btn.innerHTML;
-          btn.innerHTML = ICONS.check + '<span class="var-key-text">Copied</span>';
+          btn.innerHTML = ICONS.check + `<span class="var-key-text">${t('common.copied')}</span>`;
           setTimeout(() => (btn.innerHTML = original), 1500);
         }
       });
@@ -250,26 +250,26 @@ export default class VariablesPage implements Page {
     modal.innerHTML = /* html */ `
       <div class="modal-content">
         <div class="modal-header">
-          <h2 class="modal-title">${isEdit ? 'Edit Variable' : 'Create Global Variable'}</h2>
-          <p class="modal-desc">${isEdit ? 'Update the value for all your flows.' : 'Define a new reusable key-value pair.'}</p>
+          <h2 class="modal-title">${isEdit ? t('variables.modal.edit_title') : t('variables.modal.create_title')}</h2>
+          <p class="modal-desc">${isEdit ? t('variables.modal.edit_desc') : t('variables.modal.create_desc')}</p>
         </div>
         <div class="modal-body">
           <div class="form-group">
-            <label class="form-label">Key</label>
-            <input type="text" class="form-input uppercase" id="var-key" placeholder="E.g. COMPANY_NAME" value="${variable?.key || ''}" ${isEdit ? 'disabled' : ''} />
+            <label class="form-label">${t('variables.modal.key_label')}</label>
+            <input type="text" class="form-input uppercase" id="var-key" placeholder="${t('variables.modal.key_placeholder')}" value="${variable?.key || ''}" ${isEdit ? 'disabled' : ''} />
           </div>
           <div class="form-group">
-            <label class="form-label">Value</label>
-            <textarea class="form-textarea" id="var-value" placeholder="Enter the value to inject...">${variable?.value || ''}</textarea>
+            <label class="form-label">${t('variables.modal.value_label')}</label>
+            <textarea class="form-textarea" id="var-value" placeholder="${t('variables.modal.value_placeholder')}">${variable?.value || ''}</textarea>
           </div>
           <div class="form-group">
-            <label class="form-label">Description (Optional)</label>
-            <input type="text" class="form-input" id="var-desc" placeholder="What is this used for?" value="${variable?.description || ''}" />
+            <label class="form-label">${t('variables.modal.desc_label')}</label>
+            <input type="text" class="form-input" id="var-desc" placeholder="${t('variables.modal.desc_placeholder')}" value="${variable?.description || ''}" />
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn-secondary" id="modal-cancel">Cancel</button>
-          <button class="btn-primary" id="modal-save">Save Variable</button>
+          <button class="btn-secondary" id="modal-cancel">${t('common.cancel')}</button>
+          <button class="btn-primary" id="modal-save">${t('variables.modal.save')}</button>
         </div>
       </div>
     `;
@@ -290,12 +290,12 @@ export default class VariablesPage implements Page {
       const value = inputValue.value;
       const desc = inputDesc.value.trim();
 
-      if (!key) return alert('Key is required');
-      if (!value) return alert('Value is required');
+      if (!key) return alert(t('variables.modal.key_required'));
+      if (!value) return alert(t('variables.modal.value_required'));
 
       // Check unique key on create
       if (!isEdit && this.variables.some((v) => v.key === key)) {
-        return alert('This key already exists.');
+        return alert(t('variables.modal.key_exists'));
       }
 
       const newVar: Variable = {
@@ -316,7 +316,7 @@ export default class VariablesPage implements Page {
         this.applySearch();
       } catch (err) {
         console.error('Failed to save variable:', err);
-        alert('Failed to save variable. Please try again.');
+        alert(t('variables.modal.save_error'));
       }
     });
   }
@@ -345,13 +345,13 @@ export default class VariablesPage implements Page {
       warningHtml = /* html */ `
         <div style="background-color: #3f2c2c; border: 1px solid #dc2626; border-radius: 0.5rem; padding: 1rem; margin-top: 1rem;">
           <p style="color: #fca5a5; font-size: 0.875rem; font-weight: bold; margin: 0 0 0.5rem 0;">
-            Warning: This variable is currently used in ${affectedFlows.length} flow(s)!
+            ${t('variables.delete_modal.warning_title', { count: affectedFlows.length })}
           </p>
           <div class="affected-flows-list">
             ${affectedFlows.map(f => `<div class="affected-flows-item">${this.escapeHTML(f.name)}</div>`).join('')}
           </div>
           <p style="color: #fca5a5; font-size: 0.75rem; margin: 0.5rem 0 0 0;">
-            Deleting this variable will break these flows (the raw tags will be injected instead).
+            ${t('variables.delete_modal.warning_desc')}
           </p>
         </div>
       `;
@@ -360,13 +360,13 @@ export default class VariablesPage implements Page {
     modal.innerHTML = /* html */ `
       <div class="modal-content">
         <div class="modal-header">
-          <h2 class="modal-title">Delete Variable?</h2>
-          <p class="modal-desc">Are you sure you want to delete <span class="tag">{{${variable.key}}}</span>? This action cannot be undone.</p>
+          <h2 class="modal-title">${t('variables.delete_modal.title')}</h2>
+          <p class="modal-desc">${t('variables.delete_modal.desc', { tag: `<span class="tag">{{${variable.key}}}</span>` })}</p>
         </div>
         ${warningHtml}
         <div class="modal-footer">
-          <button class="btn-secondary" id="modal-cancel">Cancel</button>
-          <button class="btn-danger" id="modal-confirm">Yes, Delete</button>
+          <button class="btn-secondary" id="modal-cancel">${t('common.cancel')}</button>
+          <button class="btn-danger" id="modal-confirm">${t('variables.delete_modal.confirm')}</button>
         </div>
       </div>
     `;

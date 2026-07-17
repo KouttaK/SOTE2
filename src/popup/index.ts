@@ -12,9 +12,11 @@
  */
 
 import { storage } from '../shared/storage/StorageService.js';
+import { browser } from 'wxt/browser';
 import { domainMatchesAny } from '../shared/storage/helpers.js';
 import type { Flow, Settings, Variable } from '../shared/types/index.js';
 import { sendMessage } from '../shared/messaging/client.js';
+import { t, initI18n, getLanguage } from '../shared/i18n/index.js';
 
 // ---------------------------------------------------------------------------
 // DOM references (asserted non-null — element IDs are guaranteed by index.html)
@@ -35,6 +37,13 @@ const btnSnooze4h      = document.getElementById('btn-snooze-4h')!      as HTMLB
 const btnBlockSite     = document.getElementById('btn-block-site')!     as HTMLButtonElement;
 const btnCancelSnooze  = document.getElementById('btn-cancel-snooze')!  as HTMLButtonElement;
 const btnOpenDashboard = document.getElementById('btn-open-dashboard')! as HTMLButtonElement;
+
+const labelQuickPause     = document.getElementById('label-quick-pause')!     as HTMLParagraphElement;
+const labelSnooze1h       = document.getElementById('label-snooze-1h')!      as HTMLSpanElement;
+const labelSnooze4h       = document.getElementById('label-snooze-4h')!      as HTMLSpanElement;
+const labelCancelPause    = document.getElementById('label-cancel-pause')!    as HTMLSpanElement;
+const labelRecentSnippets = document.getElementById('label-recent-snippets')! as HTMLParagraphElement;
+const labelOpenDashboard  = document.getElementById('label-open-dashboard')!  as HTMLSpanElement;
 
 // ---------------------------------------------------------------------------
 // State
@@ -63,9 +72,11 @@ function formatSnoozeRemaining(minutes: number): string {
   if (minutes >= 60) {
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
-    return m > 0 ? `Paused for ${h}h ${m}m more` : `Paused for ${h}h more`;
+    return m > 0
+      ? t('popup.page.snooze_remaining.hm', { h, m })
+      : t('popup.page.snooze_remaining.h', { h });
   }
-  return `Paused for ${minutes}m more`;
+  return t('popup.page.snooze_remaining.m', { m: minutes });
 }
 
 /** Returns the hostname of the current active tab, or null. */
@@ -104,11 +115,11 @@ function renderToggle(enabled: boolean): void {
   if (enabled) {
     toggleTrack.classList.add('is-on');
     toggleTrack.setAttribute('aria-checked', 'true');
-    toggleLabel.textContent = 'Enabled';
+    toggleLabel.textContent = t('popup.page.enabled');
   } else {
     toggleTrack.classList.remove('is-on');
     toggleTrack.setAttribute('aria-checked', 'false');
-    toggleLabel.textContent = 'Disabled';
+    toggleLabel.textContent = t('popup.page.disabled');
   }
 }
 
@@ -131,19 +142,19 @@ function renderSnooze(snoozeUntil: number | undefined): void {
 /** Renders the "Mute on Site" button label based on blocklist state. */
 function renderBlockSiteBtn(domain: string | null, blocklist: string[]): void {
   if (!domain) {
-    blockBtnLabel.textContent = 'Mute on Site';
-    btnBlockSite.title = 'No site to block';
+    blockBtnLabel.textContent = t('popup.page.mute_site');
+    btnBlockSite.title = t('popup.page.no_site_to_block');
     return;
   }
 
   const isBlocked = domainMatchesAny(domain, blocklist);
   if (isBlocked) {
-    blockBtnLabel.textContent = 'Site Muted';
+    blockBtnLabel.textContent = t('popup.page.site_muted');
     btnBlockSite.classList.add('is-active');
   } else {
-    blockBtnLabel.textContent = 'Mute on Site';
+    blockBtnLabel.textContent = t('popup.page.mute_site');
     btnBlockSite.classList.remove('is-active');
-    btnBlockSite.title = `Block ${domain}`;
+    btnBlockSite.title = t('popup.page.block_site_title', { domain });
   }
 }
 
@@ -226,7 +237,7 @@ function buildSnippetRow(flow: Flow): HTMLDivElement {
       <p class="snippet-shortcut">${shortcut}</p>
       <p class="snippet-preview">${preview}</p>
     </div>
-    <button class="snippet-copy-btn" type="button" title="Copy to clipboard">
+    <button class="snippet-copy-btn" type="button" title="${t('popup.page.copy_title')}">
       ${SVG_COPY}
     </button>
   `;
@@ -237,9 +248,9 @@ function buildSnippetRow(flow: Flow): HTMLDivElement {
     e.stopPropagation();
     try {
       await navigator.clipboard.writeText(previewPlain);
-      showToast('Copied!');
+      showToast(t('popup.page.copied'));
     } catch {
-      showToast('Copy failed');
+      showToast(t('popup.page.copy_failed'));
     }
   });
 
@@ -270,7 +281,7 @@ function renderSnippets(flows: Flow[], query: string): void {
     const empty = document.createElement('p');
     empty.className = 'snippet-preview';
     empty.style.padding = '0.25rem 0.25rem';
-    empty.textContent = query ? 'No results found.' : 'No recent snippets.';
+    empty.textContent = query ? t('popup.page.no_results') : t('popup.page.no_recent_snippets');
     snippetsList.appendChild(empty);
     return;
   }
@@ -306,7 +317,7 @@ btnSnooze1h.addEventListener('click', async () => {
   if (res && res.success) {
     currentSettings.snoozeUntil = res.snoozeUntil;
     renderSnooze(res.snoozeUntil);
-    showToast('Snoozed for 1 hour');
+    showToast(t('popup.page.snoozed_1h'));
   }
 });
 
@@ -316,7 +327,7 @@ btnSnooze4h.addEventListener('click', async () => {
   if (res && res.success) {
     currentSettings.snoozeUntil = res.snoozeUntil;
     renderSnooze(res.snoozeUntil);
-    showToast('Snoozed for 4 hours');
+    showToast(t('popup.page.snoozed_4h'));
   }
 });
 
@@ -328,13 +339,13 @@ btnCancelSnooze.addEventListener('click', async () => {
   currentSettings.snoozeUntil = undefined;
   await storage.saveSettings({ snoozeUntil: undefined }); // Also do it directly to be safe
   renderSnooze(undefined);
-  showToast('Pause cancelled');
+  showToast(t('popup.page.pause_cancelled'));
 });
 
 /** Block / unblock current site */
 btnBlockSite.addEventListener('click', async () => {
   if (!currentDomain) {
-    showToast('No site to block');
+    showToast(t('popup.page.no_site_to_block'));
     return;
   }
 
@@ -347,14 +358,14 @@ btnBlockSite.addEventListener('click', async () => {
     currentSettings.blocklist = blocklist;
     await storage.saveSettings({ blocklist });
     renderBlockSiteBtn(currentDomain, blocklist);
-    showToast(`${currentDomain} unblocked`);
+    showToast(t('popup.page.site_unblocked', { domain: currentDomain }));
   } else {
     // Block it via messaging.
     await sendMessage({ type: 'BLOCKLIST_ADD', payload: { domain: currentDomain } });
     blocklist.push(currentDomain);
     currentSettings.blocklist = blocklist;
     renderBlockSiteBtn(currentDomain, blocklist);
-    showToast(`${currentDomain} muted`);
+    showToast(t('popup.page.site_muted_toast', { domain: currentDomain }));
   }
 });
 
@@ -376,6 +387,23 @@ searchInput.addEventListener('input', () => {
 // ---------------------------------------------------------------------------
 
 async function init(): Promise<void> {
+  // Language comes from Settings, same source the dashboard reads from —
+  // must resolve before anything below calls t(), or every label renders
+  // in the fallback language for one frame (or permanently, if init()
+  // never re-runs after this point, which it doesn't).
+  await initI18n();
+  document.documentElement.lang = getLanguage();
+
+  // Static labels — the dynamic ones (toggle, block-site button, snooze
+  // countdown) are (re)populated by their own render*() functions below.
+  labelQuickPause.textContent = t('popup.page.quick_pause');
+  labelSnooze1h.textContent = t('popup.page.snooze_1h');
+  labelSnooze4h.textContent = t('popup.page.snooze_4h');
+  labelCancelPause.textContent = t('popup.page.cancel_pause');
+  labelRecentSnippets.textContent = t('popup.page.recent_snippets');
+  labelOpenDashboard.textContent = t('popup.page.open_dashboard');
+  searchInput.placeholder = t('popup.page.search_placeholder');
+
   // Parallelise all async reads for fast startup (<100ms target).
   const [settings, flows, variables, domain] = await Promise.all([
     storage.getSettings(),

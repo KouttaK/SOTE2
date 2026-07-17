@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
     <title>SOTE</title>
     <link rel="stylesheet" href="./popup.css" />
   </head>
@@ -36,7 +37,7 @@
 
         <!-- Quick Pause section -->
         <div id="popup-quick-pause">
-          <p class="popup-section-label">Quick Pause</p>
+          <p class="popup-section-label" id="label-quick-pause">Quick Pause</p>
 
           <!-- Normal state: 3-button grid -->
           <div id="pause-grid" class="pause-grid">
@@ -45,7 +46,7 @@
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true" fill="currentColor">
                 <path d="M464 256A208 208 0 1 1 48 256a208 208 0 1 1 416 0zM0 256a256 256 0 1 0 512 0A256 256 0 1 0 0 256zM232 120V256c0 8 4 15.5 10.7 20l96 64c11 7.4 25.9 4.4 33.3-6.7s4.4-25.9-6.7-33.3L280 243.2V120c0-13.3-10.7-24-24-24s-24 10.7-24 24z"/>
               </svg>
-              <span>Snooze 1 Hour</span>
+              <span id="label-snooze-1h">Snooze 1 Hour</span>
             </button>
 
             <button id="btn-snooze-4h" class="pause-btn" type="button">
@@ -53,7 +54,7 @@
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512" aria-hidden="true" fill="currentColor">
                 <path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L542.6 400c2.7-7.8 1.3-16.5-3.9-23l-14.9-18.6C495.5 322.9 480 278.8 480 233.4V200c0-75.8-55.5-138.6-128-150.1V32c0-17.7-14.3-32-32-32s-32 14.3-32 32V49.9c-43.9 7-81.5 32.7-104.4 68.7L38.8 5.1zM221.7 148.4C239.6 117.1 273.3 96 312 96h8 8c57.4 0 104 46.6 104 104v33.4c0 32.7 6.4 64.8 18.7 94.5L221.7 148.4zM406.2 416l-60.9-48H168.3c21.2-32.8 34.4-70.3 38.4-109.1L160 222.1v11.4c0 45.4-15.5 89.5-43.8 124.9L101.3 377c-5.8 7.2-6.9 17.1-2.9 25.4s12.4 13.6 21.6 13.6H406.2zM384 448H320 256c0 17 6.7 33.3 18.7 45.3s28.3 18.7 45.3 18.7s33.3-6.7 45.3-18.7s18.7-28.3 18.7-45.3z"/>
               </svg>
-              <span>Snooze 4 Hours</span>
+              <span id="label-snooze-4h">Snooze 4 Hours</span>
             </button>
 
             <button id="btn-block-site" class="pause-btn" type="button">
@@ -71,7 +72,7 @@
               <span class="snooze-info-text" id="snooze-remaining-text">Paused</span>
             </div>
             <button id="btn-cancel-snooze" class="snooze-cancel-btn" type="button">
-              <span>Cancel pause</span>
+              <span id="label-cancel-pause">Cancel pause</span>
             </button>
           </div>
         </div>
@@ -96,7 +97,7 @@
 
         <!-- Recent snippets -->
         <div id="popup-recent">
-          <p class="popup-section-label">Recent Snippets</p>
+          <p class="popup-section-label" id="label-recent-snippets">Recent Snippets</p>
           <div id="snippets-list" class="snippets-list">
             <!-- Rendered by index.ts -->
           </div>
@@ -107,7 +108,7 @@
       <!-- ── Footer ─────────────────────────────────────────────────────── -->
       <div id="popup-footer">
         <button id="btn-open-dashboard" type="button">
-          <span>Open full Dashboard</span>
+          <span id="label-open-dashboard">Open full Dashboard</span>
           <!-- fa-arrow-up-right-from-square -->
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true" fill="currentColor">
             <path d="M320 0c-17.7 0-32 14.3-32 32s14.3 32 32 32h82.7L201.4 265.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L448 109.3V192c0 17.7 14.3 32 32 32s32-14.3 32-32V32c0-17.7-14.3-32-32-32H320zM80 32C35.8 32 0 67.8 0 112V432c0 44.2 35.8 80 80 80H400c44.2 0 80-35.8 80-80V320c0-17.7-14.3-32-32-32s-32 14.3-32 32V432c0 8.8-7.2 16-16 16H80c-8.8 0-16-7.2-16-16V112c0-8.8 7.2-16 16-16H192c17.7 0 32-14.3 32-32s-14.3-32-32-32H80z"/>

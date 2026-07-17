@@ -11,6 +11,7 @@ export const DEFAULT_SETTINGS: Settings = {
   commandPaletteShortcut: 'Ctrl+Shift+Space',
   analytics: {},
   clipboardHistoryMax: 10,
+  contextMenuEnabled: true,
   searchTrigger: {
     enabled: true,
     includeFlows: true,

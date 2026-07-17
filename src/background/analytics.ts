@@ -29,11 +29,11 @@ export default class AnalyticsPage implements Page {
     this.el.innerHTML = /* html */ `
       <header class="analytics-header">
         <div>
-          <h1 class="analytics-header-title">${t('analytics.page.title')}</h1>
-          <p class="analytics-header-subtitle">${t('analytics.page.subtitle')}</p>
+          <h1 class="analytics-header-title">${t('analytics.title')}</h1>
+          <p class="analytics-header-subtitle">${t('analytics.subtitle')}</p>
         </div>
         <button class="btn-secondary" id="btn-reset-stats">
-          ${ICONS.reset} ${t('analytics.page.reset_btn')}
+          ${ICONS.reset} ${t('analytics.reset')}
         </button>
       </header>
 
@@ -44,42 +44,42 @@ export default class AnalyticsPage implements Page {
           <div class="stats-grid">
             <div class="stat-card">
               <div class="stat-card-header">
-                ${ICONS.bolt} ${t('analytics.page.stat.total_expansions')}
+                ${ICONS.bolt} ${t('analytics.total')}
               </div>
               <p class="stat-card-value" id="stat-expansions">0</p>
-              <p class="stat-card-desc">${t('analytics.page.stat.all_time')}</p>
+              <p class="stat-card-desc">${t('analytics.total.desc')}</p>
             </div>
             
             <div class="stat-card">
               <div class="stat-card-header">
-                ${ICONS.clock} ${t('analytics.page.stat.time_saved')}
+                ${ICONS.clock} ${t('analytics.time_saved')}
               </div>
               <p class="stat-card-value" id="stat-time">0m</p>
-              <p class="stat-card-desc">${t('analytics.page.stat.wpm_basis')}</p>
+              <p class="stat-card-desc">${t('analytics.time_saved.desc', { wpm: 40 })}</p>
             </div>
 
             <div class="stat-card">
               <div class="stat-card-header">
-                ${ICONS.keyboard} ${t('analytics.page.stat.keys_saved')}
+                ${ICONS.keyboard} ${t('analytics.keys_saved')}
               </div>
               <p class="stat-card-value" id="stat-keys">0</p>
-              <p class="stat-card-desc">${t('analytics.page.stat.keystrokes_avoided')}</p>
+              <p class="stat-card-desc">${t('analytics.keys_saved.desc')}</p>
             </div>
 
             <div class="stat-card">
               <div class="stat-card-header">
-                ${ICONS.fire} ${t('analytics.page.stat.current_streak')}
+                ${ICONS.fire} ${t('analytics.streak')}
               </div>
               <p class="stat-card-value" id="stat-streak">0</p>
-              <p class="stat-card-desc">${t('analytics.page.stat.consecutive_days')}</p>
+              <p class="stat-card-desc">${t('analytics.streak.desc')}</p>
             </div>
           </div>
 
           <!-- Chart Section -->
           <section class="chart-section">
             <div class="chart-header">
-              <h2 class="chart-title">${t('analytics.page.chart.title')}</h2>
-              <p class="chart-subtitle">${t('analytics.page.chart.subtitle')}</p>
+              <h2 class="chart-title">${t('analytics.chart.title')}</h2>
+              <p class="chart-subtitle">${t('analytics.chart.days', { days: 30 })}</p>
             </div>
             <div class="chart-container">
               <canvas id="usage-chart"></canvas>
@@ -88,7 +88,7 @@ export default class AnalyticsPage implements Page {
 
           <!-- Top Flows -->
           <section class="top-flows-section">
-            <h2 class="top-flows-title">${t('analytics.page.top_flows.title')}</h2>
+            <h2 class="top-flows-title">${t('analytics.top_flows.title', { count: 5 })}</h2>
             <div class="top-flows-list" id="top-flows-container">
               <!-- Rendered via JS -->
             </div>
@@ -164,7 +164,7 @@ export default class AnalyticsPage implements Page {
     this.el.querySelector('#stat-expansions')!.textContent = totalExpansions.toLocaleString();
     this.el.querySelector('#stat-keys')!.textContent = totalKeysSaved.toLocaleString();
     this.el.querySelector('#stat-time')!.textContent = timeFormatted;
-    this.el.querySelector('#stat-streak')!.textContent = `${streak} ${streak === 1 ? t('analytics.page.streak.day') : t('analytics.page.streak.days')}`;
+    this.el.querySelector('#stat-streak')!.textContent = `${streak} ${t(streak === 1 ? 'analytics.streak.day' : 'analytics.streak.days')}`;
   }
 
   private drawChart() {
@@ -260,7 +260,7 @@ export default class AnalyticsPage implements Page {
       .slice(0, 5);
 
     if (sorted.length === 0) {
-      container.innerHTML = `<p style="color: #737373; font-size: 0.875rem;">${t('analytics.page.top_flows.empty')}</p>`;
+      container.innerHTML = `<p style="color: #737373; font-size: 0.875rem;">${t('analytics.no_data')}</p>`;
       return;
     }
 
@@ -275,7 +275,7 @@ export default class AnalyticsPage implements Page {
               <span class="top-flow-rank">#${i + 1}</span>
               <p class="top-flow-name">${this.escapeHTML(flow.name)}</p>
             </div>
-            <p class="top-flow-count">${t('analytics.page.top_flows.uses', { count: flow.stats.usageCount.toLocaleString() })}</p>
+            <p class="top-flow-count">${t('flows.usage_count', { count: flow.stats.usageCount.toLocaleString() })}</p>
           </div>
           <div class="top-flow-bar-container">
             <div class="top-flow-bar" style="width: ${width}%;"></div>
@@ -306,12 +306,12 @@ export default class AnalyticsPage implements Page {
     modal.innerHTML = /* html */ `
       <div class="analytics-modal-content">
         <div class="analytics-modal-header">
-          <h2 class="analytics-modal-title">${t('analytics.page.reset_modal.title')}</h2>
-          <p class="analytics-modal-desc">${t('analytics.page.reset_modal.desc')}</p>
+          <h2 class="analytics-modal-title">${t('analytics.reset_modal.title')}</h2>
+          <p class="analytics-modal-desc">${t('analytics.reset_modal.desc')}</p>
         </div>
         <div class="analytics-modal-footer">
           <button class="analytics-btn-primary" id="modal-cancel">${t('common.cancel')}</button>
-          <button class="analytics-btn-danger" id="modal-confirm">${t('analytics.page.reset_btn')}</button>
+          <button class="analytics-btn-danger" id="modal-confirm">${t('analytics.reset_modal.confirm')}</button>
         </div>
       </div>
     `;

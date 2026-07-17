@@ -2,7 +2,81 @@
  * src/content/engine/TextInjector.ts
  */
 
+/**
+ * Invisible marker temporarily inserted at the live caret position inside
+ * a contentEditable field right before something (the Input/Choice token
+ * ChoicePopup) steals focus away from it for a while.
+ *
+ * `injectIntoContentEditable` normally trusts `window.getSelection()` to
+ * still point at "right after the typed shortcut" once the field regains
+ * focus — true for plain contenteditable in most browsers, but NOT for
+ * sites whose compose box is a custom rich-text editor (TipTap/
+ * ProseMirror, Slate, Draft.js, Quill...) that manages its own selection
+ * state and may reset the caret to the very start of the document on
+ * refocus instead of restoring it. When that happens, the "delete the
+ * typed shortcut" step silently deletes nothing (there's nothing before
+ * position 0), while the new content still gets inserted — the exact bug
+ * reported on a TipTap-based chat widget: the expansion appeared, but the
+ * shortcut itself ("at1") was left behind, pushed to the end.
+ *
+ * Anchoring to this literal marker text — found by searching the actual
+ * DOM content, not by trusting the live Selection API — means the
+ * deletion/insertion below works regardless of what the editor resets the
+ * caret to after refocusing.
+ */
+const SHORTCUT_ANCHOR_MARKER = '\u2063\u2063SOTE_ANCHOR\u2063\u2063';
+
 export class TextInjector {
+  /**
+   * Call right before doing anything that might steal focus away from a
+   * contentEditable field for a while (e.g. opening the ChoicePopup for an
+   * Input/Choice token). Inserts `SHORTCUT_ANCHOR_MARKER` at the current
+   * caret position via the native input pipeline (so rich-text editors
+   * that listen for real input events, like TipTap/ProseMirror, register
+   * it as part of their own document model instead of it being invisible
+   * to them). No-op for plain <input>/<textarea> (their selectionStart/
+   * selectionEnd survive a focus/blur cycle just fine) or if the element
+   * doesn't currently have a live selection inside it.
+   *
+   * Returns whether the marker was actually placed.
+   */
+  public static placeContentEditableAnchor(element: HTMLElement): boolean {
+    if (this.isInputOrTextarea(element) || !element.isContentEditable) return false;
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return false;
+    if (!element.contains(selection.getRangeAt(0).startContainer)) return false;
+
+    document.execCommand('insertText', false, SHORTCUT_ANCHOR_MARKER);
+    return true;
+  }
+
+  /**
+   * Removes a marker placed by `placeContentEditableAnchor` without
+   * injecting anything in its place — used when the user cancels the
+   * Input/Choice popup (Esc / click outside), so the marker doesn't
+   * linger as leftover (invisible, but real) characters in the field.
+   */
+  public static removeContentEditableAnchor(element: HTMLElement): void {
+    const anchor = this.locateAnchor(element);
+    if (!anchor) return;
+    const range = document.createRange();
+    range.setStart(anchor.node, anchor.offset);
+    range.setEnd(anchor.node, anchor.offset + SHORTCUT_ANCHOR_MARKER.length);
+    range.deleteContents();
+  }
+
+  /** Finds the marker text node + offset inside `element`, if present. */
+  private static locateAnchor(element: HTMLElement): { node: Text; offset: number } | null {
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    let node: Text | null;
+    while ((node = walker.nextNode() as Text | null)) {
+      const idx = node.data.indexOf(SHORTCUT_ANCHOR_MARKER);
+      if (idx !== -1) return { node, offset: idx };
+    }
+    return null;
+  }
+
   /**
    * Main entry point to inject text and handle cursor positioning.
    * @param element The active element
@@ -66,9 +140,25 @@ export class TextInjector {
 
   private static injectIntoContentEditable(el: HTMLElement, shortcut: string, html: string, isRichText: boolean, cursorOffset: number | null) {
     el.focus();
-    
+
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
+    if (!selection) return;
+
+    const anchor = this.locateAnchor(el);
+    if (anchor) {
+      // Reliable path: select the marker itself and delete it — this
+      // collapses the caret exactly where the marker started, i.e. exactly
+      // where the typed shortcut ended, regardless of whatever the editor
+      // reset the live selection to while it didn't have focus.
+      const anchorRange = document.createRange();
+      anchorRange.setStart(anchor.node, anchor.offset);
+      anchorRange.setEnd(anchor.node, anchor.offset + SHORTCUT_ANCHOR_MARKER.length);
+      selection.removeAllRanges();
+      selection.addRange(anchorRange);
+      document.execCommand('delete', false);
+    } else if (selection.rangeCount === 0) {
+      return;
+    }
 
     const range = selection.getRangeAt(0);
 
@@ -83,6 +173,13 @@ export class TextInjector {
       if (startOffset >= 0) {
         range.setStart(range.startContainer, startOffset);
         range.deleteContents();
+        // Explicitly re-sync the live selection to this now-collapsed range
+        // rather than assuming the browser keeps it tracking a Range object
+        // we mutated by reference — insertHTML/insertText below operate on
+        // whatever the live selection is, not on this local `range` var.
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
       } else {
         // Complex case: spans across elements. We will use execCommand 'delete' as a hack
         // Not perfect, but execCommand('undo') isn't right either.
