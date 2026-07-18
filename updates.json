@@ -5,7 +5,7 @@
         {
           "version": "1.0.9",
           "update_link": "https://kouttak.github.io/SOTE2/sote2-1.0.9.xpi",
-          "update_hash": "sha256:FEB6FD3620E6B1853E254069D31DD3FDFC80EAACA44FBF8D5F1CBBD36BF5BA3C",
+          "update_hash": "sha256:26B3B3A5C74D3A240ADFB4B4A200B8321E8EE03FE3142CC7B1FDA76823ADD15B",
           "applications": {
             "gecko": { "strict_min_version": "109.0" }
           }
