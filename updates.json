@@ -3,6 +3,14 @@
     "sote2@kouttak.github.io": {
       "updates": [
         {
+          "version": "1.0.10",
+          "update_link": "https://kouttak.github.io/SOTE2/sote2-1.0.10.xpi",
+          "update_hash": "sha256:A47753E136FC64B76A902E40A9C7D482C60F042032F1AA2C8FFDC322C7175991",
+          "applications": {
+            "gecko": { "strict_min_version": "109.0" }
+          }
+        },
+        {
           "version": "1.0.9",
           "update_link": "https://kouttak.github.io/SOTE2/sote2-1.0.9.xpi",
           "update_hash": "sha256:26B3B3A5C74D3A240ADFB4B4A200B8321E8EE03FE3142CC7B1FDA76823ADD15B",
