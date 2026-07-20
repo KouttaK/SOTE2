@@ -39,6 +39,8 @@ export function describeConditionCriterion(criterion: ConditionCriterion): strin
     time: t('condition.time'),
     weekday: t('condition.weekday'),
     date: t('condition.date'),
+    field_type: t('condition.field_type'),
+    field_content: t('condition.field_content'),
   };
   const opLabels: Record<string, string> = {
     contains: t('condition.op.contains'),
@@ -75,6 +77,32 @@ export function describeConditionCriterion(criterion: ConditionCriterion): strin
     return t('condition.preview.date_is', { value: criterion.value || '...' });
   }
 
+  if (criterion.type === 'field_type') {
+    const fieldTypeLabels: Record<string, string> = {
+      email: t('condition.field_type.email'),
+      password: t('condition.field_type.password'),
+      tel: t('condition.field_type.tel'),
+      number: t('condition.field_type.number'),
+      url: t('condition.field_type.url'),
+      search: t('condition.field_type.search'),
+      textarea: t('condition.field_type.textarea'),
+      contenteditable: t('condition.field_type.contenteditable'),
+      text: t('condition.field_type.text'),
+    };
+    const valueLabel = fieldTypeLabels[criterion.value] || criterion.value || '...';
+    const key = criterion.operator === 'not_contains' ? 'condition.preview.field_type_is_not' : 'condition.preview.field_type_is';
+    return t(key, { value: valueLabel });
+  }
+
+  if (criterion.type === 'field_content') {
+    const key = criterion.operator === 'not_contains'
+      ? 'condition.preview.field_content_not_contains'
+      : criterion.operator === 'equals'
+        ? 'condition.preview.field_content_equals'
+        : 'condition.preview.field_content_contains';
+    return t(key, { value: criterion.value || '...' });
+  }
+
   return `${typeLabel} ${opLabels[criterion.operator] || criterion.operator} "${criterion.value || '...'}"`;
 }
 
@@ -106,6 +134,8 @@ const ICONS = {
   globe: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M352 256c0 22.2-1.2 43.6-3.3 64H163.3c-2.2-20.4-3.3-41.8-3.3-64s1.2-43.6 3.3-64H348.7c2.2 20.4 3.3 41.8 3.3 64zm28.8-64H503.9c5.3 20.5 8.1 41.9 8.1 64s-2.8 43.5-8.1 64H380.8c2.1-20.6 3.2-42 3.2-64s-1.1-43.4-3.2-64zm112.6-32H376.7c-10-63.9-29.8-117.4-55.3-151.6c78.3 20.7 142 77.5 171.9 151.6zm-149.1 0H167.7c6.1-36.4 15.5-68.6 27-94.7c10.5-23.6 22.2-40.7 33.5-51.5C239.4 3.2 248.7 0 256 0s16.6 3.2 27.8 13.8c11.3 10.8 23 27.9 33.5 51.5c11.6 26 20.9 58.2 27 94.7zm-209 0H18.6C48.6 85.9 112.2 29.1 190.6 8.4C165.1 42.6 145.3 96.1 135.3 160zM8.1 192H131.2c-2.1 20.6-3.2 42-3.2 64s1.1 43.4 3.2 64H8.1C2.8 299.5 0 278.1 0 256s2.8-43.5 8.1-64zM194.7 446.6c-11.6-26-20.9-58.2-27-94.6H344.3c-6.1 36.4-15.5 68.6-27 94.6c-10.5 23.6-22.2 40.7-33.5 51.5C272.6 508.8 263.3 512 256 512s-16.6-3.2-27.8-13.8c-11.3-10.8-23-27.9-33.5-51.5zM135.3 352c10 63.9 29.8 117.4 55.3 151.6C112.2 482.9 48.6 426.1 18.6 352H135.3zm358.1 0c-30 74.1-93.6 130.9-171.9 151.6c25.5-34.2 45.2-87.7 55.3-151.6H493.4z"/></svg>`,
   clock: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M256 0a256 256 0 1 1 0 512A256 256 0 1 1 256 0zM232 120V256c0 8 4 15.5 10.7 20l96 64c11 7.4 25.9 4.4 33.3-6.7s4.4-25.9-6.7-33.3L280 243.2V120c0-13.3-10.7-24-24-24s-24 10.7-24 24z"/></svg>`,
   calendar: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M152 24c0-13.3-10.7-24-24-24s-24 10.7-24 24V64H64C28.7 64 0 92.7 0 128v16 48V448c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V192 144 128c0-35.3-28.7-64-64-64H344V24c0-13.3-10.7-24-24-24s-24 10.7-24 24V64H152V24zM48 192H400V448c0 8.8-7.2 16-16 16H64c-8.8 0-16-7.2-16-16V192z"/></svg>`,
+  fieldType: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"></rect><line x1="6" y1="10" x2="6" y2="10"></line><line x1="10" y1="10" x2="10" y2="10"></line><line x1="14" y1="10" x2="14" y2="10"></line><line x1="18" y1="10" x2="18" y2="10"></line><line x1="7" y1="15" x2="17" y2="15"></line></svg>`,
+  fieldContent: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="12" x2="14" y2="12"></line><line x1="4" y1="18" x2="18" y2="18"></line></svg>`,
 };
 
 // CSS injected once into document
@@ -426,10 +456,12 @@ export class ConditionRuleBlock {
         <div class="condition-rule-stack">
           <div class="pill-select-wrap">
             <select class="pill-select rule-type">
-              <option value="domain"  ${rule.type === 'domain'  ? 'selected' : ''}>${t('condition.domain')}</option>
-              <option value="time"    ${rule.type === 'time'    ? 'selected' : ''}>${t('condition.time')}</option>
-              <option value="weekday" ${rule.type === 'weekday' ? 'selected' : ''}>${t('condition.weekday')}</option>
-              <option value="date"    ${rule.type === 'date'    ? 'selected' : ''}>${t('condition.date')}</option>
+              <option value="domain"        ${rule.type === 'domain'        ? 'selected' : ''}>${t('condition.domain')}</option>
+              <option value="time"          ${rule.type === 'time'          ? 'selected' : ''}>${t('condition.time')}</option>
+              <option value="weekday"       ${rule.type === 'weekday'       ? 'selected' : ''}>${t('condition.weekday')}</option>
+              <option value="date"          ${rule.type === 'date'          ? 'selected' : ''}>${t('condition.date')}</option>
+              <option value="field_type"    ${rule.type === 'field_type'    ? 'selected' : ''}>${t('condition.field_type')}</option>
+              <option value="field_content" ${rule.type === 'field_content' ? 'selected' : ''}>${t('condition.field_content')}</option>
             </select>
           </div>
           <div class="rule-value-container condition-rule-row"></div>
@@ -471,6 +503,8 @@ export class ConditionRuleBlock {
     else if (target.type === 'time') this.renderTimeInputs(target, container, onSave);
     else if (target.type === 'weekday') this.renderWeekdayInputs(target, container, onSave);
     else if (target.type === 'date') this.renderDateInputs(target, container, onSave);
+    else if (target.type === 'field_type') this.renderFieldTypeInputs(target, container, onSave);
+    else if (target.type === 'field_content') this.renderFieldContentInputs(target, container, onSave);
   }
 
   /**
@@ -519,10 +553,12 @@ export class ConditionRuleBlock {
         <span class="cond-extra-row-connector">${(rule.combinator || 'AND') === 'OR' ? t('condition.criteria.or_word') : t('condition.criteria.and_word')}</span>
         <div class="pill-select-wrap">
           <select class="pill-select criterion-type">
-            <option value="domain"  ${criterion.type === 'domain'  ? 'selected' : ''}>${t('condition.domain')}</option>
-            <option value="time"    ${criterion.type === 'time'    ? 'selected' : ''}>${t('condition.time')}</option>
-            <option value="weekday" ${criterion.type === 'weekday' ? 'selected' : ''}>${t('condition.weekday')}</option>
-            <option value="date"    ${criterion.type === 'date'    ? 'selected' : ''}>${t('condition.date')}</option>
+            <option value="domain"        ${criterion.type === 'domain'        ? 'selected' : ''}>${t('condition.domain')}</option>
+            <option value="time"          ${criterion.type === 'time'          ? 'selected' : ''}>${t('condition.time')}</option>
+            <option value="weekday"       ${criterion.type === 'weekday'       ? 'selected' : ''}>${t('condition.weekday')}</option>
+            <option value="date"          ${criterion.type === 'date'          ? 'selected' : ''}>${t('condition.date')}</option>
+            <option value="field_type"    ${criterion.type === 'field_type'    ? 'selected' : ''}>${t('condition.field_type')}</option>
+            <option value="field_content" ${criterion.type === 'field_content' ? 'selected' : ''}>${t('condition.field_content')}</option>
           </select>
         </div>
         <div class="criterion-value-container condition-rule-row"></div>
@@ -729,6 +765,88 @@ export class ConditionRuleBlock {
     container.appendChild(valueWrap);
 
     valueWrap.querySelector('.rule-value')!.addEventListener('change', (e) => {
+      target.value = (e.target as HTMLInputElement).value;
+      onSave();
+    });
+  }
+
+  // FIELD TYPE — É / Não é + dropdown of known field categories (email,
+  // password, textarea, etc. — see getFieldTypeCategory in shared/utils/dom.ts,
+  // which is what actually classifies the focused field at runtime).
+  private renderFieldTypeInputs(target: ConditionCriterion, container: HTMLElement, onSave: () => void) {
+    // Only 'equals' ("É") / 'not_contains' ("Não é") make sense for a
+    // categorical match — normalize away any leftover operator from
+    // switching from another criterion type (e.g. domain's 'contains').
+    if (target.operator !== 'not_contains') target.operator = 'equals';
+    if (!target.value) target.value = 'email';
+
+    const opWrap = document.createElement('div');
+    opWrap.className = 'pill-select-wrap pill-select-wrap--op';
+    opWrap.innerHTML = `
+      <select class="pill-select field-type-op">
+        <option value="equals"       ${target.operator === 'equals'       ? 'selected' : ''}>${t('condition.field_type.is')}</option>
+        <option value="not_contains" ${target.operator === 'not_contains' ? 'selected' : ''}>${t('condition.field_type.is_not')}</option>
+      </select>
+    `;
+
+    const valueWrap = document.createElement('div');
+    valueWrap.className = 'pill-select-wrap';
+    valueWrap.innerHTML = `
+      <select class="pill-select field-type-value">
+        <option value="email"           ${target.value === 'email'           ? 'selected' : ''}>${t('condition.field_type.email')}</option>
+        <option value="password"        ${target.value === 'password'        ? 'selected' : ''}>${t('condition.field_type.password')}</option>
+        <option value="tel"             ${target.value === 'tel'             ? 'selected' : ''}>${t('condition.field_type.tel')}</option>
+        <option value="number"          ${target.value === 'number'          ? 'selected' : ''}>${t('condition.field_type.number')}</option>
+        <option value="url"             ${target.value === 'url'             ? 'selected' : ''}>${t('condition.field_type.url')}</option>
+        <option value="search"          ${target.value === 'search'          ? 'selected' : ''}>${t('condition.field_type.search')}</option>
+        <option value="textarea"        ${target.value === 'textarea'        ? 'selected' : ''}>${t('condition.field_type.textarea')}</option>
+        <option value="contenteditable" ${target.value === 'contenteditable' ? 'selected' : ''}>${t('condition.field_type.contenteditable')}</option>
+        <option value="text"            ${target.value === 'text'            ? 'selected' : ''}>${t('condition.field_type.text')}</option>
+      </select>
+    `;
+
+    container.appendChild(opWrap);
+    container.appendChild(valueWrap);
+
+    opWrap.querySelector('.field-type-op')!.addEventListener('change', (e) => {
+      target.operator = (e.target as HTMLSelectElement).value as any;
+      onSave();
+    });
+    valueWrap.querySelector('.field-type-value')!.addEventListener('change', (e) => {
+      target.value = (e.target as HTMLSelectElement).value;
+      onSave();
+    });
+  }
+
+  // FIELD CONTENT — operator (contains/not/equals) + free-text value,
+  // checked at runtime against what's already typed in the focused field
+  // (see getFieldContent in shared/utils/dom.ts).
+  private renderFieldContentInputs(target: ConditionCriterion, container: HTMLElement, onSave: () => void) {
+    const opWrap = document.createElement('div');
+    opWrap.className = 'pill-select-wrap pill-select-wrap--op';
+    opWrap.innerHTML = `
+      <select class="pill-select rule-operator">
+        <option value="contains"     ${target.operator === 'contains'     ? 'selected' : ''}>${t('condition.op.contains')}</option>
+        <option value="not_contains" ${target.operator === 'not_contains' ? 'selected' : ''}>${t('condition.op.not_contains')}</option>
+        <option value="equals"       ${target.operator === 'equals'       ? 'selected' : ''}>${t('condition.op.equals')}</option>
+      </select>
+    `;
+
+    const valueWrap = document.createElement('div');
+    valueWrap.className = 'pill-value';
+    valueWrap.innerHTML = `
+      ${ICONS.fieldContent}
+      <input type="text" class="rule-value" value="${escapeHtml(target.value || '')}" placeholder="${t('condition.field_content.placeholder')}" />
+    `;
+
+    container.appendChild(opWrap);
+    container.appendChild(valueWrap);
+
+    opWrap.querySelector('.rule-operator')!.addEventListener('change', (e) => {
+      target.operator = (e.target as HTMLSelectElement).value as any;
+      onSave();
+    });
+    valueWrap.querySelector('.rule-value')!.addEventListener('input', (e) => {
       target.value = (e.target as HTMLInputElement).value;
       onSave();
     });

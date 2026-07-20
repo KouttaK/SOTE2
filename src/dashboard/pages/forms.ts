@@ -452,7 +452,17 @@ export default class FormsPage implements Page {
       if (this.dragFieldIndex === null || this.dragFieldIndex === targetIndex) return;
 
       const [moved] = this.draftFields.splice(this.dragFieldIndex, 1);
-      this.draftFields.splice(targetIndex, 0, moved);
+      // Removing the dragged item first shifts every index after it down
+      // by one — so when dropping further down the list (dragFieldIndex <
+      // targetIndex), targetIndex must be adjusted by that same -1, or the
+      // item lands one row past where it was dropped (visually "jumping"
+      // over the intended target, only to look right again after a second
+      // drag the other direction — exactly the symptom reported: fields
+      // jumping to another spot and later snapping back). Dropping
+      // upward (dragFieldIndex > targetIndex) needs no adjustment, since
+      // nothing before targetIndex shifted.
+      const adjustedTarget = this.dragFieldIndex < targetIndex ? targetIndex - 1 : targetIndex;
+      this.draftFields.splice(adjustedTarget, 0, moved);
       this.dragFieldIndex = null;
       this.renderFieldsList();
     });

@@ -2,14 +2,57 @@ export type TriggerMode = 'trigger' | 'exact_match';
 
 export interface Token {
   id: string;
-  type: 'choice' | 'cursor' | 'clipboard' | 'input' | 'date' | 'url' | 'title';
+  type: 'choice' | 'cursor' | 'clipboard' | 'input' | 'date' | 'url' | 'title' | 'random' | 'flow_ref';
   config: Record<string, unknown>;
+}
+
+/** Config shape for a `flow_ref` token — "Incluir Fluxo" ("Flow Include").
+ * Lets one flow's action reuse another flow's content by reference instead
+ * of copy-pasting it, so a shared snippet (e.g. an email signature) only
+ * needs to be edited in one place. `flowLabel` is a denormalized copy of
+ * the target flow's name/shortcut, cached purely for display in the pill
+ * and tokens-preview list (same pattern as `input`'s `config.label`) — the
+ * actual content resolved at expansion time always comes fresh from
+ * `flowId` (see resolveFlowRefToken in ActionContentResolver.ts), so a
+ * rename of the target flow is reflected correctly at runtime even though
+ * this cached label may look stale in the editor until the token is
+ * reopened/resaved. */
+export interface FlowRefTokenConfig {
+  flowId: string;
+  flowLabel?: string;
+}
+
+/** A single weighted phrase inside a 'random' token's config
+ * (`token.config.options`). `weight` is a percentage (0-100); every
+ * option belonging to the same token always sums to exactly 100 — see
+ * shared/utils/randomWeights.ts, which keeps that invariant whenever an
+ * option is added, removed, or edited. */
+export interface RandomTokenOption {
+  id: string;
+  weight: number;
+  text: string;
 }
 
 export interface Block {
   id: string;
   type: 'trigger' | 'condition' | 'action';
-  data: TriggerBlock | ConditionBlock | ActionBlock;
+  /**
+   * For `type: 'trigger'` → TriggerBlock.
+   * For `type: 'condition'` → ConditionBlock — the dedicated Se/Senão Se/
+   * Senão step some flows still use as a separate top-level step, kept
+   * for backward compatibility with flows saved before block-adding was
+   * unified (see editor.ts's renderFlow()).
+   * For `type: 'action'` → a full BranchTarget (ActionBlock | ConditionBlock
+   * | RandomBlock | ScriptBlock), not just a plain ActionBlock. This is what
+   * lets the
+   * unified "+ Adicionar Bloco" menu offer Random (or a nested Condition)
+   * directly at the top level of a flow with no dedicated Condition step —
+   * exactly the same way a branch's own leaf already could. Resolved at
+   * runtime by ConditionResolver.ts's resolveFlowActionBlock via
+   * resolveLeaf(), the same function every nested branch target goes
+   * through.
+   */
+  data: TriggerBlock | ConditionBlock | BranchTarget;
 }
 
 export interface TriggerBlock {
@@ -60,19 +103,81 @@ export interface ConditionCriterion {
 
 /**
  * What a branch (a rule's `action`, or a ConditionBlock's `elseBranch`)
- * ultimately leads to: either a leaf ActionBlock (the normal case), or —
- * to support nested conditions — another whole ConditionBlock whose own
- * rules/elseBranch are evaluated in turn. This recursive union is what
- * lets "Se X, então Se Y, então Z" trees be built to arbitrary depth
- * while staying 100% backward-compatible with existing saved Flows: an
- * old rule's `action` is always a plain ActionBlock (no `rules` array),
- * so `isConditionBlock()` below correctly treats it as a leaf.
+ * ultimately leads to: a leaf ActionBlock (the normal case); another whole
+ * ConditionBlock, to support nested conditions; a RandomBlock, to support
+ * choosing between several alternative outputs at random; or a
+ * ScriptBlock, to compute the output with arbitrary sandboxed JS instead
+ * of a fixed rule/text. This recursive union is what lets "Se X, então Se
+ * Y, então Z" trees (and "Se X, então (aleatoriamente A ou B)", and "Se X,
+ * então (calcular via script)" trees) be built to arbitrary depth while
+ * staying 100% backward-compatible with existing saved Flows: an old
+ * rule's `action` is always a plain ActionBlock (no `rules`/`options`/
+ * `code` field), so `isConditionBlock()`/`isRandomBlock()`/`isScriptBlock()`
+ * below correctly treat it as a leaf.
  */
-export type BranchTarget = ActionBlock | ConditionBlock;
+export type BranchTarget = ActionBlock | ConditionBlock | RandomBlock | ScriptBlock;
 
 /** Narrows a BranchTarget to a nested ConditionBlock (as opposed to a leaf ActionBlock). */
 export function isConditionBlock(target: BranchTarget | null | undefined): target is ConditionBlock {
   return !!target && Array.isArray((target as ConditionBlock).rules);
+}
+
+/**
+ * A single weighted alternative inside a RandomBlock. `weight` is a
+ * percentage (0-100); every option belonging to the same RandomBlock
+ * always sums to exactly 100 (see shared/utils/randomWeights.ts). `target`
+ * is itself a full BranchTarget — normally a plain ActionBlock, but it can
+ * be converted into a nested ConditionBlock or even another nested
+ * RandomBlock, exactly like any other branch leaf.
+ */
+export interface RandomBlockOption {
+  id: string;
+  weight: number;
+  target: BranchTarget;
+}
+
+/**
+ * "Bloco Aleatório" — an alternative to a plain leaf ActionBlock inside a
+ * Condition branch (a rule's `action`, or the `elseBranch`): instead of
+ * always running the same action, one of `options` is chosen at random
+ * (weighted by each option's `weight`) every time the branch is reached.
+ * `type: 'random'` is the discriminant that lets `isRandomBlock()` tell
+ * this apart from a plain ActionBlock/ConditionBlock leaf.
+ */
+export interface RandomBlock {
+  type: 'random';
+  options: RandomBlockOption[];
+}
+
+/** Narrows a BranchTarget to a RandomBlock (as opposed to a leaf ActionBlock or a ConditionBlock). */
+export function isRandomBlock(target: BranchTarget | null | undefined): target is RandomBlock {
+  return !!target && (target as RandomBlock).type === 'random' && Array.isArray((target as RandomBlock).options);
+}
+
+/**
+ * "Bloco de Script/Fórmula" — an alternative to a plain leaf ActionBlock
+ * (or to Condition's fixed rules) that computes its own text output via
+ * arbitrary JS instead: formatting a number, building a conditional
+ * string more elaborate than Condition's rules can express, etc. `code` is
+ * the BODY of a function (write `return ...;`, not a full function
+ * declaration) — it's run as `new Function('ctx', code)(ctx)` inside a
+ * fully isolated extension page (see content/engine/ScriptSandbox.ts and
+ * src/sandbox/main.ts), never in the content script's own context, so it
+ * can never touch the visited page's DOM/cookies or any browser.*
+ * extension API — its only inputs are whatever's in `ctx` (Global
+ * Variables, hostname, current date/time, the focused field's type and
+ * current content) and its only output is the string it returns, which
+ * becomes this leaf's action content. `type: 'script'` is the discriminant
+ * that lets `isScriptBlock()` tell this apart from every other leaf type.
+ */
+export interface ScriptBlock {
+  type: 'script';
+  code: string;
+}
+
+/** Narrows a BranchTarget to a ScriptBlock (as opposed to any other leaf type). */
+export function isScriptBlock(target: BranchTarget | null | undefined): target is ScriptBlock {
+  return !!target && (target as ScriptBlock).type === 'script' && typeof (target as ScriptBlock).code === 'string';
 }
 
 export interface ActionBlock {

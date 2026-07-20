@@ -2,7 +2,8 @@
  * src/content/engine/tokenExpander.ts
  */
 
-import type { Token } from '../../shared/types/index.js';
+import type { RandomTokenOption, Token } from '../../shared/types/index.js';
+import { pickWeightedRandom } from '../../shared/utils/randomWeights.js';
 
 export interface ExpansionContext {
   tabUrl: string;
@@ -36,7 +37,6 @@ export async function expandToken(token: Token, context: ExpansionContext): Prom
       const index = Math.max(1, (token.config?.index as number) || 1);
       const history = context.clipboardHistory ?? [];
       const fromHistory = history[index - 1];
-      console.log(`[SOTE][clipboard-token] token.id=${token.id} config.index=${token.config?.index} -> resolved index=${index}, history=`, history, `-> value=${JSON.stringify(fromHistory)}`);
 
       if (fromHistory !== undefined) {
         return fromHistory;
@@ -66,6 +66,16 @@ export async function expandToken(token: Token, context: ExpansionContext): Prom
       // The engine handles cursor positioning after expansion.
       // Here we just return an empty string to remove the token from output.
       return '';
+
+    case 'random': {
+      // Unlike 'choice', this never defers to a popup — one option is
+      // picked automatically (weighted by each option's `weight`, a
+      // percentage that always sums to 100 across the set) every time
+      // the shortcut expands.
+      const options = (token.config?.options as RandomTokenOption[]) || [];
+      const chosen = pickWeightedRandom(options);
+      return chosen?.text ?? '';
+    }
 
     case 'choice':
     case 'input':

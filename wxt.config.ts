@@ -6,6 +6,22 @@ export default defineConfig({
   srcDir: 'src',
   entrypointsDir: '.',
   manifest: {
+    // Firefox's default MV3 extension-page CSP forbids eval() / new
+    // Function() — needed by the "Bloco de Script/Fórmula" feature's
+    // sandbox page (src/sandbox/index.html) to run user-authored JS at
+    // all. This override applies ONLY to extension_pages (chrome-
+    // extension://<id>/*.html documents like dashboard.html, popup.html,
+    // and sandbox.html) — it does NOT relax anything for content scripts
+    // or the pages they run on, and 'unsafe-eval' still can't reach
+    // remote code: script-src 'self' means only code already bundled
+    // into this extension can ever be eval'd, never something fetched
+    // from the network. See content/engine/ScriptSandbox.ts and
+    // src/sandbox/index.ts for how (and how little) that relaxation is
+    // actually used — only sandbox.html's own script calls `new
+    // Function()`, and only with a user's own Script/Fórmula code.
+    content_security_policy: {
+      extension_pages: "script-src 'self' 'unsafe-eval'; object-src 'self'",
+    },
     permissions: [
       'storage',
       'alarms',

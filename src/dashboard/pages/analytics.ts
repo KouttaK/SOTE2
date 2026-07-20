@@ -5,6 +5,7 @@ import type { Page } from './index.js';
 import { storage } from '../../shared/storage/StorageService.js';
 import type { Flow, Settings } from '../../shared/types/index.js';
 import { t } from '../../shared/i18n/index.js';
+import { localDateKey } from '../../shared/utils/localDate.js';
 import './analytics.css';
 
 const ICONS = {
@@ -127,19 +128,23 @@ export default class AnalyticsPage implements Page {
       ? `${Math.floor(minutesSaved / 60)}h ${minutesSaved % 60}m` 
       : `${minutesSaved}m`;
 
-    // Streak calculation
+    // Streak calculation — local calendar days (see localDate.ts): using
+    // UTC here meant the "today"/"yesterday" buckets checked below didn't
+    // match the ones incrementFlowStats actually wrote to (also fixed to
+    // use local days), so the streak could read as broken/reset for hours
+    // every evening in Brazil even on days the user was actively typing.
     let streak = 0;
     const analytics = this.settings.analytics || {};
     let date = new Date();
     
     // Check today
-    let dateStr = date.toISOString().split('T')[0];
+    let dateStr = localDateKey(date);
     if (analytics[dateStr] > 0) {
       streak++;
     } else {
       // If today is 0, check if yesterday was > 0 to continue streak
       date.setDate(date.getDate() - 1);
-      dateStr = date.toISOString().split('T')[0];
+      dateStr = localDateKey(date);
       if (analytics[dateStr] > 0) {
         streak++;
       } else {
@@ -151,7 +156,7 @@ export default class AnalyticsPage implements Page {
       // Trace backwards
       date.setDate(date.getDate() - 1);
       while(true) {
-        dateStr = date.toISOString().split('T')[0];
+        dateStr = localDateKey(date);
         if (analytics[dateStr] > 0) {
           streak++;
           date.setDate(date.getDate() - 1);
@@ -188,7 +193,11 @@ export default class AnalyticsPage implements Page {
     for (let i = days - 1; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
+      // Local day (see localDate.ts) — must match the key incrementFlowStats
+      // writes to. It used to be UTC here while the label right below was
+      // already local, so a bar's own label and the data plotted under it
+      // could point at two different calendar days.
+      const dateStr = localDateKey(d);
       data.push(analytics[dateStr] || 0);
       labels.push(`${d.getDate()}/${d.getMonth()+1}`);
     }

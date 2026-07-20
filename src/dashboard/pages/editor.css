@@ -613,11 +613,6 @@
 
 /* ── Add Step Button ────────────────────────────────────────────────────── */
 
-.add-step-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
 .add-step-btn {
   display: flex;
   align-items: center;
@@ -760,27 +755,278 @@
 .branch-nested-remove:hover { border-color: #ef4444; color: #ef4444; }
 .branch-nested-remove svg { width: 0.625rem; height: 0.625rem; }
 
-.add-nested-condition-wrap {
-  display: flex;
-  justify-content: center;
-  width: 100%;
+/* ── Add Block control (Condition / Random / future block types) ────────
+   Single, consistent "+ Adicionar Bloco" pill (reuses .add-step-btn's own
+   look) + dropdown (reuses .token-menu-overlay/.token-menu-item from
+   tokens.css, same as Insert Token/Insert Variable) used identically at
+   the root of the flow and at every nested branch leaf. Replaces what used
+   to be three different affordances: a big standalone "Add Condition"
+   button at the root, and an amber "Turn into Random"/grey "Add Nested
+   Condition" button pair at every leaf.
+   Named .add-block-* (not .block-menu-*) to avoid colliding with the
+   unrelated .block-menu-wrap/.block-menu-btn used by the Action block's
+   own "..." header overflow menu above. */
+.add-block-wrap {
+  position: relative;
+  display: inline-flex;
   margin-top: 0.5rem;
 }
-.add-nested-condition-btn {
+.add-block-wrap .add-step-btn { margin-bottom: 0; }
+.add-block-wrap .token-menu-overlay.add-block-menu-overlay {
+  top: 100%;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  margin-top: 0.5rem;
+  width: 15rem;
+}
+
+/* ── Random Block ─────────────────────────────────────────────────────
+   An alternative to a plain Action leaf: instead of one fixed action,
+   the branch picks one of several weighted options at random every time
+   it's reached. Visually similar to the nested-condition wrap, but with
+   an amber accent so it reads as a clearly different kind of node, and
+   its own internal option cards (each recursively able to hold a plain
+   action, a nested condition, or another nested Random Block). */
+.branch-col:has(> .branch-random-wrap) {
+  width: auto;
+  max-width: none;
+}
+
+.branch-random-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  border: 1px dashed #b45309;
+  border-radius: 0.75rem;
+  padding: 0.75rem 0.75rem 0.5rem;
+  background-color: rgba(217, 119, 6, 0.06);
+  gap: 0.625rem;
+}
+
+.branch-random-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.branch-random-badge {
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  padding: 0.375rem 0.75rem;
-  border-radius: 0.5rem;
-  border: 1px dashed #404040;
-  background-color: transparent;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #f59e0b;
+}
+.branch-random-badge svg { width: 0.75rem; height: 0.75rem; }
+.branch-random-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid #404040;
+  background: transparent;
   color: #737373;
+  cursor: pointer;
+  transition: all 150ms;
+}
+.branch-random-remove:hover { border-color: #ef4444; color: #ef4444; }
+.branch-random-remove svg { width: 0.625rem; height: 0.625rem; }
+
+.branch-random-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.branch-random-option {
+  border: 1px solid #404040;
+  border-radius: 0.625rem;
+  background-color: #171717;
+  padding: 0.625rem;
+}
+
+.branch-random-option-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.branch-random-option-label {
+  font-size: 0.75rem;
+  color: #a3a3a3;
+  flex: 1;
+}
+.branch-random-weight-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background-color: #0a0a0a;
+  border: 1px solid #404040;
+  border-radius: 0.375rem;
+  padding: 0.125rem 0.5rem;
+}
+.branch-random-weight-input {
+  width: 3rem;
+  background: transparent;
+  border: none;
+  color: #f59e0b;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-align: right;
+  outline: none;
+  color-scheme: dark;
+}
+/* Hides the number input's native spinner arrows — the weights already
+   auto-rebalance on every keystroke, so the +/- steppers just get in the
+   way of typing a precise percentage. */
+.branch-random-weight-input::-webkit-outer-spin-button,
+.branch-random-weight-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.branch-random-weight-input[type="number"] { -moz-appearance: textfield; }
+.branch-random-weight-pct { font-size: 0.75rem; color: #737373; }
+
+.branch-random-option-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid #404040;
+  background: transparent;
+  color: #737373;
+  cursor: pointer;
+  transition: all 150ms;
+  flex-shrink: 0;
+}
+.branch-random-option-remove:hover { border-color: #ef4444; color: #ef4444; }
+.branch-random-option-remove svg { width: 0.625rem; height: 0.625rem; }
+
+.branch-random-option-body .block-card { width: 100%; }
+.branch-random-option-body .add-block-wrap { margin-top: 0.5rem; }
+
+.branch-random-add-option-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px dashed #525252;
+  background-color: transparent;
+  color: #a3a3a3;
   font-size: 0.75rem;
   cursor: pointer;
   transition: all 150ms;
 }
-.add-nested-condition-btn:hover { border-color: #737373; color: #d4d4d4; }
-.add-nested-condition-btn svg { width: 0.625rem; height: 0.625rem; }
+.branch-random-add-option-btn:hover { border-color: #737373; color: #d4d4d4; }
+.branch-random-add-option-btn svg { width: 0.625rem; height: 0.625rem; }
+
+/* ── Script/Fórmula Block ─────────────────────────────────────────────
+   An alternative to a plain Action leaf (or to Condition's fixed rules):
+   its text is computed by sandboxed JS instead — see ScriptBlock in
+   shared/types/index.ts and content/engine/ScriptSandbox.ts. Cyan accent
+   (matches .token-script in tokens.css) so it reads as its own distinct
+   kind of node next to the indigo nested-condition wrap and the amber
+   Random wrap. */
+.branch-col:has(> .branch-script-wrap) {
+  width: auto;
+  max-width: none;
+}
+
+.branch-script-wrap {
+  width: 100%;
+  max-width: 32rem;
+  display: flex;
+  flex-direction: column;
+  border: 1px dashed #0e7490;
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  background-color: rgba(8, 145, 178, 0.06);
+  gap: 0.5rem;
+}
+
+.branch-script-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.branch-script-badge {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #22d3ee;
+}
+.branch-script-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid #404040;
+  background: transparent;
+  color: #737373;
+  cursor: pointer;
+  transition: all 150ms;
+}
+.branch-script-remove:hover { border-color: #ef4444; color: #ef4444; }
+.branch-script-remove svg { width: 0.625rem; height: 0.625rem; }
+
+.branch-script-hint {
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  color: #737373;
+  margin: 0;
+}
+
+.branch-script-textarea {
+  width: 100%;
+  min-height: 6rem;
+  resize: vertical;
+  background-color: #0a0a0a;
+  border: 1px solid #404040;
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  color: #d4d4d4;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  outline: none;
+}
+.branch-script-textarea:focus { border-color: #0891b2; }
+
+.branch-script-test-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.branch-script-test-btn {
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #0e7490;
+  background-color: transparent;
+  color: #22d3ee;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 150ms;
+}
+.branch-script-test-btn:hover:not(:disabled) { background-color: rgba(8, 145, 178, 0.15); }
+.branch-script-test-btn:disabled { opacity: 0.5; cursor: default; }
+.branch-script-test-result {
+  font-size: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #737373;
+  word-break: break-word;
+}
+.branch-script-test-result.is-success { color: #4ade80; }
+.branch-script-test-result.is-error { color: #f87171; }
 
 /* ── Condition Rule Inputs ───────────────────────────────────────────────
    The type/operator <select>s, value pills, time-range pair, and weekday

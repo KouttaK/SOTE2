@@ -133,7 +133,7 @@ export default defineContentScript({
       monitor.pause(); // Stop monitoring while expanding
 
       try {
-        const actionBlock = detector.resolveActionBlock(flow) as ActionBlock;
+        const actionBlock = await detector.resolveActionBlock(flow, element, variables);
         if (!actionBlock) {
           monitor.resume();
           return;
@@ -149,11 +149,16 @@ export default defineContentScript({
 
         // Resolve tokens + variables + cursor position — shared pipeline,
         // see ActionContentResolver.ts (also used by Forms' field insertion).
+        // `flows` lets any `flow_ref` ("Incluir Fluxo") token look up its
+        // target; seeding the cycle-guard with this flow's own id means a
+        // flow that (directly or indirectly) includes itself is caught
+        // immediately instead of only on the second time around the loop.
         const resolved = await resolveActionBlockContent(actionBlock, element, {
           choicePopup,
           variables,
           context,
-        });
+          flows,
+        }, new Set([flow.id]));
 
         if (resolved === null) {
           // User cancelled a choice/input token popup (Esc / click outside).
@@ -170,7 +175,17 @@ export default defineContentScript({
         // actions too (richtext is the default format for new flows) — the
         // old code silently skipped both whenever isRichText was true.
         const triggerBlock = flow.blocks.find((b: Block) => b.type === 'trigger')?.data as any;
-        if (triggerBlock && (triggerBlock.smartCase || triggerBlock.forceCapitalize)) {
+        // `smartCase` defaults to ON when the field is missing/undefined
+        // (flows saved before this option existed, or imported from an
+        // older backup) — same default TriggerDetector.matchesShortcut()
+        // already documents and relies on for the *matching* half of Smart
+        // Case. Checking `triggerBlock.smartCase` truthily here broke that
+        // promise for the *casing* half: such a flow would still match
+        // "ATT"/"Att" case-insensitively, but then expand with whatever
+        // casing was saved, un-capitalized, instead of mirroring what was
+        // typed.
+        const smartCaseOn = !!triggerBlock && triggerBlock.smartCase !== false;
+        if (triggerBlock && (smartCaseOn || triggerBlock.forceCapitalize)) {
           expandedContent = applyCasing(shortcutTyped, expandedContent, !!triggerBlock.forceCapitalize, isRichText);
         }
 
@@ -221,6 +236,7 @@ export default defineContentScript({
           choicePopup,
           variables,
           context,
+          flows,
         });
 
         if (resolved === null) {

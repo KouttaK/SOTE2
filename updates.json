@@ -3,17 +3,9 @@
     "sote2@kouttak.github.io": {
       "updates": [
         {
-          "version": "1.0.10",
-          "update_link": "https://kouttak.github.io/SOTE2/sote2-1.0.10.xpi",
-          "update_hash": "sha256:A47753E136FC64B76A902E40A9C7D482C60F042032F1AA2C8FFDC322C7175991",
-          "applications": {
-            "gecko": { "strict_min_version": "140.0" }
-          }
-        },
-        {
-          "version": "1.0.9",
-          "update_link": "https://kouttak.github.io/SOTE2/sote2-1.0.9.xpi",
-          "update_hash": "sha256:26B3B3A5C74D3A240ADFB4B4A200B8321E8EE03FE3142CC7B1FDA76823ADD15B",
+          "version": "1.0.11",
+          "update_link": "https://kouttak.github.io/SOTE2/sote2-1.0.11.xpi",
+          "update_hash": "sha256:482824B389819DA7AE054118A1D938D4B6CF7139F5D56EA2FD153A24F472E600",
           "applications": {
             "gecko": { "strict_min_version": "140.0" }
           }
@@ -23,7 +15,7 @@
           "update_link": "https://kouttak.github.io/SOTE2/sote2-1.0.8.xpi",
           "update_hash": "sha256:5E575B14B8FDD35057B37F1905F04A1EEED9FE1CBF8F57048F762D0DF230F384",
           "applications": {
-            "gecko": { "strict_min_version": "140.0" }
+            "gecko": { "strict_min_version": "109.0" }
           }
         },
         {
@@ -31,7 +23,7 @@
           "update_link": "https://kouttak.github.io/SOTE2/sote2-1.0.7.xpi",
           "update_hash": "sha256:D6E414946CC0970B2259762946C2D0E075BB2809ABF3AFAB0E3E2FB115FB7CFB",
           "applications": {
-            "gecko": { "strict_min_version": "140.0" }
+            "gecko": { "strict_min_version": "109.0" }
           }
         },
         {
@@ -39,7 +31,7 @@
           "update_link": "https://kouttak.github.io/SOTE2/sote2-1.0.6.xpi",
           "update_hash": "sha256:E7047DCA486E77F5B220320A5FE0D0B74028AC76A31B09457D1DFF2ADEAD38D3",
           "applications": {
-            "gecko": { "strict_min_version": "140.0" }
+            "gecko": { "strict_min_version": "109.0" }
           }
         },
         {

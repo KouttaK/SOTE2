@@ -8,9 +8,11 @@ import { storage } from '../../../shared/storage/StorageService.js';
 import { TokenPill } from '../tokens/TokenPill.js';
 import { TokenMenu } from '../tokens/TokenMenu.js';
 import { ChoiceModal } from '../tokens/modals/ChoiceModal.js';
+import { RandomModal } from '../tokens/modals/RandomModal.js';
 import { ClipboardModal } from '../tokens/modals/ClipboardModal.js';
 import { InputModal } from '../tokens/modals/InputModal.js';
 import { DateModal } from '../tokens/modals/DateModal.js';
+import { FlowRefModal } from '../tokens/modals/FlowRefModal.js';
 
 /** Escapes HTML-significant characters before interpolating user-controlled
  * strings (Global Variable keys/values) into innerHTML. */
@@ -42,8 +44,13 @@ export class ActionBlock {
   private variables: Variable[] = [];
   private mutationObserver!: MutationObserver;
   private savedRange: Range | null = null;
+  /** This flow's own id — passed through to FlowRefModal so a flow can't
+   * (directly) include itself in the "Incluir Fluxo" picker. Undefined for
+   * contexts where no meaningful id exists yet; the modal simply doesn't
+   * filter anything out in that case. */
+  private excludeFlowId?: string;
 
-  constructor(data: IActionBlock | undefined, onChange: () => void) {
+  constructor(data: IActionBlock | undefined, onChange: () => void, excludeFlowId?: string) {
     this.data = data || {
       format: 'richtext',
       content: '',
@@ -53,6 +60,7 @@ export class ActionBlock {
     if (!this.data.tokens) this.data.tokens = [];
     
     this.onChange = onChange;
+    this.excludeFlowId = excludeFlowId;
     this.el = document.createElement('div');
     this.el.className = 'block-card';
     this.el.id = 'action-block';
@@ -411,6 +419,11 @@ export class ActionBlock {
     let config: any = {};
     if (type === 'clipboard') config.index = 1;
     if (type === 'date') config.format = 'DD/MM/YYYY';
+    if (type === 'random') config.options = [
+      { id: crypto.randomUUID(), text: '', weight: 50 },
+      { id: crypto.randomUUID(), text: '', weight: 50 },
+    ];
+    if (type === 'flow_ref') config.flowId = '';
 
     const token: Token = { id: crypto.randomUUID(), type, config };
     this.data.tokens.push(token);
@@ -443,6 +456,14 @@ export class ActionBlock {
 
     this.renderTokensPreview();
     this.onChange();
+
+    // Unlike other tokens, an unconfigured flow_ref pill resolves to
+    // nothing at all — prompt for which flow to include right away
+    // instead of leaving a silently-empty pill for the user to notice
+    // and click into later.
+    if (type === 'flow_ref') {
+      pill.click();
+    }
   }
 
   private bindExistingTokens() {
@@ -506,9 +527,11 @@ export class ActionBlock {
       };
 
       if (token.type === 'choice') new ChoiceModal(token, onSave).open();
+      if (token.type === 'random') new RandomModal(token, onSave).open();
       if (token.type === 'clipboard') new ClipboardModal(token, onSave).open();
       if (token.type === 'input') new InputModal(token, onSave).open();
       if (token.type === 'date') new DateModal(token, onSave).open();
+      if (token.type === 'flow_ref') new FlowRefModal(token, this.excludeFlowId, onSave).open();
     });
   }
 
@@ -533,6 +556,12 @@ export class ActionBlock {
           ? opts.map((o) => escapeHtml(o)).join(' <span class="tokens-preview-sep">·</span> ')
           : `<em>${t('action.block.tokens_preview.no_options')}</em>`;
       }
+      case 'random': {
+        const opts = (cfg.options as { text: string; weight: number }[]) || [];
+        return opts.length
+          ? opts.map((o) => `${escapeHtml(o.text)} <span class="tokens-preview-sep">(${Math.round(o.weight)}%)</span>`).join(' <span class="tokens-preview-sep">·</span> ')
+          : `<em>${t('action.block.tokens_preview.no_options')}</em>`;
+      }
       case 'input': {
         const label = escapeHtml((cfg.label as string) || '');
         const placeholder = cfg.placeholder ? escapeHtml(cfg.placeholder as string) : '';
@@ -551,6 +580,10 @@ export class ActionBlock {
         return t('token.url.desc');
       case 'title':
         return t('token.title.desc');
+      case 'flow_ref': {
+        const flowLabel = cfg.flowLabel as string | undefined;
+        return flowLabel ? escapeHtml(flowLabel) : `<em>${t('action.block.tokens_preview.no_flow_selected')}</em>`;
+      }
       default:
         return '';
     }
@@ -575,7 +608,7 @@ export class ActionBlock {
     }
     container.style.display = '';
 
-    const editableTypes = new Set(['choice', 'clipboard', 'input', 'date']);
+    const editableTypes = new Set(['choice', 'clipboard', 'input', 'date', 'random', 'flow_ref']);
 
     list.innerHTML = this.data.tokens.map((token) => {
       const isEditable = editableTypes.has(token.type);

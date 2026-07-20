@@ -11,6 +11,7 @@
  */
 
 import { browser } from 'wxt/browser';
+import { localDateKey } from '../utils/localDate.js';
 import type {
   Flow,
   Variable,
@@ -235,7 +236,10 @@ class StorageService {
     });
 
     const settings = await this.getSettings();
-    const today = new Date().toISOString().split('T')[0];
+    // Local calendar day, not UTC — see localDate.ts. Bucketing by UTC
+    // meant usage between ~21:00-23:59 (Brazil, UTC-3) was silently
+    // credited to tomorrow's bar in the analytics chart / streak.
+    const today = localDateKey(new Date());
     const currentCount = settings.analytics[today] || 0;
     await this.saveSettings({
       analytics: {

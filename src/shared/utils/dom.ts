@@ -150,3 +150,58 @@ export function qsAll<T extends HTMLElement>(
 ): T[] {
   return Array.from(root.querySelectorAll<T>(selector));
 }
+
+// ---------------------------------------------------------------------------
+// Field introspection — used by the "field_type" / "field_content" condition
+// criteria (see ConditionCriterion in shared/types) to inspect the field the
+// user is currently focused in/typing into.
+// ---------------------------------------------------------------------------
+
+/** The set of field categories the "Tipo de Campo" (field_type) condition
+ * criterion can match against. Native <input type="..."> values that aren't
+ * explicitly one of the "interesting" ones below (email/password/tel/
+ * number/url/search) all collapse into the generic 'text' bucket, same as
+ * a plain <input> with no type attribute. */
+export type FieldTypeCategory =
+  | 'email' | 'password' | 'tel' | 'number' | 'url' | 'search'
+  | 'textarea' | 'contenteditable' | 'text';
+
+const RECOGNIZED_INPUT_TYPES: ReadonlySet<string> = new Set([
+  'email', 'password', 'tel', 'number', 'url', 'search',
+]);
+
+/**
+ * Categorizes the currently focused field for the field_type condition
+ * criterion. Mirrors the same INPUT/TEXTAREA/contentEditable distinction
+ * TextInjector.inject() uses to decide *how* to write into a field, but
+ * goes one step further for <input> and also looks at its `type` attribute
+ * so a flow can react to "this is an email field" vs. a generic text one.
+ */
+export function getFieldTypeCategory(element: HTMLElement | null | undefined): FieldTypeCategory {
+  if (!element) return 'text';
+  if (element.tagName === 'TEXTAREA') return 'textarea';
+  if (element.tagName === 'INPUT') {
+    const inputType = (element as HTMLInputElement).type?.toLowerCase();
+    return RECOGNIZED_INPUT_TYPES.has(inputType) ? (inputType as FieldTypeCategory) : 'text';
+  }
+  if (element.isContentEditable) return 'contenteditable';
+  return 'text';
+}
+
+/**
+ * Returns the current text content of the focused field, used by the
+ * "Conteúdo do Campo" (field_content) condition criterion — e.g. to skip a
+ * greeting the field already contains. Reads `.value` for native form
+ * controls (same as TextInjector) and `.textContent` for contentEditable
+ * nodes, which don't keep a meaningful `.value`.
+ */
+export function getFieldContent(element: HTMLElement | null | undefined): string {
+  if (!element) return '';
+  if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+    return (element as HTMLInputElement | HTMLTextAreaElement).value || '';
+  }
+  if (element.isContentEditable) {
+    return element.textContent || '';
+  }
+  return '';
+}

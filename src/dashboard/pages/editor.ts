@@ -5,13 +5,17 @@
 import type { Page } from './index.js';
 import { browser } from 'wxt/browser';
 import { storage } from '../../shared/storage/StorageService.js';
-import type { Flow, Block, TriggerBlock as ITriggerBlock, ConditionBlock as IConditionBlock, ActionBlock as IActionBlock, Settings, BranchTarget } from '../../shared/types/index.js';
-import { isConditionBlock } from '../../shared/types/index.js';
+import type { Flow, Block, TriggerBlock as ITriggerBlock, ConditionBlock as IConditionBlock, ActionBlock as IActionBlock, RandomBlock as IRandomBlock, ScriptBlock as IScriptBlock, Settings, BranchTarget } from '../../shared/types/index.js';
+import { isConditionBlock, isRandomBlock, isScriptBlock } from '../../shared/types/index.js';
+import { runScript, ScriptContext } from '../../content/engine/ScriptSandbox.js';
+import { rebalanceWeights, removeAndRebalance, evenWeights } from '../../shared/utils/randomWeights.js';
 import { router } from '../router.js';
 import { t } from '../../shared/i18n/index.js';
 import { TriggerBlock } from '../components/blocks/TriggerBlock.js';
 import { ConditionRuleBlock, ConditionElseBlock, describeConditionRule } from '../components/blocks/ConditionBlock.js';
 import { ActionBlock } from '../components/blocks/ActionBlock.js';
+import { BlockMenu } from '../components/blocks/BlockMenu.js';
+import type { BlockMenuItemType } from '../components/blocks/BlockMenu.js';
 import { PreviewModal } from '../components/PreviewModal.js';
 import type { PreviewBranch } from '../components/PreviewModal.js';
 import type { ConditionRule } from '../../shared/types/index.js';
@@ -33,6 +37,7 @@ const ICONS = {
   plus: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z"/></svg>`,
   minus: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M432 256c0 17.7-14.3 32-32 32L48 288c-17.7 0-32-14.3-32-32s14.3-32 32-32l352 0c17.7 0 32 14.3 32 32z"/></svg>`,
   expand: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M32 32C14.3 32 0 46.3 0 64V192c0 17.7 14.3 32 32 32s32-14.3 32-32V96h96c17.7 0 32-14.3 32-32s-14.3-32-32-32H32zM64 320c0-17.7-14.3-32-32-32s-32 14.3-32 32V448c0 17.7 14.3 32 32 32H160c17.7 0 32-14.3 32-32s-14.3-32-32-32H64V320zM320 32c-17.7 0-32 14.3-32 32s14.3 32 32 32h96v96c0 17.7 14.3 32 32 32s32-14.3 32-32V64c0-17.7-14.3-32-32-32H320zM448 320c0-17.7-14.3-32-32-32s-32 14.3-32 32v96H288c-17.7 0-32 14.3-32 32s14.3 32 32 32H416c17.7 0 32-14.3 32-32V320z"/></svg>`,
+  dice: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="4" ry="4" stroke="currentColor" stroke-width="2"/><circle cx="8" cy="8" r="1.6" fill="currentColor"/><circle cx="16" cy="8" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="8" cy="16" r="1.6" fill="currentColor"/><circle cx="16" cy="16" r="1.6" fill="currentColor"/></svg>`,
 };
 
 /** Zoom bounds & step for the flow canvas. */
@@ -52,7 +57,6 @@ export default class FlowEditorPage implements Page {
   private triggerBlockInst!: TriggerBlock;
   private hasCondition = false;
   private conditionData: IConditionBlock | null = null; // rules[] + optional elseBranch, owned by the editor while a condition step exists
-  private actionBlockInst: ActionBlock | null = null; // used only in the linear (no-condition) flow
   // One entry per LEAF ActionBlock instance rendered anywhere in the branch
   // tree (at any nesting depth). `commit()` writes the instance's live data
   // back into its owning rule.action/elseBranch slot — the owner objects
@@ -293,8 +297,18 @@ export default class FlowEditorPage implements Page {
       // unsaved edits — this walk can read straight from conditionData,
       // recursing into nested conditions until it reaches a leaf action.
       branches.push(...this.collectPreviewBranches(this.conditionData));
-    } else if (this.actionBlockInst) {
-      branches.push({ action: this.actionBlockInst.getData() });
+    } else {
+      // No dedicated Condition step: the root action slot is itself a
+      // BranchTarget now (see renderFlow()) — commit every live leaf
+      // instance back into its owning slot first (same as saveFlow()),
+      // then walk it with the exact same generic leaf-collector used for
+      // every nested branch, so a Random/Condition block added directly at
+      // the root (with no dedicated Condition step) previews correctly too.
+      this.branchActionInsts.forEach(({ commit }) => commit());
+      const actionEntry = this.currentFlow.blocks.find((b) => b.type === 'action');
+      if (actionEntry) {
+        branches.push(...this.collectPreviewLeaf(actionEntry.data as BranchTarget, '', [], []));
+      }
     }
 
     // Fetched fresh on every open so a variable created/edited on the
@@ -308,38 +322,69 @@ export default class FlowEditorPage implements Page {
   /**
    * Walks a (possibly nested) ConditionBlock and flattens it into one
    * PreviewBranch per leaf action, building a "SE X → SENÃO SE Y → ..."
-   * path description as it descends so nested conditions are still
-   * legible in the flat preview list.
+   * path description as it descends so nested conditions (and, now,
+   * every alternative inside a Random Block) are still legible in the
+   * flat preview list.
    */
   private collectPreviewBranches(condData: IConditionBlock, pathSoFar: string[] = []): PreviewBranch[] {
     const result: PreviewBranch[] = [];
 
     condData.rules.forEach((rule: ConditionRule, i: number) => {
       const path = [...pathSoFar, describeConditionRule(rule)];
-      if (isConditionBlock(rule.action)) {
-        result.push(...this.collectPreviewBranches(rule.action, path));
-      } else {
-        result.push({
-          tag: pathSoFar.length === 0 ? (i === 0 ? t('condition.tag.if') : t('condition.tag.elseif')) : t('condition.tag.if'),
-          ruleDescription: path.join(' → '),
-          action: rule.action as IActionBlock,
-        });
-      }
+      const tag = pathSoFar.length === 0 ? (i === 0 ? t('condition.tag.if') : t('condition.tag.elseif')) : t('condition.tag.if');
+      result.push(...this.collectPreviewLeaf(rule.action, tag, path, path));
     });
 
     if (condData.elseBranch) {
-      if (isConditionBlock(condData.elseBranch)) {
-        result.push(...this.collectPreviewBranches(condData.elseBranch, [...pathSoFar, t('condition.tag.else')]));
-      } else {
-        result.push({
-          tag: t('condition.tag.else'),
-          ruleDescription: pathSoFar.length ? pathSoFar.join(' → ') : undefined,
-          action: condData.elseBranch as IActionBlock,
-        });
-      }
+      result.push(...this.collectPreviewLeaf(
+        condData.elseBranch,
+        t('condition.tag.else'),
+        pathSoFar,
+        [...pathSoFar, t('condition.tag.else')],
+      ));
     }
 
     return result;
+  }
+
+  /**
+   * Resolves a single branch target for the preview: recurses into a
+   * nested ConditionBlock (via `nestedPath`, matching the breadcrumb
+   * convention `collectPreviewBranches` already used for that case), fans
+   * out into every option of a Random Block (appending each option's
+   * label — with its weight — onto the breadcrumb, same tag as the
+   * branch it lives in), or returns a single PreviewBranch for a plain
+   * leaf ActionBlock (using `leafPath`, matching the other convention
+   * `collectPreviewBranches` used for that case).
+   */
+  private collectPreviewLeaf(target: BranchTarget, tag: string, leafPath: string[], nestedPath: string[]): PreviewBranch[] {
+    if (isConditionBlock(target)) {
+      return this.collectPreviewBranches(target, nestedPath);
+    }
+    if (isRandomBlock(target)) {
+      const result: PreviewBranch[] = [];
+      target.options.forEach((opt, idx) => {
+        const label = t('editor.random.preview_option', { n: idx + 1, weight: Math.round(opt.weight) });
+        result.push(...this.collectPreviewLeaf(opt.target, tag, [...leafPath, label], [...nestedPath, label]));
+      });
+      return result;
+    }
+    if (isScriptBlock(target)) {
+      // Doesn't actually run the script here: hostname/focused-field
+      // context wouldn't mean anything in the abstract preview anyway
+      // (there's no real page/field to read from). Use the block's own
+      // "Testar" button to see real output for real input.
+      return [{
+        tag,
+        ruleDescription: leafPath.length ? leafPath.join(' → ') : undefined,
+        action: { format: 'plaintext', content: `<p><em>${t('block.script.preview_placeholder')}</em></p>`, tokens: [] },
+      }];
+    }
+    return [{
+      tag,
+      ruleDescription: leafPath.length ? leafPath.join(' → ') : undefined,
+      action: target as IActionBlock,
+    }];
   }
 
   /**
@@ -366,16 +411,23 @@ export default class FlowEditorPage implements Page {
 
     const blocks: Block[] = [];
     blocks.push({ id: crypto.randomUUID(), type: 'trigger', data: triggerData });
-    
+
+    // Every leaf ActionBlock rendered anywhere in the tree (at any nesting
+    // depth, including the root when there's no dedicated Condition step)
+    // has its own dedicated instance — pull each one's data back into its
+    // owning rule.action/elseBranch/root slot before persisting.
+    this.branchActionInsts.forEach(({ commit }) => commit());
+
     if (condData) {
-      // Every leaf ActionBlock rendered in the branch tree (at any nesting
-      // depth) has its own dedicated instance — pull each one's data back
-      // into its owning rule.action/elseBranch slot before persisting.
-      this.branchActionInsts.forEach(({ commit }) => commit());
       blocks.push({ id: crypto.randomUUID(), type: 'condition', data: condData });
     } else {
-      const actionData = this.actionBlockInst!.getData();
-      blocks.push({ id: crypto.randomUUID(), type: 'action', data: actionData });
+      // No dedicated Condition step: the root action slot's data was just
+      // kept live-in-sync above by the commit() calls (same object already
+      // referenced by the flow's 'action' block, mutated in place by
+      // renderBranchTarget's setTarget) — just persist it as-is, whatever
+      // it currently is (plain action, nested condition, or random block).
+      const actionEntry = this.currentFlow.blocks.find((b) => b.type === 'action');
+      blocks.push({ id: crypto.randomUUID(), type: 'action', data: (actionEntry?.data as BranchTarget) ?? { format: 'plaintext', content: '', tokens: [] } });
     }
 
     this.currentFlow.blocks = blocks;
@@ -399,7 +451,7 @@ export default class FlowEditorPage implements Page {
   // ---------------------------------------------------------------------------
 
   private renderFlow() {
-    const container = this.el.querySelector('#node-flow-container')!;
+    const container = this.el.querySelector<HTMLElement>('#node-flow-container')!;
     container.innerHTML = '';
 
     // Step Counter
@@ -432,24 +484,30 @@ export default class FlowEditorPage implements Page {
     this.hasCondition = false;
     this.conditionData = null;
 
-    // 3. Main Action (linear flow, no condition)
+    // 3. Root action slot (linear flow, no dedicated Condition step): the
+    // 'action' block's data is itself a full BranchTarget (see Block's doc
+    // comment in shared/types/index.ts) — normally a plain leaf Action, but
+    // it can also already be a nested Condition or Random Block if the user
+    // added one via the unified "+ Adicionar Bloco" menu below without ever
+    // adding a dedicated Condition step. Rendering it through the exact same
+    // renderBranchTarget() every nested branch uses means the root gets the
+    // same recursive Condition/Random support and the same "+ Adicionar
+    // Bloco" control, instead of the old bespoke single-Action-block-only
+    // rendering + a condition-only "Add Step" button.
     container.appendChild(this.createConnector());
-    const actionBlockData = this.currentFlow.blocks.find(b => b.type === 'action')?.data as IActionBlock;
-    this.actionBlockInst = new ActionBlock(actionBlockData, () => this.markDirty());
-    container.appendChild(this.actionBlockInst.getElement());
+    this.branchActionInsts = [];
+    const actionEntry = this.currentFlow.blocks.find(b => b.type === 'action')
+      ?? { id: crypto.randomUUID(), type: 'action' as const, data: { format: 'plaintext', content: '', tokens: [] } as IActionBlock };
+    if (!this.currentFlow.blocks.includes(actionEntry)) this.currentFlow.blocks.push(actionEntry);
 
-    // 4. Add Step (Condition)
-    container.appendChild(this.createConnector());
-    const addWrap = document.createElement('div');
-    addWrap.className = 'add-step-wrap';
-    addWrap.innerHTML = `<button class="add-step-btn">${ICONS.plus} ${t('editor.condition.add')}</button>`;
-    addWrap.querySelector('button')!.addEventListener('click', () => {
-      // We mutate the flow to add a condition block and re-render
-      this.currentFlow.blocks.push({ id: crypto.randomUUID(), type: 'condition', data: { rules: [] } as IConditionBlock });
-      this.markDirty();
-      this.renderFlow();
-    });
-    container.appendChild(addWrap);
+    this.renderBranchTarget(
+      container,
+      () => actionEntry.data as BranchTarget,
+      (newTarget) => { actionEntry.data = newTarget; },
+      () => { this.markDirty(); this.renderFlow(); },
+      true, // root: both Condition and Random are offered, same as the Senão branch
+      true, // isRoot: "Condição" here creates a genuine dedicated top-level step
+    );
   }
 
   /**
@@ -606,9 +664,13 @@ export default class FlowEditorPage implements Page {
    * Renders whatever a single branch (a rule's `action`, or an
    * `elseBranch`) leads to, into `col`:
    *  - a nested ConditionBlock → its own recursive fan-out, one level
-   *    deeper, with a way to collapse it back into a plain action; or
-   *  - a plain leaf ActionBlock → the normal Action editor, with an
-   *    affordance to convert it into a nested condition instead.
+   *    deeper, with a way to collapse it back into a plain action;
+   *  - a RandomBlock → one card per weighted option, each recursively
+   *    rendered via this same method (so an option can itself be a plain
+   *    action, a nested condition, or another nested Random Block); or
+   *  - a plain leaf ActionBlock → the normal Action editor, with
+   *    affordances to convert it into a Random Block and/or (where
+   *    `allowNestedNew`) a nested condition instead.
    *
    * `getTarget`/`setTarget` read and replace whatever this branch
    * currently points to (owned by the caller's rule/elseBranch slot).
@@ -619,6 +681,7 @@ export default class FlowEditorPage implements Page {
     setTarget: (target: BranchTarget) => void,
     rebuild: () => void,
     allowNestedNew: boolean,
+    isRoot = false,
   ) {
     const target = getTarget();
 
@@ -650,27 +713,321 @@ export default class FlowEditorPage implements Page {
       return;
     }
 
-    const actionInst = new ActionBlock(target, () => this.markDirty());
+    if (isRandomBlock(target)) {
+      this.renderRandomBlock(col, target, setTarget, rebuild);
+      return;
+    }
+
+    if (isScriptBlock(target)) {
+      this.renderScriptBlock(col, target, setTarget, rebuild);
+      return;
+    }
+
+    const actionInst = new ActionBlock(target, () => this.markDirty(), this.currentFlow.id);
     this.branchActionInsts.push({ inst: actionInst, commit: () => setTarget(actionInst.getData()) });
     col.appendChild(actionInst.getElement());
 
-    // Old saved flows may already have a nested ConditionBlock here (from
-    // before this redesign) — those keep rendering via the recursive
-    // fan-out above. For a still-plain leaf action, only the Else branch
-    // still offers converting it into a further nested condition: a rule
-    // branch's own AND/OR criteria group (in ConditionRuleBlock) covers
-    // that need now, and does it more legibly.
-    if (!allowNestedNew) return;
-
-    const nestWrap = document.createElement('div');
-    nestWrap.className = 'add-nested-condition-wrap';
-    nestWrap.innerHTML = `<button type="button" class="add-nested-condition-btn">${ICONS.plus} ${t('editor.condition.add_nested')}</button>`;
-    nestWrap.querySelector('button')!.addEventListener('click', () => {
-      setTarget({ rules: [{ type: 'domain', operator: 'contains', value: '', action: { format: 'plaintext', content: '', tokens: [] } }] });
+    // Old saved flows may already have a nested ConditionBlock, Random
+    // Block, or Script Block here (from before this redesign) — those keep
+    // rendering via the branches above. For a still-plain leaf action,
+    // offer converting it into a Random Block or a Script Block (always
+    // available — both are alternatives to a fixed action, unrelated to
+    // conditioning) and, only where allowNestedNew, into a further nested
+    // condition: a rule branch's own AND/OR criteria group (in
+    // ConditionRuleBlock) covers that need now, and does it more legibly.
+    // All are offered through the one shared "+ Adicionar Bloco" control
+    // (see renderAddBlockControl) — no more separate, differently-styled
+    // buttons for each.
+    this.renderAddBlockControl(col, allowNestedNew ? ['condition', 'random', 'script'] : ['random', 'script'], (type) => {
+      if (type === 'random') {
+        setTarget({
+          type: 'random',
+          options: [
+            // Whatever was already typed here becomes the first option
+            // instead of silently vanishing — converting to Random should
+            // never lose content the user already wrote.
+            { id: crypto.randomUUID(), weight: 50, target: target as IActionBlock },
+            { id: crypto.randomUUID(), weight: 50, target: { format: 'plaintext', content: '', tokens: [] } },
+          ],
+        });
+      } else if (type === 'script') {
+        // Same reasoning as Random/Condition below: seed the script with
+        // a `return` of whatever plain text was already here (stripped of
+        // HTML — a script's return value is plain text, not rich HTML) so
+        // converting to Script never silently discards existing content;
+        // it just becomes a valid, editable starting point.
+        const existingText = (target as IActionBlock).content
+          ? new DOMParser().parseFromString((target as IActionBlock).content, 'text/html').body.textContent || ''
+          : '';
+        const code = existingText ? `return ${JSON.stringify(existingText)};` : t('block.script.default_code');
+        setTarget({ type: 'script', code });
+      } else if (type === 'condition') {
+        // Same reasoning: the new condition's first rule starts from
+        // whatever was already here, not a blank action.
+        const newCondition: IConditionBlock = {
+          rules: [{ type: 'domain', operator: 'contains', value: '', action: target as IActionBlock }],
+        };
+        if (isRoot) {
+          // At the root, match today's dedicated top-level Condition step
+          // (the same clean Se/Senão Se/Senão fan-out every existing flow
+          // already uses) instead of wrapping the root action inside a
+          // nested-looking dashed box — that boxed treatment is reserved
+          // for genuinely nested spots (a Senão branch, a Random option).
+          this.currentFlow.blocks.push({ id: crypto.randomUUID(), type: 'condition', data: newCondition });
+        } else {
+          setTarget(newCondition);
+        }
+      }
       rebuild();
     });
-    col.appendChild(nestWrap);
   }
+
+  /**
+   * Renders the single, consistent "+ Adicionar Bloco" control: a dashed
+   * pill button that opens a small dropdown (BlockMenu) listing whichever
+   * block types are relevant at this spot — e.g. only Random for a rule
+   * branch's own leaf, or Random + Condition for the root / a Senão branch
+   * / a Random option. Used identically at the root of the flow and at
+   * every nested branch leaf, so adding any kind of block always looks and
+   * behaves the same way — and adding a future block type is just one more
+   * entry in BlockMenu's own item list, not a new button to design.
+   */
+  private renderAddBlockControl(container: HTMLElement, allowedTypes: BlockMenuItemType[], onSelect: (type: BlockMenuItemType) => void) {
+    const wrap = document.createElement('div');
+    wrap.className = 'add-block-wrap';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'add-step-btn';
+    btn.innerHTML = `${ICONS.plus} ${t('editor.block.add')}`;
+
+    const menu = new BlockMenu(allowedTypes, onSelect);
+
+    wrap.appendChild(btn);
+    wrap.appendChild(menu.getElement());
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      menu.toggle();
+    });
+    document.addEventListener('click', (e) => {
+      if (!wrap.contains(e.target as Node)) menu.hide();
+    });
+
+    container.appendChild(wrap);
+  }
+
+  /**
+   * Renders a Script/Fórmula block into `col`: a header (badge + a button
+   * to convert it back into a plain empty action, discarding the code —
+   * confirmed first, same pattern as the nested-condition header), a
+   * code textarea, and a "Testar" button that actually runs the code
+   * through the same sandboxed pipeline a real expansion would use (see
+   * content/engine/ScriptSandbox.ts), against a representative but
+   * clearly-labeled-as-illustrative `ctx` (real Global Variables, but
+   * placeholder hostname/field values — there's no real page/field to
+   * read from while sitting in the editor), and shows the result (or
+   * error) right there instead of requiring a full trigger-and-see cycle.
+   */
+  private renderScriptBlock(col: HTMLElement, scriptBlock: IScriptBlock, setTarget: (target: BranchTarget) => void, rebuild: () => void) {
+    const wrap = document.createElement('div');
+    wrap.className = 'branch-script-wrap';
+
+    const header = document.createElement('div');
+    header.className = 'branch-script-header';
+    header.innerHTML = `
+      <span class="branch-script-badge">${t('editor.script.badge')}</span>
+      <button type="button" class="branch-script-remove" title="${t('condition.nested.remove')}">${ICONS.minus}</button>
+    `;
+    header.querySelector('.branch-script-remove')!.addEventListener('click', () => {
+      if (confirm(t('block.script.confirm_remove'))) {
+        setTarget({ format: 'plaintext', content: '', tokens: [] });
+        rebuild();
+      }
+    });
+    wrap.appendChild(header);
+
+    const hint = document.createElement('p');
+    hint.className = 'branch-script-hint';
+    hint.textContent = t('block.script.hint');
+    wrap.appendChild(hint);
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'branch-script-textarea';
+    textarea.spellcheck = false;
+    textarea.value = scriptBlock.code;
+    textarea.placeholder = t('block.script.default_code');
+    textarea.addEventListener('input', () => {
+      setTarget({ type: 'script', code: textarea.value });
+      this.markDirty();
+    });
+    wrap.appendChild(textarea);
+
+    const testRow = document.createElement('div');
+    testRow.className = 'branch-script-test-row';
+    const testBtn = document.createElement('button');
+    testBtn.type = 'button';
+    testBtn.className = 'branch-script-test-btn';
+    testBtn.textContent = t('block.script.test_btn');
+    const resultEl = document.createElement('span');
+    resultEl.className = 'branch-script-test-result';
+    testRow.appendChild(testBtn);
+    testRow.appendChild(resultEl);
+    wrap.appendChild(testRow);
+
+    testBtn.addEventListener('click', async () => {
+      testBtn.disabled = true;
+      resultEl.className = 'branch-script-test-result';
+      resultEl.textContent = t('block.script.testing');
+      try {
+        const variables = await storage.getVariables();
+        const ctx: ScriptContext = {
+          variables: Object.fromEntries(variables.map((v) => [v.key, v.value])),
+          hostname: 'exemplo.com',
+          now: new Date().toISOString(),
+          fieldType: 'text',
+          fieldContent: '',
+        };
+        const result = await runScript(textarea.value, ctx);
+        if (result.ok) {
+          resultEl.className = 'branch-script-test-result is-success';
+          resultEl.textContent = result.value === '' ? t('block.script.test_empty_result') : result.value;
+        } else {
+          resultEl.className = 'branch-script-test-result is-error';
+          resultEl.textContent = result.error;
+        }
+      } finally {
+        testBtn.disabled = false;
+      }
+    });
+
+    col.appendChild(wrap);
+  }
+
+  /**
+   * Renders a Random Block into `col`: a header (with a button to convert
+   * it back into a plain empty action), one card per weighted option —
+   * each with a % weight input that auto-rebalances every sibling so the
+   * set always sums to 100, an optional remove button (kept ≥ 2 options),
+   * and its own nested branch target rendered recursively — and a
+   * trailing "add option" button (no upper limit).
+   *
+   * Weight edits update `randomBlock.options` and the other visible % 
+   * inputs in place (no `rebuild()`), so typing a percentage never tears
+   * down/loses focus on the nested Action editors below it. Structural
+   * changes (add/remove option, convert back to a plain action) still go
+   * through `rebuild()`, same as the rest of the branch tree.
+   */
+  private renderRandomBlock(
+    col: HTMLElement,
+    randomBlock: IRandomBlock,
+    setTarget: (target: BranchTarget) => void,
+    rebuild: () => void,
+  ) {
+    const wrap = document.createElement('div');
+    wrap.className = 'branch-random-wrap';
+
+    const header = document.createElement('div');
+    header.className = 'branch-random-header';
+    header.innerHTML = `
+      <span class="branch-random-badge">${ICONS.dice} ${t('editor.random.badge')}</span>
+      <button type="button" class="branch-random-remove" title="${t('editor.random.remove_title')}">${ICONS.minus}</button>
+    `;
+    header.querySelector('.branch-random-remove')!.addEventListener('click', () => {
+      if (confirm(t('editor.random.confirm_remove'))) {
+        setTarget({ format: 'plaintext', content: '', tokens: [] });
+        rebuild();
+      }
+    });
+    wrap.appendChild(header);
+
+    const optionsWrap = document.createElement('div');
+    optionsWrap.className = 'branch-random-options';
+
+    const syncWeightInputs = () => {
+      randomBlock.options.forEach((opt, i) => {
+        const input = optionsWrap.querySelector<HTMLInputElement>(`[data-random-weight="${i}"]`);
+        if (input && document.activeElement !== input) input.value = String(Math.round(opt.weight));
+      });
+    };
+
+    randomBlock.options.forEach((opt, i) => {
+      const optCard = document.createElement('div');
+      optCard.className = 'branch-random-option';
+
+      const optHeader = document.createElement('div');
+      optHeader.className = 'branch-random-option-header';
+      optHeader.innerHTML = `
+        <span class="branch-random-option-label">${t('editor.random.option_label', { n: i + 1 })}</span>
+        <div class="branch-random-weight-wrap">
+          <input type="number" class="branch-random-weight-input" data-random-weight="${i}" min="0" max="100" step="1" value="${Math.round(opt.weight)}">
+          <span class="branch-random-weight-pct">%</span>
+        </div>
+        ${randomBlock.options.length > 2 ? `<button type="button" class="branch-random-option-remove" title="${t('common.remove')}">${ICONS.minus}</button>` : ''}
+      `;
+
+      const weightInput = optHeader.querySelector('.branch-random-weight-input') as HTMLInputElement;
+      weightInput.addEventListener('input', () => {
+        const raw = parseFloat(weightInput.value);
+        const newWeight = Number.isFinite(raw) ? raw : 0;
+        const weights = randomBlock.options.map((o) => o.weight);
+        const rebalanced = rebalanceWeights(weights, i, newWeight);
+        randomBlock.options.forEach((o, idx) => { o.weight = rebalanced[idx]; });
+        syncWeightInputs();
+        this.markDirty();
+      });
+
+      const removeBtn = optHeader.querySelector('.branch-random-option-remove');
+      removeBtn?.addEventListener('click', () => {
+        if (randomBlock.options.length <= 2) {
+          alert(t('editor.random.min_options_alert'));
+          return;
+        }
+        const weights = randomBlock.options.map((o) => o.weight);
+        const rebalanced = removeAndRebalance(weights, i);
+        randomBlock.options.splice(i, 1);
+        randomBlock.options.forEach((o, idx) => { o.weight = rebalanced[idx]; });
+        rebuild();
+      });
+
+      optCard.appendChild(optHeader);
+
+      const optBody = document.createElement('div');
+      optBody.className = 'branch-random-option-body';
+      optCard.appendChild(optBody);
+
+      // Recursion: this option's own target can be a plain action, a
+      // nested condition, or even another nested Random Block — exactly
+      // like any other branch target.
+      this.renderBranchTarget(
+        optBody,
+        () => opt.target,
+        (newTarget) => { opt.target = newTarget; },
+        rebuild,
+        true,
+      );
+
+      optionsWrap.appendChild(optCard);
+    });
+
+    wrap.appendChild(optionsWrap);
+
+    const addOptBtn = document.createElement('button');
+    addOptBtn.type = 'button';
+    addOptBtn.className = 'branch-random-add-option-btn';
+    addOptBtn.innerHTML = `${ICONS.plus} ${t('editor.random.add_option')}`;
+    addOptBtn.addEventListener('click', () => {
+      const n = randomBlock.options.length + 1;
+      const evenSplit = evenWeights(n);
+      randomBlock.options.forEach((o, idx) => { o.weight = evenSplit[idx]; });
+      randomBlock.options.push({ id: crypto.randomUUID(), weight: evenSplit[n - 1], target: { format: 'plaintext', content: '', tokens: [] } });
+      rebuild();
+    });
+    wrap.appendChild(addOptBtn);
+
+    col.appendChild(wrap);
+  }
+
 
   private createConnector(): HTMLElement {
     const conn = document.createElement('div');

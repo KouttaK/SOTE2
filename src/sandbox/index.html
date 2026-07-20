@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>SOTE Script Sandbox</title>
+  </head>
+  <body>
+    <!--
+      This page has no UI on purpose — see index.ts. It's loaded in a
+      hidden iframe by content/engine/ScriptSandbox.ts (and, for the
+      editor's own "Testar" button, directly by the dashboard) purely to
+      run a Script/Fórmula block's user-authored JS somewhere that (a) is
+      allowed to eval (see wxt.config.ts's extension_pages CSP override,
+      scoped to exactly this page) and (b) is its own separate document,
+      with no access to whatever page embedded it.
+    -->
+    <script type="module" src="./index.ts"></script>
+  </body>
+</html>

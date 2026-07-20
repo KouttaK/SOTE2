@@ -126,27 +126,26 @@ function snippetAround(haystack: string, query: string, radius = 30): string {
 /**
  * Collects every leaf ActionBlock's content reachable from a condition,
  * recursing into nested ConditionBlocks (a branch whose `action` or
- * `elseBranch` is itself another Se/Senão Se/Senão tree) to arbitrary
- * depth.
+ * `elseBranch` is itself another Se/Senão Se/Senão tree) and into Random
+ * Blocks (every option's own target, which may itself be a further
+ * nested Condition or Random Block) to arbitrary depth.
  */
 function collectConditionContents(cond: any, parts: string[]): void {
-  for (const rule of cond?.rules || []) {
-    const target = rule.action;
-    if (!target) continue;
+  const collectTarget = (target: any) => {
+    if (!target) return;
     if (Array.isArray(target.rules)) {
       collectConditionContents(target, parts);
+    } else if (target.type === 'random' && Array.isArray(target.options)) {
+      for (const option of target.options) collectTarget(option?.target);
     } else if (target.content) {
       parts.push(target.content);
     }
+  };
+
+  for (const rule of cond?.rules || []) {
+    collectTarget(rule.action);
   }
-  const elseBranch = cond?.elseBranch;
-  if (elseBranch) {
-    if (Array.isArray(elseBranch.rules)) {
-      collectConditionContents(elseBranch, parts);
-    } else if (elseBranch.content) {
-      parts.push(elseBranch.content);
-    }
-  }
+  collectTarget(cond?.elseBranch);
 }
 
 /** All ActionBlock contents reachable from a Flow (main action + every condition branch, including nested ones), for the §4 "conteúdo do Action" content-match. */
@@ -186,7 +185,13 @@ export function buildSearchResults(params: {
 
   // ---- Forms ----
   for (const form of forms) {
-    const siteMatches = scope === 'global' ? true : form.sites.length > 0 && domainMatchesAny(hostname, form.sites);
+    // A Form with no `sites` configured has no restriction at all, so it
+    // matches in *every* scope — including the domain-scoped `//` prefix,
+    // not just the global `///` bypass. Only a Form that *does* have
+    // `sites` configured needs its hostname checked in domain scope; in
+    // global scope every Form is always eligible regardless of `sites`
+    // (that's the whole point of the "bypass" prefix — spec §4).
+    const siteMatches = scope === 'global' || form.sites.length === 0 || domainMatchesAny(hostname, form.sites);
     if (!siteMatches) continue;
 
     if (browseMode) {

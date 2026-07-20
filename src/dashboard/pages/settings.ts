@@ -7,6 +7,7 @@ import type { Settings, StorageSchema, Folder } from '../../shared/types/index.j
 import { browser } from 'wxt/browser';
 import { t, setLanguage, getLanguage } from '../../shared/i18n/index.js';
 import { shortcutConflictsWithSearchTrigger } from '../../content/engine/SearchTriggerDetector.js';
+import { localDateKey } from '../../shared/utils/localDate.js';
 import './settings.css';
 
 const ICONS = {
@@ -634,7 +635,7 @@ export default class SettingsPage implements Page {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `sote-backup-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `sote-backup-${localDateKey(new Date())}.json`;
       a.click();
       URL.revokeObjectURL(url);
     });

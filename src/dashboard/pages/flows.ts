@@ -74,7 +74,7 @@ export default class FlowsPage implements Page {
   private searchInput: HTMLInputElement | null = null;
   private searchHandler!: (e: Event) => void;
   private sortHandler!: (e: Event) => void;
-  private currentSort: 'Category' | 'Name' | 'Usage' = 'Category';
+  private currentSort: 'Category' | 'Name' | 'Usage' | 'Date' = 'Category';
 
   /** Escapes HTML-significant characters before interpolating user-controlled
    * strings (flow/folder names, shortcuts, variable values) into innerHTML. */
@@ -165,10 +165,12 @@ export default class FlowsPage implements Page {
       this.sortHandler = () => {
         if (this.currentSort === 'Category') this.currentSort = 'Name';
         else if (this.currentSort === 'Name') this.currentSort = 'Usage';
+        else if (this.currentSort === 'Usage') this.currentSort = 'Date';
         else this.currentSort = 'Category';
 
         const sortKey = this.currentSort === 'Name' ? 'header.sort_by.name'
           : this.currentSort === 'Usage' ? 'header.sort_by.usage'
+          : this.currentSort === 'Date' ? 'header.sort_by.date'
           : 'header.sort_by.category';
         const label = sortBtn.querySelector('.dash-header-btn-label');
         if (label) label.textContent = t('header.sort_by', { value: t(sortKey) });
@@ -359,6 +361,13 @@ export default class FlowsPage implements Page {
         const usageA = a.stats.usageCount || 0;
         const usageB = b.stats.usageCount || 0;
         if (usageA !== usageB) return usageB - usageA;
+        return a.name.localeCompare(b.name);
+      } else if (this.currentSort === 'Date') {
+        // Most recently created first; fall back to name on ties (e.g.
+        // flows imported/created in the same batch/millisecond).
+        const createdA = a.createdAt || 0;
+        const createdB = b.createdAt || 0;
+        if (createdA !== createdB) return createdB - createdA;
         return a.name.localeCompare(b.name);
       } else if (this.currentSort === 'Name') {
         return a.name.localeCompare(b.name);

@@ -13,11 +13,12 @@
  * today is resolved") can reuse it verbatim instead of re-implementing —
  * one engine, two places that feed it a different ActionBlock.
  */
-import type { ActionBlock, Token, Variable } from '../../shared/types/index.js';
+import type { ActionBlock, Token, Variable, Flow, FlowRefTokenConfig } from '../../shared/types/index.js';
 import { ChoicePopup } from './ChoicePopup.js';
 import { expandToken, ExpansionContext } from './tokenExpander.js';
 import { TextInjector } from './TextInjector.js';
 import { resolveVariablesInText } from '../../shared/utils/variableResolver.js';
+import { resolveFlowActionBlock } from './ConditionResolver.js';
 
 export interface ResolvedActionContent {
   /** Final content — HTML for richtext actions, plain text otherwise. Cursor marker already stripped. */
@@ -70,13 +71,76 @@ function resolveTokenForPill(pillEl: Element, tokens: Token[]): Token | null {
 }
 
 /**
+ * Resolves a single `flow_ref` ("Incluir Fluxo") token: looks up its target
+ * flow, resolves that flow's own Condition/Random branches down to a leaf
+ * ActionBlock (same logic a direct trigger would use — see
+ * ConditionResolver.ts), then recursively expands *that* ActionBlock's
+ * content through this same pipeline (so nested flow_ref/choice/input/
+ * variable tokens inside the included flow all still work).
+ *
+ * Returns `{ content: '', isRichText: false }` (never throws) for any
+ * "nothing to include" case — unset/blank flowId, target flow deleted,
+ * a cycle (this flow is already in `visitedFlowIds`), or the target flow's
+ * own conditions matching no branch — so a broken reference degrades to
+ * silently expanding to nothing rather than breaking the whole expansion.
+ * Returns `null` only when the user cancels a nested choice/input popup,
+ * which must propagate all the way up to cancel the entire expansion.
+ */
+async function resolveFlowRefToken(
+  token: Token,
+  element: HTMLElement,
+  deps: { choicePopup: ChoicePopup; variables: Variable[]; context: ExpansionContext; flows?: Flow[] },
+  visitedFlowIds: Set<string>,
+): Promise<{ content: string; isRichText: boolean } | null> {
+  const config = (token.config || {}) as unknown as FlowRefTokenConfig;
+  const flowId = config.flowId;
+
+  if (!flowId) return { content: '', isRichText: false };
+
+  if (visitedFlowIds.has(flowId)) {
+    console.warn(`[SOTE] Flow include cycle detected (flow "${flowId}" already in the inclusion chain) — skipping.`);
+    return { content: '', isRichText: false };
+  }
+
+  const targetFlow = (deps.flows || []).find((f) => f.id === flowId);
+  if (!targetFlow) {
+    console.warn(`[SOTE] Flow include target "${flowId}" no longer exists — skipping.`);
+    return { content: '', isRichText: false };
+  }
+
+  const nestedActionBlock = await resolveFlowActionBlock(targetFlow, element, deps.variables);
+  if (!nestedActionBlock) {
+    // The included flow has conditions but none matched (and no Else) —
+    // nothing to include right now, same as that flow simply not firing.
+    return { content: '', isRichText: false };
+  }
+
+  const nextVisited = new Set(visitedFlowIds);
+  nextVisited.add(flowId);
+
+  const resolved = await resolveActionBlockContent(nestedActionBlock, element, deps, nextVisited);
+  if (resolved === null) return null; // user cancelled a nested choice/input popup
+
+  return { content: resolved.content, isRichText: nestedActionBlock.format === 'richtext' };
+}
+
+/**
  * Resolves `actionBlock` into final injectable content. Returns `null` if
  * the user cancelled a choice/input token popup (Esc / click outside).
+ *
+ * `deps.flows` is the full flows list, needed to look up the target of any
+ * `flow_ref` ("Incluir Fluxo") token — see resolveFlowRefToken below.
+ * `visitedFlowIds` is an internal recursion guard (not meant to be passed
+ * by outside callers): every flow_ref expansion adds its target's id to a
+ * per-expansion copy before recursing, so a cycle (A includes B includes A)
+ * is detected — the id can never appear twice on one chain — and broken
+ * instead of hanging the page in infinite recursion.
  */
 export async function resolveActionBlockContent(
   actionBlock: ActionBlock,
   element: HTMLElement,
-  deps: { choicePopup: ChoicePopup; variables: Variable[]; context: ExpansionContext },
+  deps: { choicePopup: ChoicePopup; variables: Variable[]; context: ExpansionContext; flows?: Flow[] },
+  visitedFlowIds: Set<string> = new Set(),
 ): Promise<ResolvedActionContent | null> {
   const isRichText = actionBlock.format === 'richtext';
   const rawContent = actionBlock.content;
@@ -98,6 +162,27 @@ export async function resolveActionBlockContent(
         cursorMarkerPlaced = true;
       } else {
         pillEl.replaceWith(document.createTextNode(''));
+      }
+      continue;
+    }
+
+    if (token.type === 'flow_ref') {
+      // Included flow's own Cursor/choice/input/variable tokens all still
+      // work here because this recurses into the exact same function —
+      // choice/input popups pause and prompt the user just like they would
+      // if the included flow had been triggered directly, and any Cursor
+      // token *inside* the included flow's action is intentionally NOT
+      // honored (its cursorOffset is discarded below): only the including
+      // flow's own Cursor token controls where the caret ends up.
+      const resolved = await resolveFlowRefToken(token, element, deps, visitedFlowIds);
+      if (resolved === null) return null; // user cancelled a nested choice/input popup
+
+      if (resolved.isRichText) {
+        const wrapper = document.createElement('span');
+        wrapper.innerHTML = resolved.content;
+        pillEl.replaceWith(...Array.from(wrapper.childNodes));
+      } else {
+        pillEl.replaceWith(document.createTextNode(resolved.content));
       }
       continue;
     }
