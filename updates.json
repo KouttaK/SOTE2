@@ -3,9 +3,9 @@
     "sote2@kouttak.github.io": {
       "updates": [
         {
-          "version": "1.0.13",
-          "update_link": "https://kouttak.github.io/SOTE2/sote2-1.0.13.xpi",
-          "update_hash": "sha256:FAE4B34219FF3E500A751FBA8D476CE05E8FE02F0E1725641280E7B3817B2936",
+          "version": "1.0.15",
+          "update_link": "https://kouttak.github.io/SOTE2/sote2-1.0.15.xpi",
+          "update_hash": "sha256:3E9E5DBBC10E6E3C5002CC1475DBB71DCB6228CA5EFCFBBC32F1C2A655DFFA73",
           "applications": {
             "gecko": { "strict_min_version": "140.0" }
           }
