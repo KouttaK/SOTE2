@@ -10,17 +10,16 @@
  * gmail.com") must still apply when it's pulled in by reference from
  * another flow, exactly as if that flow had been triggered directly.
  */
-import type { Flow, ConditionRule, ConditionCriterion, BranchTarget, ActionBlock, Variable } from '../../shared/types/index.js';
-import { isConditionBlock, isRandomBlock, isScriptBlock } from '../../shared/types/index.js';
+import type { Flow, ConditionRule, ConditionCriterion, BranchTarget, ActionBlock } from '../../shared/types/index.js';
+import { isConditionBlock, isRandomBlock } from '../../shared/types/index.js';
 import { pickWeightedRandom } from '../../shared/utils/randomWeights.js';
 import { localDateKey } from '../../shared/utils/localDate.js';
 import { domainMatchesAny, matchesDomainPattern, normalizeHostLike } from '../../shared/storage/helpers.js';
 import { getFieldTypeCategory, getFieldContent } from '../../shared/utils/dom.js';
-import { runScript, ScriptContext } from './ScriptSandbox.js';
 
 // Re-exported only so existing imports of these from TriggerDetector.ts keep
 // working unchanged (see TriggerDetector.ts, which now delegates here).
-export { isConditionBlock, isRandomBlock, isScriptBlock };
+export { isConditionBlock, isRandomBlock };
 
 /**
  * Resolves a whole Flow down to the leaf ActionBlock that currently
@@ -28,57 +27,64 @@ export { isConditionBlock, isRandomBlock, isScriptBlock };
  * Action block. `element` is the field the user was typing in when the
  * shortcut fired (or, for a flow pulled in via `flow_ref`, the same field
  * the *including* flow was triggered from) — needed to evaluate
- * `field_type`/`field_content` criteria and, now, to build the `ctx` a
- * Script block's code runs against. `variables` is likewise needed for
- * that same `ctx` (see ScriptContext) — resolution is async now because
- * running a Script block's code means round-tripping to the sandboxed
- * extension page (see ScriptSandbox.ts).
+ * `field_type`/`field_content` criteria. `shortcutTyped` is the shortcut
+ * text itself, so `field_content` can exclude it (see getFieldContent) —
+ * at resolution time it's still sitting in the field, TextInjector only
+ * removes it afterwards.
  */
-export async function resolveFlowActionBlock(flow: Flow, element: HTMLElement | null | undefined, variables: Variable[]): Promise<ActionBlock | null> {
+export function resolveFlowActionBlock(flow: Flow, element: HTMLElement | null | undefined, shortcutTyped?: string): ActionBlock | null {
   const conditionBlock = flow.blocks.find(b => b.type === 'condition');
   if (conditionBlock) {
-    return resolveBranchTarget(conditionBlock.data as any, element, variables);
+    return resolveBranchTarget(conditionBlock.data as any, element, shortcutTyped);
   }
 
   // No dedicated Condition step: the top-level 'action' block's data is
   // itself a full BranchTarget now (see Block's doc comment in
   // shared/types/index.ts) — usually a plain leaf ActionBlock, but it can
-  // also be a nested ConditionBlock, a RandomBlock, or a ScriptBlock if
-  // the user added one via the unified "+ Adicionar Bloco" menu without a
-  // dedicated Condition step. resolveLeaf() handles all of these, exactly
-  // like it does for any other branch's own target.
+  // also be a nested ConditionBlock or a RandomBlock if the user added one
+  // via the unified "+ Adicionar Bloco" menu without a dedicated Condition
+  // step. resolveLeaf() handles both, exactly like it does for any other
+  // branch's own target.
   const actionEntry = flow.blocks.find(b => b.type === 'action');
   if (!actionEntry) return null;
-  return resolveLeaf(actionEntry.data as BranchTarget, element, variables);
+  return resolveLeaf(actionEntry.data as BranchTarget, element, shortcutTyped);
 }
 
 /**
  * Resolves a ConditionBlock down to the single leaf ActionBlock that
  * matches (or null if nothing matches and there's no elseBranch).
  */
-export async function resolveBranchTarget(condition: { rules: ConditionRule[]; elseBranch?: BranchTarget }, element: HTMLElement | null | undefined, variables: Variable[]): Promise<ActionBlock | null> {
+export function resolveBranchTarget(condition: { rules: ConditionRule[]; elseBranch?: BranchTarget }, element: HTMLElement | null | undefined, shortcutTyped?: string): ActionBlock | null {
   const rules = condition.rules as ConditionRule[];
   const hostname = window.location.hostname;
   const now = new Date();
 
-  // Most-specific-first: sort a shallow copy by number of criteria
-  // (descending) so rules with more conditions are evaluated before
-  // less specific ones.  This prevents a generic rule (e.g. "time
-  // between 08-12") from shadowing a more specific one (e.g. "time
-  // between 08-12 AND weekday = Fri") just because it was created
-  // first and therefore sits earlier in the persisted array.
+  // Most-specific-first: sort a shallow copy by specificity (descending)
+  // so rules with more conditions are evaluated before less specific
+  // ones. A rule whose own action is itself a nested ConditionBlock
+  // outweighs any number of plain AND/OR criteria (the +1000), and beyond
+  // that more AND/OR criteria ranks higher still — this prevents a
+  // generic rule (e.g. "time between 08-12") from shadowing a more
+  // specific one (e.g. "time between 08-12 AND weekday = Fri", or one
+  // with its own nested Se/Senão) just because it was created first and
+  // therefore sits earlier in the persisted array.
+  // This exact formula is duplicated (not shared) in editor.ts's own
+  // specificityScore, which sorts rule columns left-to-right for display
+  // the same way — keeping the two in sync is what lets "a rule with a
+  // nested condition or more AND/OR always renders to the left" also mean
+  // "...and is evaluated first", instead of the visual order silently
+  // lying about actual priority.
   // The sort is stable (Array.prototype.sort is stable in all modern
   // engines / ES2019+), so rules with equal specificity keep their
-  // original relative order — which means the user's creation order
-  // still acts as a tiebreaker.
-  const sortedRules = [...rules].sort((a, b) => {
-    const scoreA = 1 + (a.criteria?.length ?? 0);
-    const scoreB = 1 + (b.criteria?.length ?? 0);
-    return scoreB - scoreA;
-  });
+  // original relative order — which means the user's creation order (or
+  // manual drag-and-drop reordering in the editor) still acts as a
+  // tiebreaker.
+  const specificityScore = (rule: ConditionRule): number =>
+    (isConditionBlock(rule.action) ? 1000 : 0) + (rule.criteria?.length ?? 0);
+  const sortedRules = [...rules].sort((a, b) => specificityScore(b) - specificityScore(a));
 
   for (const rule of sortedRules) {
-    let passed = evaluateCriterion(rule, hostname, now, element);
+    let passed = evaluateCriterion(rule, hostname, now, element, shortcutTyped);
 
     // Additional "E"/"OU" criteria (see ConditionRule.criteria) — a
     // single AND/OR group evaluated alongside the primary criterion
@@ -86,63 +92,42 @@ export async function resolveBranchTarget(condition: { rules: ConditionRule[]; e
     if (rule.criteria && rule.criteria.length > 0) {
       const combinator = rule.combinator || 'AND';
       for (const criterion of rule.criteria) {
-        const criterionPassed = evaluateCriterion(criterion, hostname, now, element);
+        const criterionPassed = evaluateCriterion(criterion, hostname, now, element, shortcutTyped);
         passed = combinator === 'OR' ? (passed || criterionPassed) : (passed && criterionPassed);
       }
     }
 
     if (passed && rule.action) {
       // A branch's action can be a plain leaf ActionBlock, a nested
-      // ConditionBlock (further Se/Senão Se/Senão rules), a RandomBlock
-      // (one of several alternatives chosen at random), or a ScriptBlock
-      // (its output computed by sandboxed JS) — in every non-leaf case we
-      // resolve further instead of returning it as-is.
-      return resolveLeaf(rule.action, element, variables);
+      // ConditionBlock (further Se/Senão Se/Senão rules), or a
+      // RandomBlock (one of several alternatives chosen at random) — in
+      // either non-leaf case we resolve further instead of returning it
+      // as-is.
+      return resolveLeaf(rule.action, element, shortcutTyped);
     }
   }
 
   // If no rule passed, fall back to the elseBranch — which may itself
-  // be a nested condition, Random Block, or Script Block rather than a
-  // plain action.
+  // be a nested condition or a Random Block rather than a plain action.
   const elseBranch = condition.elseBranch;
   if (!elseBranch) return null;
-  return resolveLeaf(elseBranch, element, variables);
+  return resolveLeaf(elseBranch, element, shortcutTyped);
 }
 
 /**
  * Resolves a single branch target down to a leaf ActionBlock: recurses
- * into nested ConditionBlocks (evaluating their rules in turn); for a
- * RandomBlock picks one option at random (weighted by each option's
+ * into nested ConditionBlocks (evaluating their rules in turn), and for
+ * a RandomBlock picks one option at random (weighted by each option's
  * `weight`, a percentage that always sums to 100 across the set) and
- * resolves *that* option's own target; and for a ScriptBlock, runs its
- * sandboxed code (see ScriptSandbox.ts) and synthesizes a plain leaf
- * ActionBlock from whatever string it returns. Every case may itself be
- * another nested Condition/Random/Script Block, resolved recursively in
- * turn.
+ * resolves *that* option's own target — which may itself be another
+ * nested Condition or Random Block, resolved recursively in turn.
  */
-export async function resolveLeaf(target: BranchTarget, element: HTMLElement | null | undefined, variables: Variable[]): Promise<ActionBlock | null> {
-  if (isConditionBlock(target)) return resolveBranchTarget(target, element, variables);
+export function resolveLeaf(target: BranchTarget, element: HTMLElement | null | undefined, shortcutTyped?: string): ActionBlock | null {
+  if (isConditionBlock(target)) return resolveBranchTarget(target, element, shortcutTyped);
   if (isRandomBlock(target)) {
     const chosen = pickWeightedRandom(target.options);
     if (!chosen) return null;
-    return resolveLeaf(chosen.target, element, variables);
-  }
-  if (isScriptBlock(target)) {
-    const ctx: ScriptContext = {
-      variables: Object.fromEntries(variables.map((v) => [v.key, v.value])),
-      hostname: window.location.hostname,
-      now: new Date().toISOString(),
-      fieldType: getFieldTypeCategory(element),
-      fieldContent: getFieldContent(element),
-    };
-    const result = await runScript(target.code, ctx);
-    if (!result.ok) {
-      // Fail soft: a broken script expands to nothing (logged for the
-      // person to notice/debug) rather than breaking the whole flow.
-      console.warn(`[SOTE] Script block failed: ${result.error}`);
-      return { format: 'plaintext', content: '', tokens: [] };
-    }
-    return { format: 'plaintext', content: result.value, tokens: [] };
+    return resolveLeaf(chosen.target, element, shortcutTyped);
   }
   return target as ActionBlock;
 }
@@ -153,19 +138,23 @@ export async function resolveLeaf(target: BranchTarget, element: HTMLElement | n
  * the current page/time/focused field. Shared by both so the matching
  * logic — and its legacy-format fallbacks — only lives in one place.
  */
-export function evaluateCriterion(criterion: ConditionCriterion, hostname: string, now: Date, element?: HTMLElement | null): boolean {
+export function evaluateCriterion(criterion: ConditionCriterion, hostname: string, now: Date, element?: HTMLElement | null, shortcutTyped?: string): boolean {
   let passed = false;
   switch (criterion.type) {
     case 'domain': {
       // 'equals' uses the unified wildcard matcher (anchored, supports
       // *.google.com, *google*, https://site.com etc.).
-      // 'contains' / 'not_contains' keep substring semantics but
-      // normalise the value so pasted URLs (with protocol/port/path)
-      // still work as expected.
-      const normValue = normalizeHostLike(criterion.value);
+      // 'contains' / 'not_contains' keep substring semantics — but a
+      // person typing `*.google.com` into a "contém" field (natural
+      // instinct, since 'equals' supports wildcards) would otherwise
+      // never match anything: hostnames never literally contain the `*`
+      // character, so leaving it in made 'contains' always false and
+      // 'not_contains' always true. Stripping it makes `*.google.com`
+      // behave as `.google.com` here — a plain, forgiving substring.
+      const normValue = normalizeHostLike(criterion.value).replace(/\*/g, '');
       if (criterion.operator === 'equals') passed = matchesDomainPattern(hostname, criterion.value);
-      else if (criterion.operator === 'contains') passed = hostname.includes(normValue);
-      else if (criterion.operator === 'not_contains') passed = !hostname.includes(normValue);
+      else if (criterion.operator === 'contains') passed = normValue.length > 0 && hostname.includes(normValue);
+      else if (criterion.operator === 'not_contains') passed = normValue.length === 0 || !hostname.includes(normValue);
       break;
     }
     case 'weekday': {
@@ -236,7 +225,7 @@ export function evaluateCriterion(criterion: ConditionCriterion, hostname: strin
     case 'field_content': {
       // Checks what's already typed in the focused field — e.g. "if the
       // field already contains 'Prezado', don't repeat the greeting".
-      const content = getFieldContent(element);
+      const content = getFieldContent(element, shortcutTyped);
       const target = criterion.value || '';
       if (criterion.operator === 'not_contains') passed = !content.includes(target);
       else if (criterion.operator === 'equals') passed = content.trim() === target.trim();

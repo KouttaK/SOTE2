@@ -4,7 +4,10 @@
 import type { Page } from './index.js';
 import { storage } from '../../shared/storage/StorageService.js';
 import type { Variable, Flow, Block, ActionBlock } from '../../shared/types/index.js';
+import { findMissingVariableKeys } from '../../shared/utils/flowVariableScanner.js';
 import { t, getLanguage } from '../../shared/i18n/index.js';
+import { escapeHtml } from '../../shared/utils/dom.js';
+import { ConfirmModal } from '../components/ConfirmModal.js';
 import './variables.css';
 
 const ICONS = {
@@ -19,6 +22,36 @@ const ICONS = {
   database: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true" fill="currentColor"><path d="M448 80v48c0 44.2-100.3 80-224 80S0 172.2 0 128V80C0 35.8 100.3 0 224 0S448 35.8 448 80zM393.2 214.7c20.8-7.4 39.2-16.9 54.8-28.6V288c0 44.2-100.3 80-224 80S0 332.2 0 288V186.1c15.6 11.7 34 21.2 54.8 28.6C111.8 236.6 165 240 224 240s112.2-3.4 169.2-25.3zM0 346.1c15.6 11.7 34 21.2 54.8 28.6C111.8 396.6 165 400 224 400s112.2-3.4 169.2-25.3c20.8-7.4 39.2-16.9 54.8-28.6V432c0 44.2-100.3 80-224 80S0 476.2 0 432V346.1z"/></svg>`,
   network: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512" aria-hidden="true" fill="currentColor"><path d="M312 32c-13.3 0-24 10.7-24 24s10.7 24 24 24h16c61.9 0 112 50.1 112 112v16H344c-13.3 0-24 10.7-24 24v128c0 13.3 10.7 24 24 24h96c13.3 0 24-10.7 24-24V232c0-13.3-10.7-24-24-24h-96v-16c0-44.2-35.8-80-80-80h-16c-13.3 0-24-10.7-24-24s10.7-24 24-24h16c79.5 0 144 64.5 144 144v16h24c13.3 0 24 10.7 24 24v128c0 13.3-10.7 24-24 24H344c-13.3 0-24-10.7-24-24V232c0-13.3 10.7-24 24-24h24v-16c0-61.9-50.1-112-112-112h-16zm-88 0c-13.3 0-24 10.7-24 24s10.7 24 24 24h16c61.9 0 112 50.1 112 112v16h-96c-13.3 0-24 10.7-24 24v128c0 13.3 10.7 24 24 24h96c13.3 0 24-10.7 24-24V232c0-13.3-10.7-24-24-24h-96v-16c0-44.2 35.8-80 80-80h16c13.3 0 24-10.7 24-24s-10.7-24-24-24h-16C156.5 32 92 96.5 92 176v16H68c-13.3 0-24 10.7-24 24v128c0 13.3 10.7 24 24 24h96c13.3 0 24-10.7 24-24V232c0-13.3-10.7-24-24-24H140v-16c0-61.9 50.1-112 112-112h16z"/></svg>`,
 };
+
+const EXTRA_ICONS = {
+  chevronRight: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" fill="currentColor"><path d="M310.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-192 192c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L242.7 256 73.4 86.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l192 192z"/></svg>`,
+  sortDesc: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor"><path d="M151.6 42.4C145.5 35.8 137 32 128 32s-17.5 3.8-23.6 10.4l-88 96c-11.9 13-11.1 33.3 2 45.2s33.3 11.1 45.2-2L96 146.3V448c0 17.7 14.3 32 32 32s32-14.3 32-32V146.3l32.4 35.4c11.9 13 32.2 13.9 45.2 2s13.9-32.2 2-45.2l-88-96zM320 480h32c17.7 0 32-14.3 32-32s-14.3-32-32-32H320c-17.7 0-32 14.3-32 32s14.3 32 32 32zm0-128h96c17.7 0 32-14.3 32-32s-14.3-32-32-32H320c-17.7 0-32 14.3-32 32s14.3 32 32 32zm0-128H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H320c-17.7 0-32 14.3-32 32s14.3 32 32 32zm0-128H544c17.7 0 32-14.3 32-32s-14.3-32-32-32H320c-17.7 0-32 14.3-32 32s14.3 32 32 32z"/></svg>`,
+  sparkle: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 5.4L19 9l-5.2 1.6L12 16l-1.8-5.4L5 9l5.2-1.6L12 2z"/></svg>`,
+};
+
+/** Same short relative-time label used by the Fluxos table ("2h atras" /
+ * "Ontem" / "3 dias atras"), matching the reference's "ULTIMA ALTERACAO" column. */
+function formatRelativeTime(ts: number | undefined, locale: 'pt' | 'en'): string {
+  if (!ts) return '\u2014';
+  const diffMs = Date.now() - ts;
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffH = Math.floor(diffMin / 60);
+  const diffD = Math.floor(diffH / 24);
+  if (locale === 'pt') {
+    if (diffMin < 1) return 'agora';
+    if (diffMin < 60) return `${diffMin}min atras`;
+    if (diffH < 24) return `${diffH}h atras`;
+    if (diffD === 1) return 'Ontem';
+    if (diffD < 30) return `${diffD} dias atras`;
+    return new Date(ts).toLocaleDateString('pt-BR');
+  }
+  if (diffMin < 1) return 'now';
+  if (diffMin < 60) return `${diffMin}min ago`;
+  if (diffH < 24) return `${diffH}h ago`;
+  if (diffD === 1) return 'Yesterday';
+  if (diffD < 30) return `${diffD} days ago`;
+  return new Date(ts).toLocaleDateString('en-US');
+}
 
 export default class VariablesPage implements Page {
   private el: HTMLElement;
@@ -36,58 +69,52 @@ export default class VariablesPage implements Page {
 
   render(): HTMLElement {
     this.el.innerHTML = /* html */ `
-      <main class="vars-main">
+      <div class="dash-page-inner">
         <div class="vars-title-row">
           <div>
+            <div class="dash-breadcrumb">
+              <span>/workspace</span>${EXTRA_ICONS.chevronRight}<span class="is-current">${t('variables.breadcrumb')}</span>
+            </div>
             <h1 class="vars-header-title">${t('variables.title')}</h1>
             <p class="vars-header-subtitle">${t('variables.subtitle')}</p>
+          </div>
+          <div class="vars-total-uses">
+            <p class="lbl">${t('variables.stats.total_uses_label')}</p>
+            <p class="val" id="stat-total-uses">0</p>
           </div>
         </div>
 
         <!-- Banner -->
         <div class="vars-banner" id="vars-banner">
-          <div class="vars-banner-icon">${ICONS.globe}</div>
+          <div class="vars-banner-icon">${EXTRA_ICONS.sparkle}</div>
           <div class="vars-banner-content">
             <p class="title">${t('variables.banner.title')}</p>
             <p class="desc">
               ${t('variables.banner.desc', { tagExample: '<span class="tag">{{YOUR_VARIABLE_KEY}}</span>' })}
             </p>
           </div>
+          <button class="vars-banner-report" id="btn-report">${t('variables.banner.report')}</button>
           <button class="vars-banner-close" id="btn-close-banner">${ICONS.times}</button>
-        </div>
-
-        <!-- Stats -->
-        <div class="vars-stats">
-          <div class="vars-stat-card">
-            <div class="vars-stat-icon">${ICONS.database}</div>
-            <div class="vars-stat-info">
-              <p class="val" id="stat-total-vars">0</p>
-              <p class="lbl">${t('variables.stats.total')}</p>
-            </div>
-          </div>
-          <div class="vars-stat-card">
-            <div class="vars-stat-icon">${ICONS.network}</div>
-            <div class="vars-stat-info">
-              <p class="val" id="stat-total-uses">0</p>
-              <p class="lbl">${t('variables.stats.total_uses')}</p>
-            </div>
-          </div>
         </div>
 
         <!-- Table -->
         <div class="vars-table-wrap">
+          <div class="vars-table-toolbar">
+            <span class="vars-table-toolbar-title">${t('variables.table.title')}</span>
+            <button class="dash-header-btn" id="vars-sort-btn">
+              ${EXTRA_ICONS.sortDesc}<span>${t('variables.table.sort_by_key')}</span>
+            </button>
+          </div>
           <div class="vars-table-header">
             <span class="col-3">${t('variables.table.key')}</span>
-            <span class="col-5">${t('variables.table.value')}</span>
-            <span class="col-1 text-center">${t('variables.table.flows')}</span>
+            <span class="col-4">${t('variables.table.value')}</span>
+            <span class="col-2 text-center">${t('variables.table.uses')}</span>
             <span class="col-2 text-right">${t('variables.table.last_updated')}</span>
             <span class="col-1"></span>
           </div>
-          <div id="vars-table-body">
-            <!-- Rendered list -->
-          </div>
+          <div id="vars-table-body"><!-- Rendered list --></div>
         </div>
-      </main>
+      </div>
     `;
     return this.el;
   }
@@ -113,6 +140,8 @@ export default class VariablesPage implements Page {
     this.el.querySelector('#btn-close-banner')?.addEventListener('click', (e) => {
       (e.currentTarget as HTMLElement).closest('.vars-banner')?.remove();
     });
+
+    this.el.querySelector('#btn-report')?.addEventListener('click', () => this.openReportModal());
   }
 
   unmount() {
@@ -168,17 +197,29 @@ export default class VariablesPage implements Page {
     const tbody = this.el.querySelector('#vars-table-body');
     if (!tbody) return;
 
-    this.el.querySelector('#stat-total-vars')!.textContent = this.variables.length.toString();
-    
     let totalUses = 0;
-    
+    const locale: 'pt' | 'en' = getLanguage() === 'pt-BR' ? 'pt' : 'en';
+
+    if (this.filteredVars.length === 0) {
+      const isFilterEmpty = this.variables.length > 0 && this.searchQuery;
+      tbody.innerHTML = /* html */ `
+        <div class="vars-empty">
+          <div class="vars-empty-icon">${ICONS.search}</div>
+          <h3>${t('variables.empty.title')}</h3>
+          <p>${isFilterEmpty ? t('flows.empty_desc') : t('variables.empty.desc')}</p>
+          ${!isFilterEmpty ? `<button class="btn-primary-violet" id="vars-empty-cta">${ICONS.plus} ${t('variables.empty.cta')}</button>` : ''}
+        </div>
+      `;
+      tbody.querySelector('#vars-empty-cta')?.addEventListener('click', () => this.openVarModal());
+      this.el.querySelector('#stat-total-uses')!.textContent = '0';
+      return;
+    }
+
     tbody.innerHTML = this.filteredVars
       .map((v) => {
         const usageCount = this.countVarUsage(v.key);
         totalUses += usageCount;
-
-        const date = new Date(v.updatedAt || Date.now());
-        const dateStr = date.toLocaleDateString(getLanguage(), { month: 'short', day: 'numeric', year: 'numeric' });
+        const relTime = formatRelativeTime(v.updatedAt, locale);
 
         return /* html */ `
           <div class="vars-table-row">
@@ -188,14 +229,14 @@ export default class VariablesPage implements Page {
                 <span class="var-key-text">{{${v.key}}}</span>
               </button>
             </div>
-            <div class="col-5">
-              <p class="var-value-text">${this.escapeHTML(v.value)}</p>
+            <div class="col-4">
+              <p class="var-value-text">${escapeHtml(v.value)}</p>
             </div>
-            <div class="col-1 text-center">
-              <span class="var-used-badge">${usageCount}</span>
+            <div class="col-2 text-center">
+              <span class="var-used-badge ${usageCount === 0 ? 'is-zero' : ''}"><span class="dot"></span>${usageCount}</span>
             </div>
             <div class="col-2 text-right">
-              <span class="var-date">${dateStr}</span>
+              <span class="var-date">${relTime}</span>
             </div>
             <div class="col-1 var-actions">
               <button class="btn-icon" data-edit="${v.id}" title="${t('variables.edit_title')}">
@@ -321,6 +362,56 @@ export default class VariablesPage implements Page {
     });
   }
 
+  /** "Ver Relatório" — a real dependency check computed from storage (no
+   * invented numbers): which variables aren't referenced by any flow yet,
+   * and which flows reference a `{{KEY}}` that has no matching Variable. */
+  private openReportModal() {
+    const unused = this.variables.filter((v) => this.countVarUsage(v.key) === 0);
+    const flowsWithMissing = this.flows
+      .map((f) => ({ flow: f, missing: findMissingVariableKeys(f, this.variables) }))
+      .filter((r) => r.missing.length > 0);
+
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = /* html */ `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title">${t('variables.report.title')}</h2>
+        </div>
+        <div class="modal-body">
+          ${
+            unused.length === 0 && flowsWithMissing.length === 0
+              ? `<p class="modal-desc">${t('variables.report.all_good')}</p>`
+              : ''
+          }
+          ${
+            unused.length > 0
+              ? `<div class="report-block">
+                  <p class="report-block-title">${t('variables.report.unused', { count: unused.length })}</p>
+                  <div class="affected-flows-list">${unused.map((v) => `<div class="affected-flows-item report-item-neutral">{{${escapeHtml(v.key)}}}</div>`).join('')}</div>
+                </div>`
+              : ''
+          }
+          ${
+            flowsWithMissing.length > 0
+              ? `<div class="report-block">
+                  <p class="report-block-title">${t('variables.report.missing', { count: flowsWithMissing.length })}</p>
+                  <div class="affected-flows-list">${flowsWithMissing
+                    .map((r) => `<div class="affected-flows-item">${escapeHtml(r.flow.name)} — {{${r.missing.map((k) => escapeHtml(k)).join('}}, {{')}}}</div>`)
+                    .join('')}</div>
+                </div>`
+              : ''
+          }
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" id="modal-cancel">${t('common.cancel')}</button>
+        </div>
+      </div>
+    `;
+    this.el.appendChild(modal);
+    modal.querySelector('#modal-cancel')?.addEventListener('click', () => modal.remove());
+  }
+
   private openDeleteModal(variable: Variable) {
     // Check usages
     const tokenStr = `{{${variable.key}}}`;
@@ -337,61 +428,39 @@ export default class VariablesPage implements Page {
       }
     }
 
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    
-    let warningHtml = '';
-    if (affectedFlows.length > 0) {
-      warningHtml = /* html */ `
-        <div style="background-color: #3f2c2c; border: 1px solid #dc2626; border-radius: 0.5rem; padding: 1rem; margin-top: 1rem;">
-          <p style="color: #fca5a5; font-size: 0.875rem; font-weight: bold; margin: 0 0 0.5rem 0;">
+    const extraContent = affectedFlows.length > 0
+      ? /* html */ `
+        <div class="confirm-modal-warning">
+          <p class="confirm-modal-warning-title">
             ${t('variables.delete_modal.warning_title', { count: affectedFlows.length })}
           </p>
           <div class="affected-flows-list">
-            ${affectedFlows.map(f => `<div class="affected-flows-item">${this.escapeHTML(f.name)}</div>`).join('')}
+            ${affectedFlows.map(f => `<div class="affected-flows-item">${escapeHtml(f.name)}</div>`).join('')}
           </div>
-          <p style="color: #fca5a5; font-size: 0.75rem; margin: 0.5rem 0 0 0;">
+          <p class="confirm-modal-warning-desc">
             ${t('variables.delete_modal.warning_desc')}
           </p>
         </div>
-      `;
-    }
+      `
+      : undefined;
 
-    modal.innerHTML = /* html */ `
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2 class="modal-title">${t('variables.delete_modal.title')}</h2>
-          <p class="modal-desc">${t('variables.delete_modal.desc', { tag: `<span class="tag">{{${variable.key}}}</span>` })}</p>
-        </div>
-        ${warningHtml}
-        <div class="modal-footer">
-          <button class="btn-secondary" id="modal-cancel">${t('common.cancel')}</button>
-          <button class="btn-danger" id="modal-confirm">${t('variables.delete_modal.confirm')}</button>
-        </div>
-      </div>
-    `;
-    this.el.appendChild(modal);
-
-    modal.querySelector('#modal-cancel')?.addEventListener('click', () => modal.remove());
-    modal.querySelector('#modal-confirm')?.addEventListener('click', async () => {
-      await storage.deleteVariable(variable.id);
-      this.variables = this.variables.filter(v => v.id !== variable.id);
-      this.applySearch();
-      modal.remove();
+    ConfirmModal.show({
+      title: t('variables.delete_modal.title'),
+      message: t('variables.delete_modal.desc', { tag: `<span class="tag">{{${escapeHtml(variable.key)}}}</span>` }),
+      extraContent,
+      confirmLabel: t('variables.delete_modal.confirm'),
+      // Deleting a variable used by other flows is the one variables.ts
+      // action that can silently break things elsewhere — require typing
+      // the key back to make sure that's really the intent.
+      requireTypedPhrase: affectedFlows.length > 0 ? variable.key : undefined,
+      onConfirm: async () => {
+        await storage.deleteVariable(variable.id);
+        this.variables = this.variables.filter(v => v.id !== variable.id);
+        this.applySearch();
+      },
     });
   }
 
-  private escapeHTML(str: string): string {
-    return str.replace(/[&<>'"]/g, 
-      tag => ({
-          '&': '&amp;',
-          '<': '&lt;',
-          '>': '&gt;',
-          "'": '&#39;',
-          '"': '&quot;'
-        }[tag] || tag)
-    );
-  }
 }
 
 

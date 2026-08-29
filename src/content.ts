@@ -14,7 +14,7 @@ import { resolveActionBlockContent } from './content/engine/ActionContentResolve
 import { detectSearchTrigger, buildSearchResults, SearchScope } from './content/engine/SearchTriggerDetector.js';
 import { SearchPopup } from './content/search/SearchPopup.js';
 import { sendMessage, onMessage } from './shared/messaging/client.js';
-import { domainMatchesAny } from './shared/storage/helpers.js';
+import { domainMatchesAny, isSnoozeActive } from './shared/storage/helpers.js';
 import type { ActionBlock, Token, Flow, Form, Block, Settings, ClipboardEntry, Variable } from './shared/types/index.js';
 
 export default defineContentScript({
@@ -112,12 +112,18 @@ export default defineContentScript({
       const active = document.activeElement as HTMLElement | null;
       if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
         const field = active as HTMLInputElement | HTMLTextAreaElement;
-        if (
-          typeof field.selectionStart === 'number' &&
-          typeof field.selectionEnd === 'number' &&
-          field.selectionStart !== field.selectionEnd
-        ) {
-          return field.value.substring(field.selectionStart, field.selectionEnd);
+        try {
+          if (
+            typeof field.selectionStart === 'number' &&
+            typeof field.selectionEnd === 'number' &&
+            field.selectionStart !== field.selectionEnd
+          ) {
+            return field.value.substring(field.selectionStart, field.selectionEnd);
+          }
+        } catch {
+          // type="number"/"range"/"color"/etc. throw on selectionStart/End
+          // access instead of just returning null — fall through to the
+          // other capture methods below.
         }
       }
 
@@ -133,7 +139,7 @@ export default defineContentScript({
       monitor.pause(); // Stop monitoring while expanding
 
       try {
-        const actionBlock = await detector.resolveActionBlock(flow, element, variables);
+        const actionBlock = await detector.resolveActionBlock(flow, element, shortcutTyped);
         if (!actionBlock) {
           monitor.resume();
           return;
@@ -158,6 +164,7 @@ export default defineContentScript({
           variables,
           context,
           flows,
+          shortcutTyped,
         }, new Set([flow.id]));
 
         if (resolved === null) {
@@ -211,6 +218,9 @@ export default defineContentScript({
         
       } catch (e) {
         console.error('[SOTE] Expansion Error:', e);
+        // Fire-and-forget: a falha em registrar a falha não deveria gerar
+        // um segundo erro não tratado por cima do primeiro.
+        sendMessage({ type: 'FLOW_EXECUTION_FAILED', payload: { flowId: flow.id } }).catch(() => {});
       } finally {
         monitor.resume();
       }
@@ -237,6 +247,7 @@ export default defineContentScript({
           variables,
           context,
           flows,
+          shortcutTyped: searchTyped,
         });
 
         if (resolved === null) {
@@ -269,7 +280,7 @@ export default defineContentScript({
 
     const searchTriggerAllowed = (): boolean => {
       if (!settings.globalEnabled) return false;
-      if (settings.snoozeUntil && Date.now() < settings.snoozeUntil) return false;
+      if (isSnoozeActive(settings)) return false;
       if (isBlocked(window.location.hostname, settings.blocklist || [])) return false;
       return true;
     };

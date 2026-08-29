@@ -229,6 +229,7 @@ class StorageService {
       ...flow,
       updatedAt: Date.now(),
       stats: {
+        ...flow.stats,
         usageCount: flow.stats.usageCount + 1,
         lastUsed: Date.now(),
         keysSaved: flow.stats.keysSaved + keysSaved,
@@ -249,14 +250,44 @@ class StorageService {
     });
   }
 
+  /** Mirrors incrementFlowStats() above, but for an attempt that threw
+   * *after* the trigger matched (see the `catch` around handleTrigger() in
+   * content.ts) instead of completing. Doesn't touch `lastUsed` — that
+   * field means "last time this flow actually finished expanding", not
+   * "last time it was attempted" — nor `keysSaved`, since nothing was
+   * ever injected. Powers the real (not assumed-100%) success rate shown
+   * on the Analytics page. */
+  async incrementFlowFailure(id: string): Promise<void> {
+    const flow = await this.getFlow(id);
+    if (!flow) return;
+    await this.saveFlow({
+      ...flow,
+      updatedAt: Date.now(),
+      stats: {
+        ...flow.stats,
+        failureCount: (flow.stats.failureCount || 0) + 1,
+      },
+    });
+
+    const settings = await this.getSettings();
+    const today = localDateKey(new Date());
+    const currentCount = settings.analyticsFailures?.[today] || 0;
+    await this.saveSettings({
+      analyticsFailures: {
+        ...(settings.analyticsFailures || {}),
+        [today]: currentCount + 1,
+      },
+    });
+  }
+
   async resetStats(): Promise<void> {
     const flows = await this.getFlows();
     const updatedFlows = flows.map(f => ({
       ...f,
-      stats: { usageCount: 0, keysSaved: 0 }
+      stats: { usageCount: 0, keysSaved: 0, failureCount: 0 }
     }));
     await this.writeList(KEYS.flows, updatedFlows);
-    await this.saveSettings({ analytics: {} });
+    await this.saveSettings({ analytics: {}, analyticsFailures: {} });
   }
 
   // -------------------------------------------------------------------------

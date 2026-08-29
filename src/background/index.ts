@@ -10,7 +10,7 @@
 
 import { browser } from 'wxt/browser';
 import { storage } from '../shared/storage/StorageService.js';
-import { domainMatchesAny } from '../shared/storage/helpers.js';
+import { domainMatchesAny, isSnoozeActive } from '../shared/storage/helpers.js';
 import type { Message } from '../shared/messaging/types.js';
 import type { Settings } from '../shared/types/index.js';
 import { t, initI18n } from '../shared/i18n/index.js';
@@ -149,6 +149,10 @@ async function handleMessage(message: Message, sender: any): Promise<any> {
       await storage.incrementFlowStats(message.payload.flowId, message.payload.keysSaved);
       return { success: true };
 
+    case 'FLOW_EXECUTION_FAILED':
+      await storage.incrementFlowFailure(message.payload.flowId);
+      return { success: true };
+
     case 'SNOOZE':
       const snoozeUntil = Date.now() + message.payload.duration;
       await storage.saveSettings({ snoozeUntil });
@@ -276,7 +280,7 @@ async function updateIcon(settingsCache?: Settings) {
     }
 
     // 2. Check Snooze
-    if (settings.snoozeUntil && Date.now() < settings.snoozeUntil) {
+    if (isSnoozeActive(settings)) {
       await setIconState('snoozed', settings.snoozeUntil);
       return;
     }

@@ -12,12 +12,7 @@ import { BaseModal } from './BaseModal.js';
 import type { Flow, Token, FlowRefTokenConfig } from '../../../../shared/types/index.js';
 import { t } from '../../../../shared/i18n/index.js';
 import { storage } from '../../../../shared/storage/StorageService.js';
-
-function escapeHtml(str: string): string {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
+import { escapeHtml } from '../../../../shared/utils/dom.js';
 
 export class FlowRefModal extends BaseModal {
   private onSaveCallback: (newConfig: FlowRefTokenConfig) => void;

@@ -13,14 +13,8 @@ import { ClipboardModal } from '../tokens/modals/ClipboardModal.js';
 import { InputModal } from '../tokens/modals/InputModal.js';
 import { DateModal } from '../tokens/modals/DateModal.js';
 import { FlowRefModal } from '../tokens/modals/FlowRefModal.js';
-
-/** Escapes HTML-significant characters before interpolating user-controlled
- * strings (Global Variable keys/values) into innerHTML. */
-function escapeHtml(str: string): string {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
+import { ConfirmModal } from '../ConfirmModal.js';
+import { escapeHtml } from '../../../shared/utils/dom.js';
 
 const ICONS = {
   keyboard: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor"><path d="M64 64C28.7 64 0 92.7 0 128V384c0 35.3 28.7 64 64 64H512c35.3 0 64-28.7 64-64V128c0-35.3-28.7-64-64-64H64zm16 64h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H80c-8.8 0-16-7.2-16-16V144c0-8.8 7.2-16 16-16zM64 240c0-8.8 7.2-16 16-16h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H80c-8.8 0-16-7.2-16-16V240zm16 80h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H80c-8.8 0-16-7.2-16-16V336c0-8.8 7.2-16 16-16zm80-176c0-8.8 7.2-16 16-16h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H176c-8.8 0-16-7.2-16-16V144zm16 80h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H176c-8.8 0-16-7.2-16-16V240c0-8.8 7.2-16 16-16zM160 336c0-8.8 7.2-16 16-16H400c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H176c-8.8 0-16-7.2-16-16V336zM272 128h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H272c-8.8 0-16-7.2-16-16V144c0-8.8 7.2-16 16-16zM256 240c0-8.8 7.2-16 16-16h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H272c-8.8 0-16-7.2-16-16V240zM368 128h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H368c-8.8 0-16-7.2-16-16V144c0-8.8 7.2-16 16-16zM352 240c0-8.8 7.2-16 16-16h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H368c-8.8 0-16-7.2-16-16V240zM464 128h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H464c-8.8 0-16-7.2-16-16V144c0-8.8 7.2-16 16-16zM448 240c0-8.8 7.2-16 16-16h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H464c-8.8 0-16-7.2-16-16V240zm16 80h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H464c-8.8 0-16-7.2-16-16V336c0-8.8 7.2-16 16-16z"/></svg>`,
@@ -159,13 +153,18 @@ export class ActionBlock {
     menu.querySelector('[data-action="clear"]')!.addEventListener('click', (e) => {
       e.stopPropagation();
       closeMenu();
-      if (confirm(t('action.block.clear_confirm'))) {
-        this.editorEl.innerHTML = '<p><br></p>';
-        this.data.content = '';
-        this.data.tokens = [];
-        this.renderTokensPreview();
-        this.onChange();
-      }
+      ConfirmModal.show({
+        title: t('confirm_modal.clear_action_title'),
+        message: t('action.block.clear_confirm'),
+        confirmLabel: t('common.remove'),
+        onConfirm: () => {
+          this.editorEl.innerHTML = '<p><br></p>';
+          this.data.content = '';
+          this.data.tokens = [];
+          this.renderTokensPreview();
+          this.onChange();
+        },
+      });
     });
   }
 
@@ -340,24 +339,26 @@ export class ActionBlock {
 
     if (this.variables.length === 0) {
       this.variableMenuEl.innerHTML = /* html */ `
-        <div class="token-menu-item is-disabled">
-          <div class="token-menu-icon" style="background-color:#404040;">${ICONS.variable}</div>
-          <div class="token-menu-text">
-            <p>${t('variable.none_title')}</p>
-            <span>${t('variable.none_desc')}</span>
+        <div class="token-menu-list">
+          <div class="token-menu-row is-disabled">
+            <div class="token-menu-row-icon" style="background:var(--color-hair-hover); color:var(--color-mute);">${ICONS.variable}</div>
+            <div class="token-menu-row-text">
+              <span class="token-menu-row-title">${t('variable.none_title')}</span>
+              <p class="token-menu-row-desc">${t('variable.none_desc')}</p>
+            </div>
           </div>
         </div>
       `;
     } else {
-      this.variableMenuEl.innerHTML = this.variables.map((v) => /* html */ `
-        <div class="token-menu-item" data-key="${escapeHtml(v.key)}">
-          <div class="token-menu-icon" style="background-color:#0d9488;">${ICONS.variable}</div>
-          <div class="token-menu-text">
-            <p>{{${escapeHtml(v.key)}}}</p>
-            <span>${escapeHtml((v.value || '').slice(0, 40))}</span>
+      this.variableMenuEl.innerHTML = `<div class="token-menu-list">${this.variables.map((v) => /* html */ `
+        <button type="button" class="token-menu-row" data-key="${escapeHtml(v.key)}">
+          <div class="token-menu-row-icon" style="background:color-mix(in srgb, var(--color-lime) 15%, transparent); color:var(--color-lime);">${ICONS.variable}</div>
+          <div class="token-menu-row-text">
+            <span class="token-menu-row-title">{{${escapeHtml(v.key)}}}</span>
+            <p class="token-menu-row-desc">${escapeHtml((v.value || '').slice(0, 40))}</p>
           </div>
-        </div>
-      `).join('');
+        </button>
+      `).join('')}</div>`;
 
       this.variableMenuEl.querySelectorAll<HTMLElement>('[data-key]').forEach((item) => {
         item.addEventListener('mousedown', (e) => {

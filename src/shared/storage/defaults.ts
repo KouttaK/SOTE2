@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS: Settings = {
   blocklist: [],
   commandPaletteShortcut: 'Ctrl+Shift+Space',
   analytics: {},
+  analyticsFailures: {},
   clipboardHistoryMax: 10,
   contextMenuEnabled: true,
   searchTrigger: {

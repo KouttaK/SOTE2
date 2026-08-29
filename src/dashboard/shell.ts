@@ -14,6 +14,42 @@
 import { router, type ResolvedRoute } from './router.js';
 import { loadPage, type Page } from './pages/index.js';
 import { t } from '../shared/i18n/index.js';
+import { storage } from '../shared/storage/StorageService.js';
+import { ConfirmModal } from './components/ConfirmModal.js';
+
+/**
+ * Lets a full-bleed page (currently only the Flow Editor) take over the
+ * shared `#dash-header` entirely instead of stacking its own header
+ * underneath the default one — matching ref_pages/criadorFluxo.htm, which
+ * has exactly one header. The default header's markup/listeners stay in
+ * the DOM (just hidden), so nothing needs to be rebuilt when it comes back.
+ * Standalone (not a Shell method) so pages can call it without needing a
+ * reference to the Shell instance — it only ever touches these fixed IDs.
+ */
+export function setHeaderOverride(html: string): HTMLElement {
+  const header = document.querySelector<HTMLElement>('#dash-header')!;
+  const defaultEl = header.querySelector<HTMLElement>('#dash-header-default')!;
+  const slot = header.querySelector<HTMLElement>('#dash-header-slot')!;
+
+  header.classList.add('is-override');
+  defaultEl.hidden = true;
+  slot.hidden = false;
+  slot.innerHTML = html;
+  return slot;
+}
+
+/** Restores the default shared header. Called automatically on every route
+ * change (see Shell._onRouteChange), so a page never has to remember to
+ * clean up after itself when navigating away. */
+export function clearHeaderOverride(): void {
+  const header = document.querySelector<HTMLElement>('#dash-header');
+  if (!header) return;
+  const defaultEl = header.querySelector<HTMLElement>('#dash-header-default');
+  const slot = header.querySelector<HTMLElement>('#dash-header-slot');
+  header.classList.remove('is-override');
+  if (defaultEl) defaultEl.hidden = false;
+  if (slot) { slot.hidden = true; slot.innerHTML = ''; }
+}
 
 
 // ---------------------------------------------------------------------------
@@ -22,6 +58,13 @@ import { t } from '../shared/i18n/index.js';
 
 const ICONS = {
   bolt: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true" fill="currentColor"><path d="M349.4 44.6c5.9-13.7 1.5-29.7-10.6-38.5s-28.6-8-39.9 1.8l-256 224c-10 8.8-13.6 22.9-8.9 35.3S50.7 288 64 288H175.5L98.6 467.4c-5.9 13.7-1.5 29.7 10.6 38.5s28.6 8 39.9-1.8l256-224c10-8.8 13.6-22.9 8.9-35.3s-16.6-20.7-30-20.7H272.5L349.4 44.6z"/></svg>`,
+  squaresFour: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>`,
+  sliders: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true" fill="currentColor"><path d="M0 416c0 17.7 14.3 32 32 32l54.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48L480 448c17.7 0 32-14.3 32-32s-14.3-32-32-32l-246.7 0c-12.3-28.3-40.5-48-73.3-48s-61 19.7-73.3 48L32 384c-17.7 0-32 14.3-32 32zm128 0a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zM320 256a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zm32-80c-32.8 0-61 19.7-73.3 48L32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l246.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48l54.7 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-54.7 0c-12.3-28.3-40.5-48-73.3-48zM192 128a32 32 0 1 1 0-64 32 32 0 1 1 0 64zm73.3-64C253 35.7 224.8 16 192 16s-61 19.7-73.3 48L32 64C14.3 64 0 78.3 0 96s14.3 32 32 32l86.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48L480 128c17.7 0 32-14.3 32-32s-14.3-32-32-32L265.3 64z"/></svg>`,
+  chevronRight: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" aria-hidden="true" fill="currentColor"><path d="M310.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-192 192c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L242.7 256 73.4 86.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l192 192z"/></svg>`,
+  refresh: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true" fill="currentColor"><path d="M386.3 160H352c-17.7 0-32 14.3-32 32s14.3 32 32 32H478.3c17.7 0 32-14.3 32-32V64c0-17.7-14.3-32-32-32s-32 14.3-32 32v35.2L414.4 97.6c-87.5-87.5-229.3-87.5-316.8 0C73.2 122 55.6 150.7 44.8 181.4c-5.9 16.7 2.9 34.9 19.5 40.8s34.9-2.9 40.8-19.5c7.7-21.8 20.2-42.3 37.8-59.8c62.5-62.5 163.8-62.5 226.3 0zM125.7 352H33.7C16 352 1.7 366.3 1.7 384v96c0 17.7 14.3 32 32 32s32-14.3 32-32V444.8l17.9 17.9c87.5 87.5 229.3 87.5 316.8 0c24.5-24.5 42.1-53.2 52.9-83.8c5.9-16.7-2.9-34.9-19.5-40.8s-34.9 2.9-40.8 19.5c-7.7 21.8-20.2 42.3-37.8 59.8c-62.5 62.5-163.8 62.5-226.3 0L97.6 384h28.1c17.7 0 32-14.3 32-32s-14.3-32-32-32z"/></svg>`,
+  funnel: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true" fill="currentColor"><path d="M3.9 54.9C10.5 40.9 24.5 32 40 32H472c15.5 0 29.5 8.9 36.1 22.9s4.6 30.5-5.2 42.5L320 320.9V448c0 12.1-6.8 23.2-17.7 28.6s-23.8 4.3-33.5-3l-64-48c-8.1-6-12.8-15.5-12.8-25.6V320.9L9 97.3C-.7 85.4-2.8 68.8 3.9 54.9z"/></svg>`,
+  pulse: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l2-7 4 14 3-9 2 4h5"/></svg>`,
+  info: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true" fill="currentColor"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336H232V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h40c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0-64 32 32 0 1 1 0 64z"/></svg>`,
   globe: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true" fill="currentColor"><path d="M352 256c0 22.2-1.2 43.6-3.3 64H163.3c-2.2-20.4-3.3-41.8-3.3-64s1.2-43.6 3.3-64H348.7c2.2 20.4 3.3 41.8 3.3 64zm28.8-64H503.9c5.3 20.5 8.1 41.9 8.1 64s-2.8 43.5-8.1 64H380.8c2.1-20.6 3.2-42 3.2-64s-1.1-43.4-3.2-64zm112.6-32H376.7c-10-63.9-29.8-117.4-55.3-151.6c78.3 20.7 142 77.5 171.9 151.6zm-149.1 0H167.7c6.1-36.4 15.5-68.6 27-94.7c10.5-23.6 22.2-40.7 33.5-51.5C239.4 3.2 248.7 0 256 0s16.6 3.2 27.8 13.8c11.3 10.8 23 27.9 33.5 51.5c11.6 26 20.9 58.2 27 94.7zm-209 0H18.6C48.6 85.9 112.2 29.1 190.6 8.4C165.1 42.6 145.3 96.1 135.3 160zM8.1 192H131.2c-2.1 20.6-3.2 42-3.2 64s1.1 43.4 3.2 64H8.1C2.8 299.5 0 278.1 0 256s2.8-43.5 8.1-64zM194.7 446.6c-11.6-26-20.9-58.2-27-94.6H344.3c-6.1 36.4-15.5 68.6-27 94.6c-10.5 23.6-22.2 40.7-33.5 51.5C272.6 508.8 263.3 512 256 512s-16.6-3.2-27.8-13.8c-11.3-10.8-23-27.9-33.5-51.5zM135.3 352c10 63.9 29.8 117.4 55.3 151.6C112.2 482.9 48.6 426.1 18.6 352H135.3zm358.1 0c-30 74.1-93.6 130.9-171.9 151.6c25.5-34.2 45.2-87.7 55.3-151.6H493.4z"/></svg>`,
   gear: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true" fill="currentColor"><path d="M495.9 166.6c3.2 8.7 .5 18.4-6.4 24.6l-43.3 39.4c1.1 8.3 1.7 16.8 1.7 25.4s-.6 17.1-1.7 25.4l43.3 39.4c6.9 6.2 9.6 15.9 6.4 24.6c-4.4 11.9-9.7 23.3-15.8 34.3l-4.7 8.1c-6.6 11-14 21.4-22.1 31.2c-5.9 7.2-15.7 9.6-24.5 6.8l-55.7-17.7c-13.4 10.3-28.2 18.9-44 25.4l-12.5 57.1c-2 9.1-9 16.3-18.2 17.8c-13.8 2.3-28 3.5-42.5 3.5s-28.7-1.2-42.5-3.5c-9.2-1.5-16.2-8.7-18.2-17.8l-12.5-57.1c-15.8-6.5-30.6-15.1-44-25.4L83.1 425.9c-8.8 2.8-18.6 .3-24.5-6.8c-8.1-9.8-15.5-20.2-22.1-31.2l-4.7-8.1c-6.1-11-11.4-22.4-15.8-34.3c-3.2-8.7-.5-18.4 6.4-24.6l43.3-39.4C64.6 273.1 64 264.6 64 256s.6-17.1 1.7-25.4L22.4 191.2c-6.9-6.2-9.6-15.9-6.4-24.6c4.4-11.9 9.7-23.3 15.8-34.3l4.7-8.1c6.6-11 14-21.4 22.1-31.2c5.9-7.2 15.7-9.6 24.5-6.8l55.7 17.7c13.4-10.3 28.2-18.9 44-25.4l12.5-57.1c2-9.1 9-16.3 18.2-17.8C227.3 1.2 241.5 0 256 0s28.7 1.2 42.5 3.5c9.2 1.5 16.2 8.7 18.2 17.8l12.5 57.1c15.8 6.5 30.6 15.1 44 25.4l55.7-17.7c8.8-2.8 18.6-.3 24.5 6.8c8.1 9.8 15.5 20.2 22.1 31.2l4.7 8.1c6.1 11 11.4 22.4 15.8 34.3zM256 336a80 80 0 1 0 0-160 80 80 0 1 0 0 160z"/></svg>`,
   chartBar: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true" fill="currentColor"><path d="M32 32c17.7 0 32 14.3 32 32V400c0 8.8 7.2 16 16 16H480c17.7 0 32 14.3 32 32s-14.3 32-32 32H80c-44.2 0-80-35.8-80-80V64C0 46.3 14.3 32 32 32zm96 96c0-17.7 14.3-32 32-32l192 0c17.7 0 32 14.3 32 32s-14.3 32-32 32l-192 0c-17.7 0-32-14.3-32-32zm32 64H288c17.7 0 32 14.3 32 32s-14.3 32-32 32H160c-17.7 0-32-14.3-32-32s14.3-32 32-32zm0 96H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H160c-17.7 0-32-14.3-32-32s14.3-32 32-32z"/></svg>`,
@@ -41,19 +84,30 @@ interface NavItem {
   label: string;
   path: string;
   pattern: string;
-  icon: string;
+  icon?: string;
   badge?: number;
 }
 
 const PRIMARY_NAV: NavItem[] = [
-  { label: 'sidebar.flows',         path: '/flows',     pattern: '/flows',      icon: ICONS.bolt },
-  { label: 'sidebar.variables', path: '/variables', pattern: '/variables',  icon: ICONS.globe },
-  { label: 'sidebar.settings',         path: '/settings',  pattern: '/settings',   icon: ICONS.gear },
+  { label: 'sidebar.flows',     path: '/flows',      pattern: '/flows',      icon: ICONS.squaresFour },
+  { label: 'sidebar.variables', path: '/variables',  pattern: '/variables',  icon: ICONS.sliders },
 ];
 
 const WORKSPACE_NAV: NavItem[] = [
-  { label: 'sidebar.forms',      path: '/formularios', pattern: '/formularios', icon: ICONS.clipboardList },
-  { label: 'sidebar.analytics',  path: '/analytics',  pattern: '/analytics',  icon: ICONS.chartBar },
+  { label: 'sidebar.forms',     path: '/formularios', pattern: '/formularios', icon: ICONS.clipboardList },
+  { label: 'sidebar.analytics', path: '/analytics',   pattern: '/analytics',   icon: ICONS.chartBar },
+  { label: 'sidebar.settings',  path: '/settings',    pattern: '/settings',    icon: ICONS.gear },
+];
+
+/** Top-header quick nav — mirrors ref_pages' <nav> in the header (Fluxos /
+ * Variáveis / Analytics / Configurações). Purely a second, compact way to
+ * reach the same 4 core sections; Formulários stays sidebar-only since
+ * there's no header slot for a 5th item in the reference layout. */
+const HEADER_NAV: NavItem[] = [
+  { label: 'sidebar.flows',     path: '/flows',     pattern: '/flows' },
+  { label: 'sidebar.variables', path: '/variables', pattern: '/variables' },
+  { label: 'sidebar.analytics', path: '/analytics', pattern: '/analytics' },
+  { label: 'sidebar.settings',  path: '/settings',  pattern: '/settings' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -68,6 +122,8 @@ export class Shell {
   private currentPageEl: HTMLElement | null = null;
   private unsubscribeRouter: (() => void) | null = null;
   private flowsBadge: HTMLSpanElement | null = null;
+  private variablesBadge: HTMLSpanElement | null = null;
+  private headerNavLinks: Map<string, HTMLAnchorElement> = new Map();
   private currentRoutePath: string | null = null;
   private skipNextDirtyCheck = false;
 
@@ -79,6 +135,7 @@ export class Shell {
 
   async boot(): Promise<void> {
     this._renderLayout();
+    this._refreshBadges();
 
     // Subscribe to route changes.
     this.unsubscribeRouter = router.onRouteChange((route) => {
@@ -87,6 +144,17 @@ export class Shell {
 
     // Render the initial route immediately.
     await this._onRouteChange(router.current);
+  }
+
+  /** Refreshes the Fluxos/Variáveis sidebar badge counts from real storage data. */
+  private async _refreshBadges(): Promise<void> {
+    try {
+      const [flows, variables] = await Promise.all([storage.getFlows(), storage.getVariables()]);
+      if (this.flowsBadge) this.flowsBadge.textContent = String(flows.length);
+      if (this.variablesBadge) this.variablesBadge.textContent = String(variables.length);
+    } catch (e) {
+      console.error('[SOTE Shell] Failed to refresh badges:', e);
+    }
   }
 
   destroy(): void {
@@ -100,17 +168,20 @@ export class Shell {
     this.root.innerHTML = '';
     this.root.className = 'dash-root';
 
-    // ── Sidebar ──
+    // Layout: `.dash-root` agora é a LINHA externa (sidebar | coluna
+    // principal), não mais uma coluna com o header em cima de tudo. Isso
+    // é o que permite o sidebar ocupar a altura inteira da página (até o
+    // topo), com a logo dentro dele — antes o header vinha primeiro, full
+    // width, e só then o sidebar começava (por isso ele ficava "preso"
+    // abaixo do header, sem chegar ao topo). Ver _buildSidebar() (contém
+    // a logo agora) e #dash-sidebar/.dash-main-col em dashboard.css.
     const sidebar = this._buildSidebar();
 
-    // ── Main column ──
     const mainCol = document.createElement('div');
     mainCol.className = 'dash-main-col';
 
-    // ── Header ──
     const header = this._buildHeader();
 
-    // ── Content area ──
     this.contentArea = document.createElement('main');
     this.contentArea.id = 'dash-content';
     this.contentArea.className = 'dash-content';
@@ -122,61 +193,36 @@ export class Shell {
     this.root.appendChild(mainCol);
   }
 
-  /** Sidebar — w-64 bg-neutral-900 border-r border-neutral-800 fixed */
+  /** Left sidebar — 240px, full-height (top da página até embaixo), com a
+   * logo no topo seguida da navegação. */
   private _buildSidebar(): HTMLElement {
     const aside = document.createElement('aside');
     aside.id = 'dash-sidebar';
     aside.className = 'dash-sidebar';
 
-    // Logo block — px-6 py-5 border-b border-neutral-800 flex items-center gap-3
-    aside.innerHTML = /* html */ `
-      <div class="dash-sidebar-logo">
-        <div class="dash-logo-icon"><span>S</span></div>
-        <span class="dash-logo-wordmark">SOTE</span>
-      </div>
+    const logo = document.createElement('div');
+    logo.className = 'dash-sidebar-logo';
+    logo.innerHTML = /* html */ `
+      <div class="dash-logo-mark">${ICONS.bolt}</div>
+      <span class="dash-logo-text">SOTE</span>
     `;
 
-    // Nav
     const nav = document.createElement('nav');
     nav.className = 'dash-sidebar-nav';
 
-    // Primary nav items
     for (const item of PRIMARY_NAV) {
       nav.appendChild(this._buildNavLink(item));
     }
-
-    // Workspace section
-    const workspaceDivider = document.createElement('div');
-    workspaceDivider.className = 'dash-nav-divider';
-    workspaceDivider.innerHTML = `<p class="dash-nav-section-label">${t('sidebar.section.workspace')}</p>`;
-    nav.appendChild(workspaceDivider);
-
     for (const item of WORKSPACE_NAV) {
       nav.appendChild(this._buildNavLink(item));
     }
 
+    aside.appendChild(logo);
     aside.appendChild(nav);
-
-    // Removed user block as requested
-
-    // Re-append nav after innerHTML reset trick (use proper DOM)
-    aside.innerHTML = '';
-
-    const logoBlock = document.createElement('div');
-    logoBlock.className = 'dash-sidebar-logo';
-    logoBlock.innerHTML = /* html */ `
-      <div class="dash-logo-icon"><span>S</span></div>
-      <span class="dash-logo-wordmark">SOTE</span>
-    `;
-    aside.appendChild(logoBlock);
-    aside.appendChild(nav);
-
-    // Removed user block as requested
-
     return aside;
   }
 
-  /** Single nav link element */
+  /** Single sidebar nav link element — icon + label + optional badge (Fluxos count). */
   private _buildNavLink(item: NavItem): HTMLAnchorElement {
     const a = document.createElement('a');
     a.href = `#${item.path}`;
@@ -184,18 +230,23 @@ export class Shell {
     a.dataset['pattern'] = item.pattern;
     a.setAttribute('role', 'menuitem');
 
+    const showBadge = item.pattern === '/flows' || item.pattern === '/variables';
+
     a.innerHTML = /* html */ `
-      <div class="dash-nav-icon">${item.icon}</div>
-      <span class="dash-nav-label">${t(item.label)}</span>
-      ${item.badge ? `<span class="dash-nav-badge">${item.badge}</span>` : ''}
+      <span class="dash-nav-link-left">
+        <span class="dash-nav-icon">${item.icon ?? ''}</span>
+        <span class="dash-nav-label">${t(item.label)}</span>
+      </span>
+      ${showBadge ? `<span class="dash-nav-badge">0</span>` : ''}
     `;
 
-    // Store badge ref for /flows
     if (item.pattern === '/flows') {
       this.flowsBadge = a.querySelector<HTMLSpanElement>('.dash-nav-badge');
     }
+    if (item.pattern === '/variables') {
+      this.variablesBadge = a.querySelector<HTMLSpanElement>('.dash-nav-badge');
+    }
 
-    // SPA navigation — prevent full reload
     a.addEventListener('click', (e) => {
       e.preventDefault();
       router.navigate(item.path);
@@ -205,50 +256,70 @@ export class Shell {
     return a;
   }
 
-  /** Top header — bg-neutral-900 border-b border-neutral-800 px-8 py-4 sticky */
+  /** Top header — logo + quick-nav (md+) on the left, search + CTA on the right. Sticky. */
   private _buildHeader(): HTMLElement {
     const header = document.createElement('header');
     header.id = 'dash-header';
     header.className = 'dash-header';
 
+    const navLinksHtml = HEADER_NAV.map(
+      (item) => `<a href="#${item.path}" class="dash-header-nav-link" data-pattern="${item.pattern}">${t(item.label)}</a>`
+    ).join('');
+
     header.innerHTML = /* html */ `
-      <!-- Search -->
-      <div class="dash-search-bar">
-        <span class="dash-search-icon">${ICONS.search}</span>
-        <input
-          id="dash-search-input"
-          type="text"
-          class="dash-search-input"
-          placeholder="${t('search.placeholder')}"
-          autocomplete="off"
-          spellcheck="false"
-        />
-        <span class="dash-search-kbd">⌘K</span>
-      </div>
-
-      <div class="dash-header-actions">
-        <!-- Sync -->
-        <button class="dash-icon-btn" title="${t('sync.tooltip')}">
-          ${ICONS.globe}
-        </button>
-
-        <!-- Sort -->
-        <div class="dash-header-btn" id="dash-sort-btn">
-          <span class="dash-header-btn-icon">${ICONS.sortDesc}</span>
-          <span class="dash-header-btn-label">${t('header.sort_by', { value: t('header.sort_by.category') })}</span>
-          <span class="dash-header-btn-icon-sm">${ICONS.chevronDown}</span>
+      <div id="dash-header-default" class="dash-header-default">
+        <div class="dash-header-left">
+          <nav class="dash-header-nav">${navLinksHtml}</nav>
         </div>
 
-        <!-- Divider -->
-        <div class="dash-header-divider"></div>
+        <div class="dash-header-actions">
+          <div class="dash-search-bar">
+            <span class="dash-search-icon">${ICONS.search}</span>
+            <input
+              id="dash-search-input"
+              type="text"
+              class="dash-search-input"
+              placeholder="${t('search.placeholder')}"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <span class="dash-search-kbd">⌘K</span>
+          </div>
 
-        <!-- Create New Flow CTA -->
-        <button id="dash-create-btn" class="dash-cta-btn" type="button">
-          <span class="dash-cta-icon">${ICONS.plus}</span>
-          <span class="dash-cta-label">${t('header.create_flow')}</span>
-        </button>
+          <!-- Sort -->
+          <div class="dash-header-btn" id="dash-sort-btn">
+            <span class="dash-header-btn-icon">${ICONS.sortDesc}</span>
+            <span class="dash-header-btn-label">${t('header.sort_by', { value: t('header.sort_by.category') })}</span>
+            <span class="dash-header-btn-icon-sm">${ICONS.chevronDown}</span>
+          </div>
+
+          <!-- Sync -->
+          <button class="dash-icon-btn" title="${t('sync.tooltip')}">${ICONS.globe}</button>
+
+          <!-- Create New Flow CTA -->
+          <button id="dash-create-btn" class="dash-cta-btn" type="button">
+            <span class="dash-cta-icon">${ICONS.plus}</span>
+            <span class="dash-cta-label">${t('header.create_flow')}</span>
+          </button>
+        </div>
       </div>
+
+      <!-- Full-bleed pages (e.g. the Flow Editor) replace this slot's
+           content instead of stacking a second header underneath the
+           default one — see Shell.setHeaderOverride(). -->
+      <div id="dash-header-slot" class="dash-header-slot" hidden></div>
     `;
+
+    // Header quick-nav links also drive SPA navigation + active state.
+    header.querySelectorAll<HTMLAnchorElement>('.dash-header-nav-link').forEach((a) => {
+      const pattern = a.dataset['pattern']!;
+      const path = a.getAttribute('href')!.slice(1);
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        router.navigate(path);
+      });
+      this.headerNavLinks.set(pattern, a);
+    });
 
     // Create New Flow → ask to save unsaved changes on the current page first (if any).
     // Pages can override this (e.g. Variables opens its own "create variable" modal)
@@ -270,22 +341,31 @@ export class Shell {
    * save them before navigating to a fresh flow. Only proceeds to /editor/new
    * once the current work is either saved or explicitly discarded.
    */
-  private async _handleCreateNewFlow(): Promise<void> {
+  private _handleCreateNewFlow(): void {
     const page = this.currentPage;
 
     if (page && typeof page.isDirty === 'function' && page.isDirty()) {
-      const wantsSave = confirm(
-        'You have unsaved changes in the current flow. Do you want to save it before creating a new one?'
-      );
-      if (wantsSave) {
-        if (typeof page.saveFlow === 'function') {
-          const saved = await page.saveFlow();
-          if (!saved) {
-            // Save failed (e.g. validation) — stay put so the user can fix it.
-            return;
+      // Unlike the old native confirm() (whose Cancel button still silently
+      // discarded the unsaved changes and navigated away — a real footgun),
+      // the modal's Cancel now safely stays put; only "Salvar e continuar"
+      // proceeds.
+      ConfirmModal.show({
+        title: t('confirm_modal.save_before_new_title'),
+        message: t('shell.save_before_new.desc'),
+        confirmLabel: t('common.save_and_continue'),
+        onConfirm: async () => {
+          if (typeof page.saveFlow === 'function') {
+            const saved = await page.saveFlow();
+            if (!saved) {
+              // Save failed (e.g. validation) — stay put so the user can fix it.
+              return;
+            }
           }
-        }
-      }
+          this.skipNextDirtyCheck = true;
+          router.navigate('/editor/new');
+        },
+      });
+      return;
     }
 
     this.skipNextDirtyCheck = true;
@@ -343,18 +423,43 @@ export class Shell {
       typeof this.currentPage.isDirty === 'function' &&
       this.currentPage.isDirty()
     ) {
-      const leave = confirm('You have unsaved changes. Leave this flow without saving?');
-      if (!leave) {
-        // Put the address bar back where it was — the hash already changed
-        // (that's what triggered this route change) — without remounting
-        // anything, since we're staying on the current page.
-        if (this.currentRoutePath) {
-          router.replace(this.currentRoutePath);
-        }
-        return;
-      }
+      // The hash has already changed by the time we get here (that's what
+      // triggered this route change), so both outcomes need to actively
+      // decide what the address bar should show — there's no "do nothing"
+      // option like there was with the old blocking confirm().
+      ConfirmModal.show({
+        title: t('confirm_modal.leave_unsaved_title'),
+        message: t('shell.leave_unsaved.desc'),
+        confirmLabel: t('common.leave'),
+        onConfirm: () => this._completeRouteChange(route),
+        onCancel: () => {
+          // Put the address bar back where it was, without remounting
+          // anything, since we're staying on the current page.
+          if (this.currentRoutePath) {
+            router.replace(this.currentRoutePath);
+          }
+        },
+      });
+      return;
     }
+
+    await this._completeRouteChange(route);
+  }
+
+  /**
+   * The actual "swap the mounted page for whatever `route` resolves to"
+   * work — split out from `_onRouteChange` so the unsaved-changes prompt
+   * above can delay it behind an (async, non-blocking) confirm modal
+   * instead of the synchronous native `confirm()` this used to be built
+   * around.
+   */
+  private async _completeRouteChange(route: ResolvedRoute): Promise<void> {
     this.currentRoutePath = route.path;
+
+    // Restore the shared header to its default state before mounting the
+    // next page — if the page we're leaving overrode it (the Flow Editor),
+    // this guarantees it never leaks into whatever comes next.
+    clearHeaderOverride();
 
     // Update active nav state immediately (no wait for page load).
     this._updateActiveNav(route);
@@ -388,6 +493,7 @@ export class Shell {
       this.currentPageEl = el;
 
       page.mount(route.params);
+      this._refreshBadges();
     } catch (err) {
       console.error('[SOTE Shell] Page load failed:', err);
       this._hideSkeleton();
@@ -405,6 +511,9 @@ export class Shell {
         link.classList.remove('is-active');
         link.removeAttribute('aria-current');
       }
+    }
+    for (const [pattern, link] of this.headerNavLinks) {
+      link.classList.toggle('is-active', pattern === route.pattern);
     }
   }
 

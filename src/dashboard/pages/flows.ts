@@ -6,7 +6,10 @@ import type { Page } from './index.js';
 import { storage } from '../../shared/storage/StorageService.js';
 import type { Flow, Folder, Variable } from '../../shared/types/index.js';
 import { router } from '../router.js';
-import { t } from '../../shared/i18n/index.js';
+import { t, getLanguage } from '../../shared/i18n/index.js';
+import { escapeHtml, htmlToPreviewText } from '../../shared/utils/dom.js';
+import { resolveVariablesInText } from '../../shared/utils/variableResolver.js';
+import { ConfirmModal } from '../components/ConfirmModal.js';
 import './flows.css';
 
 // ---------------------------------------------------------------------------
@@ -28,37 +31,53 @@ const ICONS_LOCAL = {
 // ---------------------------------------------------------------------------
 
 /**
- * Converts the rich HTML produced by the Action-block contenteditable
- * editor (e.g. "<p>Hello</p><p>World</p>") into a single line of plain
- * text ("Hello World") suitable for the flows-table row preview. Block
- * elements (paragraphs, list items) are joined with a space instead of
- * being concatenated raw, which is what previously caused the browser to
- * render nested/adjacent <p> tags as separate lines.
- */
-function htmlToPreviewText(html: string): string {
-  // textContent concatenates block elements with no separator at all
-  // ("<p>Hello</p><p>World</p>" -> "HelloWorld"), so insert a space at
-  // each block boundary/line-break before reading it back out as text.
-  const withBreaks = (html || '').replace(/<\/(p|div|li|h[1-6])>|<br\s*\/?>/gi, ' $&');
-  const div = document.createElement('div');
-  div.innerHTML = withBreaks;
-  return (div.textContent || div.innerText || '').replace(/\s+/g, ' ').trim();
-}
-
-/**
  * Replaces every `{{KEY}}` placeholder in plain text with the matching
  * Global Variable's value — same substitution content.ts performs at
  * runtime and PreviewModal.ts performs in the editor's Preview modal.
  * Unknown keys are left untouched.
  */
 function resolveVariablesText(text: string, variables: Variable[]): string {
-  if (!variables.length || !text.includes('{{')) return text;
-  const map = new Map(variables.map((v) => [v.key, v.value]));
-  return text.replace(/\{\{\s*([A-Z0-9_]+)\s*\}\}/g, (match, key: string) => {
-    const value = map.get(key);
-    return value === undefined ? match : value;
-  });
+  return resolveVariablesInText(text, false, variables);
 }
+
+/** Formats a count with a "k" suffix past 1000 (e.g. 1240 -> "1.2k"), matching
+ * the "1.2k runs" style used in the reference table rows. */
+function formatCount(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k`;
+  return String(n);
+}
+
+/** Formats a past timestamp as a short relative label ("2h atrás", "Ontem",
+ * "3 dias atrás") matching the reference table's last-activity column.
+ * Falls back to a locale-agnostic "—" when there's no timestamp yet. */
+function formatRelativeTime(ts: number | undefined, locale: 'pt' | 'en'): string {
+  if (!ts) return '—';
+  const diffMs = Date.now() - ts;
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffH = Math.floor(diffMin / 60);
+  const diffD = Math.floor(diffH / 24);
+  if (locale === 'pt') {
+    if (diffMin < 1) return 'agora';
+    if (diffMin < 60) return `${diffMin}min atrás`;
+    if (diffH < 24) return `${diffH}h atrás`;
+    if (diffD === 1) return 'Ontem';
+    if (diffD < 30) return `${diffD} dias atrás`;
+    return new Date(ts).toLocaleDateString('pt-BR');
+  }
+  if (diffMin < 1) return 'now';
+  if (diffMin < 60) return `${diffMin}min ago`;
+  if (diffH < 24) return `${diffH}h ago`;
+  if (diffD === 1) return 'Yesterday';
+  if (diffD < 30) return `${diffD} days ago`;
+  return new Date(ts).toLocaleDateString('en-US');
+}
+
+const EXTRA_ICONS = {
+  chevronRight: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" fill="currentColor"><path d="M310.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-192 192c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L242.7 256 73.4 86.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l192 192z"/></svg>`,
+  refresh: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M386.3 160H352c-17.7 0-32 14.3-32 32s14.3 32 32 32H478.3c17.7 0 32-14.3 32-32V64c0-17.7-14.3-32-32-32s-32 14.3-32 32v35.2L414.4 97.6c-87.5-87.5-229.3-87.5-316.8 0C73.2 122 55.6 150.7 44.8 181.4c-5.9 16.7 2.9 34.9 19.5 40.8s34.9-2.9 40.8-19.5c7.7-21.8 20.2-42.3 37.8-59.8c62.5-62.5 163.8-62.5 226.3 0zM125.7 352H33.7C16 352 1.7 366.3 1.7 384v96c0 17.7 14.3 32 32 32s32-14.3 32-32V444.8l17.9 17.9c87.5 87.5 229.3 87.5 316.8 0c24.5-24.5 42.1-53.2 52.9-83.8c5.9-16.7-2.9-34.9-19.5-40.8s-34.9 2.9-40.8 19.5c-7.7 21.8-20.2 42.3-37.8 59.8c-62.5 62.5-163.8 62.5-226.3 0L97.6 384h28.1c17.7 0 32-14.3 32-32s-14.3-32-32-32z"/></svg>`,
+  funnel: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M3.9 54.9C10.5 40.9 24.5 32 40 32H472c15.5 0 29.5 8.9 36.1 22.9s4.6 30.5-5.2 42.5L320 320.9V448c0 12.1-6.8 23.2-17.7 28.6s-23.8 4.3-33.5-3l-64-48c-8.1-6-12.8-15.5-12.8-25.6V320.9L9 97.3C-.7 85.4-2.8 68.8 3.9 54.9z"/></svg>`,
+  pulse: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l2-7 4 14 3-9 2 4h5"/></svg>`,
+};
 
 // ---------------------------------------------------------------------------
 // Page Class
@@ -78,19 +97,7 @@ export default class FlowsPage implements Page {
 
   /** Escapes HTML-significant characters before interpolating user-controlled
    * strings (flow/folder names, shortcuts, variable values) into innerHTML. */
-  private escapeHTML(str: string): string {
-    return str.replace(
-      /[&<>'"]/g,
-      (tag) =>
-        ({
-          '&': '&amp;',
-          '<': '&lt;',
-          '>': '&gt;',
-          "'": '&#39;',
-          '"': '&quot;',
-        }[tag] || tag),
-    );
-  }
+
 
   render(): HTMLElement {
     this.el = document.createElement('div');
@@ -99,34 +106,47 @@ export default class FlowsPage implements Page {
 
 
     this.el.innerHTML = /* html */ `
-      <div class="flows-header">
-        <div>
-          <h1 class="flows-title">${t('flows.title')}</h1>
-          <p class="flows-subtitle">${t('flows.subtitle')}</p>
+      <div class="dash-page-inner">
+        <div class="flows-header">
+          <div>
+            <div class="dash-breadcrumb">
+              <span>/workspace</span>${EXTRA_ICONS.chevronRight}<span class="is-current">${t('flows.breadcrumb')}</span>
+            </div>
+            <h1 class="flows-title">${t('flows.title')}</h1>
+            <p class="flows-subtitle">${t('flows.subtitle')}</p>
+          </div>
+          <div class="flows-header-actions">
+            <button class="dash-header-btn" id="flows-filters-btn">
+              ${EXTRA_ICONS.funnel} <span>${t('flows.header.filters')}</span> ${EXTRA_ICONS.chevronRight}
+            </button>
+            <button class="dash-header-btn" id="flows-refresh-btn">
+              ${EXTRA_ICONS.refresh} <span>${t('flows.header.refresh')}</span>
+            </button>
+          </div>
         </div>
-      </div>
 
-      <!-- Stats Row -->
-      <div class="flows-stats" id="flows-stats-container">
-        <!-- Rendered dynamically -->
-      </div>
+        <!-- Stats Row + Workspace Summary -->
+        <section class="flows-stats-section">
+          <div class="flows-stats" id="flows-stats-container"><!-- Rendered dynamically --></div>
+          <div class="flows-workspace-card" id="flows-workspace-card"><!-- Rendered dynamically --></div>
+        </section>
 
-      <!-- Folder Tabs -->
-      <div class="flows-folders" id="flows-folders-container">
-        <!-- Rendered dynamically -->
-      </div>
+        <!-- Folder Tabs -->
+        <div class="flows-folders" id="flows-folders-container"></div>
 
-      <!-- Table -->
-      <div class="flows-table-wrap">
-        <div class="flows-th">
-          <div class="th-col">${t('flows.th.on')}</div>
-          <div class="th-col">${t('flows.th.shortcut')}</div>
-          <div class="th-col">${t('flows.th.category')}</div>
-          <div class="th-col">${t('flows.th.preview')}</div>
-          <div class="th-col">${t('flows.th.usage')}</div>
-          <div class="th-col" style="justify-content: flex-end">${t('flows.th.actions')}</div>
+        <!-- Table -->
+        <div class="flows-table-wrap">
+          <div class="flows-th">
+            <div class="th-col">${t('flows.th.on')}</div>
+            <div class="th-col">${t('flows.th.shortcut')}</div>
+            <div class="th-col">${t('flows.th.category')}</div>
+            <div class="th-col">${t('flows.th.preview')}</div>
+            <div class="th-col">${t('flows.th.created')}</div>
+            <div class="th-col">${t('flows.th.usage')}</div>
+            <div class="th-col" style="justify-content: flex-end">${t('flows.th.actions')}</div>
+          </div>
+          <div id="flows-tbody"></div>
         </div>
-        <div id="flows-tbody"></div>
       </div>
     `;
 
@@ -182,8 +202,32 @@ export default class FlowsPage implements Page {
 
     // 3. Render everything
     this.renderStats();
+    this.renderWorkspaceCard();
     this.renderFolders();
     this.renderList();
+
+    // 4. Header action buttons
+    const foldersEl = this.el.querySelector<HTMLElement>('#flows-folders-container');
+    this.el.querySelector('#flows-filters-btn')?.addEventListener('click', () => {
+      if (foldersEl) foldersEl.style.display = foldersEl.style.display === 'none' ? '' : 'none';
+    });
+    this.el.querySelector('#flows-refresh-btn')?.addEventListener('click', async () => {
+      const btn = this.el.querySelector('#flows-refresh-btn');
+      btn?.classList.add('is-spinning');
+      const [flows, folders, variables] = await Promise.all([
+        storage.getFlows(),
+        storage.getFolders(),
+        storage.getVariables(),
+      ]);
+      this.allFlows = flows;
+      this.allFolders = folders;
+      this.allVariables = variables;
+      this.renderStats();
+      this.renderWorkspaceCard();
+      this.renderFolders();
+      this.renderList();
+      setTimeout(() => btn?.classList.remove('is-spinning'), 400);
+    });
   }
 
   unmount(): void {
@@ -200,56 +244,78 @@ export default class FlowsPage implements Page {
 
   private renderStats() {
     const container = this.el.querySelector('#flows-stats-container')!;
-    
+
     const totalFlows = this.allFlows.length;
+    const activeFlows = this.allFlows.filter(f => f.enabled).length;
     const totalUsage = this.allFlows.reduce((sum, f) => sum + (f.stats.usageCount || 0), 0);
     const totalKeys = this.allFlows.reduce((sum, f) => sum + (f.stats.keysSaved || 0), 0);
-    
+
     // Most used flow
     let mostUsed = this.allFlows[0];
     for (const f of this.allFlows) {
       if ((f.stats.usageCount || 0) > (mostUsed?.stats.usageCount || 0)) mostUsed = f;
     }
-    const mostUsedShortcut = mostUsed 
-      ? `/${(mostUsed.blocks.find(b => b.type === 'trigger')?.data as any)?.shortcut || mostUsed.name}` 
+    const mostUsedShortcut = mostUsed
+      ? `/${(mostUsed.blocks.find(b => b.type === 'trigger')?.data as any)?.shortcut || mostUsed.name}`
       : t('flows.stats.none');
-    
+
     const hrsSaved = (totalKeys * 250 / 1000 / 60 / 60).toFixed(1);
 
     container.innerHTML = /* html */ `
       <div class="stat-card">
-        <div class="stat-header">
-          <div>
-            <p class="stat-label">${t('flows.stats.time_saved')}</p>
-            <p class="stat-value">${t('flows.stats.hrs_value', { hrs: hrsSaved })}</p>
-            <p class="stat-sub">${t('flows.stats.estimated')}</p>
-          </div>
-          <div class="stat-icon">${ICONS_LOCAL.clock}</div>
-        </div>
-        <div class="stat-footer">
-          ${ICONS_LOCAL.trendUp}
-          <span>${t('flows.stats.based_on_keys')}</span>
-        </div>
+        <p class="stat-label">${t('flows.stats.total_executions')}</p>
+        <div class="stat-value-row"><span class="stat-value">${formatCount(totalUsage)}</span></div>
       </div>
       <div class="stat-card">
-        <div class="stat-header">
-          <div>
-            <p class="stat-label">${t('flows.stats.total_shortcuts')}</p>
-            <p class="stat-value">${totalFlows}</p>
-            <p class="stat-sub">${t('flows.stats.across_folders', { count: this.allFolders.length })}</p>
-          </div>
-          <div class="stat-icon">${ICONS_LOCAL.bolt}</div>
-        </div>
+        <p class="stat-label">${t('flows.stats.active_flows')}</p>
+        <div class="stat-value-row"><span class="stat-value">${activeFlows}</span></div>
+        <p class="stat-sub">${t('flows.stats.of_total', { total: totalFlows })}</p>
       </div>
       <div class="stat-card">
-        <div class="stat-header">
-          <div>
-            <p class="stat-label">${t('flows.stats.most_used')}</p>
-            <p class="stat-value">${mostUsedShortcut}</p>
-            <p class="stat-sub">${t('flows.usage_count', { count: mostUsed?.stats.usageCount || 0 })}</p>
-          </div>
-          <div class="stat-icon">${ICONS_LOCAL.fire}</div>
+        <p class="stat-label">${t('flows.stats.time_saved')}</p>
+        <div class="stat-value-row"><span class="stat-value">${t('flows.stats.hrs_value', { hrs: hrsSaved })}</span></div>
+        <p class="stat-sub">${t('flows.stats.based_on_keys')}</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">${t('flows.stats.most_used')}</p>
+        <div class="stat-value-row"><span class="stat-value stat-value-mono">${escapeHtml(mostUsedShortcut)}</span></div>
+        <p class="stat-sub">${t('flows.usage_count', { count: mostUsed?.stats.usageCount || 0 })}</p>
+      </div>
+    `;
+  }
+
+  /** Real "workspace summary" card — replaces the reference mock's fake
+   * CPU/memory system-health widget with figures actually derived from
+   * storage (no invented telemetry): share of flows enabled, plus counts
+   * of variables/folders that make up the current workspace. */
+  private renderWorkspaceCard() {
+    const container = this.el.querySelector('#flows-workspace-card');
+    if (!container) return;
+
+    const total = this.allFlows.length;
+    const active = this.allFlows.filter(f => f.enabled).length;
+    const activePct = total > 0 ? Math.round((active / total) * 100) : 0;
+    const varCount = this.allVariables.length;
+    const maxVarBar = Math.max(varCount, 10);
+    const varPct = Math.min(100, Math.round((varCount / maxVarBar) * 100));
+
+    container.innerHTML = /* html */ `
+      <div class="workspace-card-glow"></div>
+      <div class="workspace-card-body">
+        <div class="workspace-card-head">
+          <div class="workspace-card-title">${EXTRA_ICONS.pulse} ${t('flows.workspace.title')}</div>
+          <span class="workspace-card-status"><span class="status-dot"></span> ${t('flows.workspace.online')}</span>
         </div>
+        <div class="workspace-card-metrics">
+          <div class="wc-row"><span>${t('flows.workspace.active_flows')}</span><span class="wc-mono">${active}/${total} (${activePct}%)</span></div>
+          <div class="wc-bar"><div class="wc-bar-fill" style="width:${activePct}%"></div></div>
+          <div class="wc-row"><span>${t('flows.workspace.variables')}</span><span class="wc-mono">${varCount}</span></div>
+          <div class="wc-bar"><div class="wc-bar-fill wc-bar-fill-soft" style="width:${varPct}%"></div></div>
+        </div>
+      </div>
+      <div class="workspace-card-foot">
+        ${ICONS_LOCAL.folder}
+        <p>${t('flows.workspace.hint')}</p>
       </div>
     `;
   }
@@ -288,7 +354,7 @@ export default class FlowsPage implements Page {
       const count = this.allFlows.filter(f => f.folderId === folder.id).length;
       const btn = document.createElement('button');
       btn.className = `folder-tab ${this.currentFolderFilter === folder.id ? 'is-active' : ''}`;
-      btn.innerHTML = `${this.escapeHTML(folder.name)} <span class="folder-count">${count}</span>`;
+      btn.innerHTML = `${escapeHtml(folder.name)} <span class="folder-count">${count}</span>`;
       btn.onclick = () => {
         this.currentFolderFilter = folder.id;
         this.renderFolders();
@@ -297,13 +363,18 @@ export default class FlowsPage implements Page {
       // Right click to delete
       btn.oncontextmenu = async (e) => {
         e.preventDefault();
-        if (confirm(t('flows.folder.delete_confirm', { name: folder.name }))) {
-          await storage.deleteFolder(folder.id);
-          this.allFolders = this.allFolders.filter(f => f.id !== folder.id);
-          if (this.currentFolderFilter === folder.id) this.currentFolderFilter = null;
-          this.renderFolders();
-          this.renderList();
-        }
+        ConfirmModal.show({
+          title: t('confirm_modal.delete_folder_title'),
+          message: t('flows.folder.delete_confirm', { name: folder.name }),
+          confirmLabel: t('common.delete'),
+          onConfirm: async () => {
+            await storage.deleteFolder(folder.id);
+            this.allFolders = this.allFolders.filter(f => f.id !== folder.id);
+            if (this.currentFolderFilter === folder.id) this.currentFolderFilter = null;
+            this.renderFolders();
+            this.renderList();
+          },
+        });
       };
       container.appendChild(btn);
     });
@@ -402,7 +473,7 @@ export default class FlowsPage implements Page {
 
       const trigger = flow.blocks.find(b => b.type === 'trigger');
       const action = flow.blocks.find(b => b.type === 'action');
-      const shortcutText = this.escapeHTML(trigger ? (trigger.data as any).shortcut : flow.name);
+      const shortcutText = escapeHtml(trigger ? (trigger.data as any).shortcut : flow.name);
       // action.content is rich HTML (e.g. "<p>Hello</p><p>World</p>") coming
       // straight out of the contenteditable Action-block editor. Slicing
       // that HTML as if it were plain text and dropping it into another
@@ -412,13 +483,16 @@ export default class FlowsPage implements Page {
       // to .row-preview. Strip tags down to plain text first so there's only
       // ever a single text node to truncate and display.
       const previewText = action
-        ? this.escapeHTML(resolveVariablesText(htmlToPreviewText((action.data as any).content), this.allVariables).slice(0, 50))
+        ? escapeHtml(resolveVariablesText(htmlToPreviewText((action.data as any).content), this.allVariables).slice(0, 50))
         : t('flows.preview_empty');
       
       const folder = this.allFolders.find(f => f.id === flow.folderId);
-      const folderName = this.escapeHTML(folder ? folder.name : t('flows.folder.none'));
+      const folderName = escapeHtml(folder ? folder.name : t('flows.folder.none'));
       
       const usagePct = ((flow.stats.usageCount || 0) / maxUsage) * 100;
+      const locale: 'pt' | 'en' = getLanguage() === 'pt-BR' ? 'pt' : 'en';
+      const relTime = formatRelativeTime(flow.stats.lastUsed || flow.updatedAt, locale);
+      const createdTime = formatRelativeTime(flow.createdAt, locale);
 
       // Highlighting logic
       const highlight = (text: string) => {
@@ -447,12 +521,17 @@ export default class FlowsPage implements Page {
         <div>
           <p class="row-preview">${highlight(previewText)}</p>
         </div>
+        <!-- Created -->
+        <div>
+          <span class="row-created">${createdTime}</span>
+        </div>
         <!-- Usage -->
         <div class="row-usage">
           <div class="usage-track">
             <div class="usage-fill" style="width: ${usagePct}%"></div>
           </div>
-          <span class="usage-count">${flow.stats.usageCount || 0}</span>
+          <span class="usage-count">${formatCount(flow.stats.usageCount || 0)}<span class="usage-count-suffix"> ${t('flows.usage_suffix')}</span></span>
+          <span class="usage-time">${relTime}</span>
         </div>
         <!-- Actions -->
         <div class="row-actions">
@@ -468,6 +547,7 @@ export default class FlowsPage implements Page {
         toggle.classList.toggle('is-on', flow.enabled);
         (toggle as HTMLElement).title = flow.enabled ? t('flows.toggle.disable') : t('flows.toggle.enable');
         await storage.saveFlow(flow);
+        this.renderWorkspaceCard();
       });
 
       const btnEdit = row.querySelector('.btn-edit')!;
@@ -477,13 +557,19 @@ export default class FlowsPage implements Page {
 
       const btnDelete = row.querySelector('.btn-delete')!;
       btnDelete.addEventListener('click', async () => {
-        if (confirm(t('flows.delete_confirm_named', { shortcut: shortcutText }))) {
-          await storage.deleteFlow(flow.id);
-          this.allFlows = this.allFlows.filter(f => f.id !== flow.id);
-          this.renderList();
-          this.renderStats();
-          this.renderFolders();
-        }
+        ConfirmModal.show({
+          title: t('confirm_modal.delete_shortcut_title'),
+          message: t('flows.delete_confirm_named', { shortcut: shortcutText }),
+          confirmLabel: t('common.delete'),
+          onConfirm: async () => {
+            await storage.deleteFlow(flow.id);
+            this.allFlows = this.allFlows.filter(f => f.id !== flow.id);
+            this.renderList();
+            this.renderStats();
+            this.renderWorkspaceCard();
+            this.renderFolders();
+          },
+        });
       });
 
       const tag = row.querySelector('.row-tag')!;

@@ -5,16 +5,7 @@
 import { BaseModal } from './BaseModal.js';
 import type { Token } from '../../../../shared/types/index.js';
 import { t } from '../../../../shared/i18n/index.js';
-
-/** Escapes HTML-significant characters before interpolating an existing
- * (user-typed) config value into an innerHTML attribute. */
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+import { escapeHtml } from '../../../../shared/utils/dom.js';
 
 export class InputModal extends BaseModal {
   private onSaveCallback: (newConfig: { label: string, placeholder?: string }) => void;
@@ -30,13 +21,20 @@ export class InputModal extends BaseModal {
     const placeholder = (config.placeholder as string) || '';
 
     this.body.innerHTML = `
-      <div class="field-group" style="margin-bottom:1rem">
-        <label>${t('token.input.field_label')}</label>
-        <input type="text" class="form-input" id="input-label" value="${escapeHtml(label)}" placeholder="${t('token.input.label_example')}">
-      </div>
-      <div class="field-group">
-        <label>${t('token.input.placeholder_optional')}</label>
-        <input type="text" class="form-input" id="input-placeholder" value="${escapeHtml(placeholder)}" placeholder="${t('token.input.placeholder_example')}">
+      <div style="display:flex; flex-direction:column; gap: var(--spacing-5)">
+        <div class="field-group">
+          <label>${t('token.input.field_label')}</label>
+          <input type="text" class="form-input" id="input-label" value="${escapeHtml(label)}" placeholder="${t('token.input.label_example')}">
+          <p class="field-hint">${t('token.input.field_hint')}</p>
+        </div>
+        <div class="field-group">
+          <div class="field-label-row">
+            <label>${t('token.input.placeholder_field')}</label>
+            <span class="field-optional-badge">${t('common.optional')}</span>
+          </div>
+          <input type="text" class="form-input" id="input-placeholder" value="${escapeHtml(placeholder)}" placeholder="${t('token.input.placeholder_example')}">
+          <p class="field-hint">${t('token.input.placeholder_hint')}</p>
+        </div>
       </div>
     `;
 

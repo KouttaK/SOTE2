@@ -13,16 +13,10 @@ import type { RandomTokenOption, Token, Variable } from '../../../../shared/type
 import { t } from '../../../../shared/i18n/index.js';
 import { storage } from '../../../../shared/storage/StorageService.js';
 import { evenWeights, rebalanceWeights, removeAndRebalance } from '../../../../shared/utils/randomWeights.js';
+import { escapeHtml } from '../../../../shared/utils/dom.js';
 
 const ICON_VARIABLE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M448 80v48c0 44.2-100.3 80-224 80S0 172.2 0 128V80C0 35.8 100.3 0 224 0S448 35.8 448 80zM393.2 214.7c20.8-7.4 39.2-16.9 54.8-28.6V288c0 44.2-100.3 80-224 80S0 332.2 0 288V186.1c15.6 11.7 34 21.2 54.8 28.6C111.8 236.6 165 240 224 240s112.2-3.4 169.2-25.3zM0 346.1c15.6 11.7 34 21.2 54.8 28.6C111.8 396.6 165 400 224 400s112.2-3.4 169.2-25.3c20.8-7.4 39.2-16.9 54.8-28.6V432c0 44.2-100.3 80-224 80S0 476.2 0 432V346.1z"/></svg>`;
-
-/** Escapes HTML-significant characters before interpolating user-controlled
- * strings (Global Variable keys/values) into innerHTML. */
-function escapeHtml(str: string): string {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
+const ICON_TRASH = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M135.2 17.7C140.6 6.8 151.7 0 163.8 0H284.2c12.1 0 23.2 6.8 28.6 17.7L320 32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64S14.3 32 32 32h96l7.2-14.3zM32 128H416V448c0 35.3-28.7 64-64 64H96c-35.3 0-64-28.7-64-64V128zm96 64c-8.8 0-16 7.2-16 16V416c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16V416c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16V416c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16z"/></svg>`;
 
 export class RandomModal extends BaseModal {
   private options: RandomTokenOption[];
@@ -180,7 +174,7 @@ export class RandomModal extends BaseModal {
 
       const varBtn = document.createElement('button');
       varBtn.type = 'button';
-      varBtn.className = 'btn-icon';
+      varBtn.className = 'btn-icon btn-icon-variable';
       varBtn.innerHTML = ICON_VARIABLE;
       varBtn.title = t('variable.insert_title');
 
@@ -201,10 +195,10 @@ export class RandomModal extends BaseModal {
       varWrap.appendChild(varMenu);
 
       const delBtn = document.createElement('button');
-      delBtn.className = 'btn-icon';
-      delBtn.innerHTML = '&times;';
-      delBtn.style.color = '#ef4444';
-      delBtn.style.fontSize = '1.25rem';
+      delBtn.type = 'button';
+      delBtn.className = 'btn-icon btn-icon-danger';
+      delBtn.innerHTML = ICON_TRASH;
+      delBtn.title = t('common.remove');
       delBtn.addEventListener('click', () => {
         if (this.options.length > 2) {
           const weights = this.options.map((o) => o.weight);

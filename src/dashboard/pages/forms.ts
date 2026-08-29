@@ -12,7 +12,9 @@ import { storage } from '../../shared/storage/StorageService.js';
 import { generateId } from '../../shared/storage/helpers.js';
 import type { Form, FormField, FormFieldType } from '../../shared/types/index.js';
 import { ActionBlock } from '../components/blocks/ActionBlock.js';
+import { ConfirmModal } from '../components/ConfirmModal.js';
 import { t } from '../../shared/i18n/index.js';
+import { escapeHtml } from '../../shared/utils/dom.js';
 // ActionBlock's own styling lives in editor.css/tokens.css (it has no CSS
 // of its own) — imported here too so the field-value modal renders
 // correctly even if the user never visited the Flow editor page first.
@@ -156,10 +158,10 @@ export default class FormsPage implements Page {
         return /* html */ `
           <div class="frm-card ${isActive ? 'active' : ''}" data-id="${f.id}">
             <div class="frm-card-top">
-              <h3 class="frm-card-title">${this.escapeHTML(f.name)}</h3>
+              <h3 class="frm-card-title">${escapeHtml(f.name)}</h3>
             </div>
             <div class="frm-card-meta">${sitesBadge}${fieldsBadge}</div>
-            <p class="frm-card-desc">${this.escapeHTML(desc) || '—'}</p>
+            <p class="frm-card-desc">${escapeHtml(desc) || '—'}</p>
           </div>
         `;
       })
@@ -228,7 +230,7 @@ export default class FormsPage implements Page {
 
         <div class="form-group">
           <label class="form-label">${t('forms.editor.name_label')}</label>
-          <input type="text" id="frm-name" class="form-input" value="${this.escapeHTML(this.activeForm?.name ?? '')}" placeholder="${t('forms.editor.name_placeholder')}" />
+          <input type="text" id="frm-name" class="form-input" value="${escapeHtml(this.activeForm?.name ?? '')}" placeholder="${t('forms.editor.name_placeholder')}" />
         </div>
 
         <div class="form-group">
@@ -354,9 +356,9 @@ export default class FormsPage implements Page {
     container.innerHTML = this.draftSites
       .map(
         (site) => /* html */ `
-          <span class="frm-chip" data-site="${this.escapeHTML(site)}">
-            ${this.escapeHTML(site)}
-            <button class="frm-chip-remove" data-site="${this.escapeHTML(site)}" title="${t('forms.editor.remove_site')}">&times;</button>
+          <span class="frm-chip" data-site="${escapeHtml(site)}">
+            ${escapeHtml(site)}
+            <button class="frm-chip-remove" data-site="${escapeHtml(site)}" title="${t('forms.editor.remove_site')}">&times;</button>
           </span>
         `,
       )
@@ -397,7 +399,7 @@ export default class FormsPage implements Page {
         (field, i) => /* html */ `
           <div class="frm-field-row" draggable="true" data-index="${i}">
             <span class="frm-field-drag-handle" title="${t('forms.editor.drag_hint')}">${ICONS.grip}</span>
-            <input type="text" class="frm-field-name-input" value="${this.escapeHTML(field.name)}" placeholder="${t('forms.editor.field_name_placeholder')}" />
+            <input type="text" class="frm-field-name-input" value="${escapeHtml(field.name)}" placeholder="${t('forms.editor.field_name_placeholder')}" />
             <select class="frm-field-type-select">
               <option value="text" ${field.type === 'text' || !field.type ? 'selected' : ''}>${t('forms.editor.field_type.text')}</option>
               <option value="email" ${field.type === 'email' ? 'selected' : ''}>${t('forms.editor.field_type.email')}</option>
@@ -541,43 +543,17 @@ export default class FormsPage implements Page {
   }
 
   private openDeleteModal(form: Form) {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = /* html */ `
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2 class="modal-title">${t('common.delete')} "${this.escapeHTML(form.name)}"?</h2>
-          <p class="modal-desc">${t('forms.delete_confirm')}</p>
-        </div>
-        <div class="modal-footer">
-          <button class="btn-secondary" id="modal-cancel">${t('common.cancel')}</button>
-          <button class="btn-danger-solid" id="modal-confirm">${t('common.delete')}</button>
-        </div>
-      </div>
-    `;
-    this.el.appendChild(modal);
-
-    modal.querySelector('#modal-cancel')?.addEventListener('click', () => modal.remove());
-    modal.querySelector('#modal-confirm')?.addEventListener('click', async () => {
-      await storage.deleteForm(form.id);
-      this.forms = this.forms.filter((f) => f.id !== form.id);
-      this.activeForm = null;
-      this.applySearch();
-      modal.remove();
+    ConfirmModal.show({
+      title: `${t('common.delete')} "${form.name}"?`,
+      message: t('forms.delete_confirm'),
+      confirmLabel: t('common.delete'),
+      onConfirm: async () => {
+        await storage.deleteForm(form.id);
+        this.forms = this.forms.filter((f) => f.id !== form.id);
+        this.activeForm = null;
+        this.applySearch();
+      },
     });
   }
 
-  private escapeHTML(str: string): string {
-    return str.replace(
-      /[&<>'"]/g,
-      (tag) =>
-        ({
-          '&': '&amp;',
-          '<': '&lt;',
-          '>': '&gt;',
-          "'": '&#39;',
-          '"': '&quot;',
-        }[tag] || tag),
-    );
-  }
 }

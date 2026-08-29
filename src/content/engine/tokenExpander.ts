@@ -4,6 +4,7 @@
 
 import type { RandomTokenOption, Token } from '../../shared/types/index.js';
 import { pickWeightedRandom } from '../../shared/utils/randomWeights.js';
+import { formatDate } from '../../shared/utils/formatDate.js';
 
 export interface ExpansionContext {
   tabUrl: string;
@@ -86,23 +87,4 @@ export async function expandToken(token: Token, context: ExpansionContext): Prom
     default:
       return '';
   }
-}
-
-function formatDate(date: Date, format: string): string {
-  const pad = (n: number) => n.toString().padStart(2, '0');
-  
-  const DD = pad(date.getDate());
-  const MM = pad(date.getMonth() + 1);
-  const YYYY = date.getFullYear().toString();
-  const HH = pad(date.getHours());
-  const mm = pad(date.getMinutes());
-  const ss = pad(date.getSeconds());
-
-  return format
-    .replace(/DD/g, DD)
-    .replace(/MM/g, MM)
-    .replace(/YYYY/g, YYYY)
-    .replace(/HH/g, HH)
-    .replace(/mm/g, mm)
-    .replace(/ss/g, ss);
 }

@@ -9,6 +9,7 @@ export type Message =
   | { type: 'SETTINGS_UPDATED'; payload: Partial<Settings> }
   | { type: 'FLOWS_UPDATED'; payload: Flow[] }
   | { type: 'FLOW_USED'; payload: { flowId: string; keysSaved: number } }
+  | { type: 'FLOW_EXECUTION_FAILED'; payload: { flowId: string } }
   | { type: 'SNOOZE'; payload: { duration: number } } // duration in ms
   | { type: 'BLOCKLIST_ADD'; payload: { domain: string } }
   | { type: 'GET_TAB_INFO' }
@@ -23,11 +24,3 @@ export type Message =
   | { type: 'DELETE_FORM'; payload: { id: string } }
   | { type: 'FORM_USED'; payload: { formId: string } }
   | { type: 'FORMS_UPDATED'; payload: Form[] };
-
-// Response Types
-export type GetFlowsResponse = Flow[];
-export type GetSettingsResponse = Settings;
-export type GetTabInfoResponse = { url: string | null; title: string | null };
-export type GetClipboardHistoryResponse = ClipboardEntry[];
-export type GetVariablesResponse = Variable[];
-export type GetFormsResponse = Form[];

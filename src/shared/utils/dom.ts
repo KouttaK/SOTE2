@@ -116,39 +116,42 @@ export function animateOut(el: HTMLElement, animationClass: string): Promise<voi
 }
 
 // ---------------------------------------------------------------------------
-// Additional helpers
+// escapeHtml — single shared implementation
 // ---------------------------------------------------------------------------
 
 /**
- * Removes all child nodes from an element.
+ * Escapes `&`, `<`, `>`, `"` and `'` so a string can be safely interpolated
+ * into HTML — both as element text content *and* inside a double- or
+ * single-quoted attribute value (e.g. `data-key="${escapeHtml(v.key)}"`).
+ *
+ * This used to be reimplemented locally (with inconsistent coverage —
+ * some variants didn't escape quotes at all) across ~18 files. Import this
+ * one instead of adding another local copy.
  */
-export function clearElement(el: HTMLElement): void {
-  while (el.firstChild) {
-    el.removeChild(el.firstChild);
-  }
+export function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 /**
- * Returns the first element matching `selector` inside `root` (or
- * `document` if omitted), typed to `T`.  Throws if not found.
+ * Converts rich HTML (e.g. "<p>Hello</p><p>World</p>") produced by a
+ * contenteditable action editor into a single line of plain text, for use
+ * in one-line previews (recent-snippet list, mini-action collapsed view,
+ * etc). textContent alone concatenates block elements with no separator
+ * ("<p>Hello</p><p>World</p>" -> "HelloWorld"), so a space is inserted at
+ * each block boundary/line-break before reading the text back out.
+ * Previously duplicated as `htmlToPreviewText`/`htmlToPlainText` in
+ * dashboard/pages/flows.ts and popup/index.ts.
  */
-export function qs<T extends HTMLElement>(
-  selector: string,
-  root: ParentNode = document,
-): T {
-  const el = root.querySelector<T>(selector);
-  if (!el) throw new Error(`[SOTE] Element not found: "${selector}"`);
-  return el;
-}
-
-/**
- * Returns all elements matching `selector` inside `root` as an Array.
- */
-export function qsAll<T extends HTMLElement>(
-  selector: string,
-  root: ParentNode = document,
-): T[] {
-  return Array.from(root.querySelectorAll<T>(selector));
+export function htmlToPreviewText(html: string): string {
+  const withBreaks = (html || '').replace(/<\/(p|div|li|h[1-6])>|<br\s*\/?>/gi, ' $&');
+  const div = document.createElement('div');
+  div.innerHTML = withBreaks;
+  return (div.textContent || div.innerText || '').replace(/\s+/g, ' ').trim();
 }
 
 // ---------------------------------------------------------------------------
@@ -195,13 +198,23 @@ export function getFieldTypeCategory(element: HTMLElement | null | undefined): F
  * controls (same as TextInjector) and `.textContent` for contentEditable
  * nodes, which don't keep a meaningful `.value`.
  */
-export function getFieldContent(element: HTMLElement | null | undefined): string {
+export function getFieldContent(element: HTMLElement | null | undefined, excludeShortcutSuffix?: string): string {
   if (!element) return '';
+  let content = '';
   if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-    return (element as HTMLInputElement | HTMLTextAreaElement).value || '';
+    content = (element as HTMLInputElement | HTMLTextAreaElement).value || '';
+  } else if (element.isContentEditable) {
+    content = element.textContent || '';
   }
-  if (element.isContentEditable) {
-    return element.textContent || '';
+  // At the moment a condition is evaluated, the just-typed shortcut is
+  // still sitting in the field (TextInjector only deletes/replaces it
+  // *after* the whole Flow/Condition/Token pipeline resolves) — so
+  // without this, "Conteúdo do Campo = X" could never match: the field
+  // actually contains "X" + whatever shortcut triggered this check (e.g.
+  // "lucas;;teste1", not "lucas"), and "contém"/"não contém" only looked
+  // right by accident (the extra suffix doesn't stop a substring match).
+  if (excludeShortcutSuffix && content.endsWith(excludeShortcutSuffix)) {
+    content = content.slice(0, -excludeShortcutSuffix.length);
   }
-  return '';
+  return content;
 }

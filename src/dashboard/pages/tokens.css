@@ -13,7 +13,7 @@
   cursor: pointer;
   user-select: none;
   border: 1px solid transparent;
-  color: #fff;
+  color: var(--color-white);
   margin: 0 0.25rem;
   vertical-align: middle;
   font-weight: 500;
@@ -41,22 +41,21 @@
 .token-title { background-color: #eab308; border-color: #ca8a04; color: #171717; } /* Yellow */
 .token-title svg { color: #171717; }
 .token-random { background-color: #d97706; border-color: #b45309; } /* Amber */
-.token-flow_ref { background-color: #7c3aed; border-color: #6d28d9; } /* Violet */
-.token-condition { background-color: #6366f1; border-color: #4f46e5; } /* Indigo — shared by BlockMenu's "Condição" item (see dashboard/components/blocks/BlockMenu.ts) */
-.token-script { background-color: #0891b2; border-color: #0e7490; } /* Cyan — shared by BlockMenu's "Script/Fórmula" item */
+.token-flow_ref { background-color: var(--color-violet); border-color: var(--color-violet-hover); } /* Violet */
+.token-condition { background-color: var(--condition-accent); border-color: #0f766e; } /* Teal — matches the Condition block's accent; shared by BlockDock's "Condição" chip (see dashboard/components/blocks/BlockDock.ts) */
 
 /* ── Tokens Preview (list of every token used + its configured value) ──── */
 .tokens-preview {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px solid #262626;
+  border-top: 1px solid var(--color-hair);
 }
 .tokens-preview-title {
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.02em;
-  color: #737373;
+  color: var(--color-mute);
   margin: 0 0 0.5rem 0;
 }
 .tokens-preview-list {
@@ -70,8 +69,8 @@
   gap: 0.5rem;
   padding: 0.375rem 0.625rem;
   border-radius: 0.5rem;
-  background-color: #171717;
-  border: 1px solid #262626;
+  background-color: var(--color-panel);
+  border: 1px solid var(--color-hair);
   font-size: 0.8125rem;
 }
 .tokens-preview-item.is-editable {
@@ -79,8 +78,8 @@
   transition: border-color 150ms, background-color 150ms;
 }
 .tokens-preview-item.is-editable:hover {
-  border-color: #404040;
-  background-color: #1c1c1c;
+  border-color: var(--color-hair-hover);
+  background-color: var(--color-raise);
 }
 .tokens-preview-dot {
   flex-shrink: 0;
@@ -91,65 +90,145 @@
 .tokens-preview-type {
   flex-shrink: 0;
   font-weight: 600;
-  color: #e5e5e5;
+  color: var(--color-chalk);
   white-space: nowrap;
 }
 .tokens-preview-value {
-  color: #a3a3a3;
+  color: var(--color-mute);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .tokens-preview-value em {
   font-style: italic;
-  color: #737373;
+  color: var(--color-mute);
 }
 .tokens-preview-sep {
-  color: #525252;
+  color: var(--color-mute);
   margin: 0 0.125rem;
 }
 
-/* ── Token Menu ────────────────────────────────────────────────────────── */
+/* ── Token Menu — matches ref_pages/criadorFluxo.htm's "TOKEN" dropdown ── */
 .token-menu-overlay {
   position: absolute;
   top: 100%;
-  right: 0;
-  margin-top: 0.5rem;
-  background-color: #171717;
-  border: 1px solid #404040;
+  left: 0;
+  margin-top: 0.75rem;
+  background-color: var(--bg-elevated, var(--color-raise));
+  border: 1px solid var(--color-hair-hover);
   border-radius: 0.75rem;
   box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
-  width: 14rem;
+  width: 18rem;
   z-index: 50;
   display: none;
-  overflow: hidden;
+  padding: 0.25rem;
 }
 .token-menu-overlay.is-open { display: block; }
-.token-menu-item {
+
+.token-menu-search-wrap {
+  position: relative;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--color-hair);
+  margin-bottom: 0.25rem;
+}
+.token-menu-search-icon {
+  position: absolute;
+  left: 1.1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-mute);
+  display: flex;
+  pointer-events: none;
+}
+.token-menu-search-icon svg { width: 0.6rem; height: 0.6rem; }
+.token-menu-search-input {
+  width: 100%;
+  background: var(--color-ink);
+  border: 1px solid var(--color-hair);
+  border-radius: 0.5rem;
+  padding: 0.375rem 0.75rem 0.375rem 1.75rem;
+  font-size: 0.75rem;
+  color: var(--color-chalk);
+  outline: none;
+  font-family: inherit;
+  transition: border-color 150ms;
+}
+.token-menu-search-input::placeholder { color: var(--color-mute); }
+.token-menu-search-input:focus { border-color: var(--color-violet-border, var(--color-violet)); }
+
+.token-menu-list {
+  max-height: min(22rem, 60vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.25rem 0;
+}
+
+.token-menu-section-label {
+  padding: 0.5rem 0.75rem 0.375rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-mute);
+}
+.token-menu-section-label.is-second {
+  border-top: 1px solid var(--color-hair);
+  margin-top: 0.25rem;
+  padding-top: 0.75rem;
+}
+
+.token-menu-row {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.75rem 1rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: transparent;
+  border: none;
   cursor: pointer;
+  text-align: left;
   transition: background-color 150ms;
 }
-.token-menu-item:hover { background-color: #262626; }
-.token-menu-item.is-disabled {
-  cursor: not-allowed;
-  opacity: 0.4;
-}
-.token-menu-item.is-disabled:hover { background-color: transparent; }
-.token-menu-icon {
+.token-menu-row:hover { background-color: rgba(255,255,255,0.05); }
+.token-menu-row.is-disabled { cursor: not-allowed; opacity: 0.4; }
+.token-menu-row.is-disabled:hover { background-color: transparent; }
+
+.token-menu-row-icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: 0.375rem;
-  color: #fff;
+  flex-shrink: 0;
 }
-.token-menu-text p { font-size: 0.875rem; color: #f5f5f5; margin-bottom: 0.125rem; font-weight: 500; }
-.token-menu-text span { font-size: 0.75rem; color: #737373; }
+.token-menu-row-icon svg { width: 0.8rem; height: 0.8rem; }
+
+.token-menu-row-text { flex: 1; min-width: 0; }
+.token-menu-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.token-menu-row-title { font-size: 0.75rem; font-weight: 700; color: var(--color-chalk); }
+.token-menu-row-badge {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  padding: 0.0625rem 0.375rem;
+  border-radius: 0.25rem;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.token-menu-row-desc {
+  font-size: 0.625rem;
+  color: var(--color-mute);
+  line-height: 1.3;
+  margin-top: 0.0625rem;
+}
+.token-menu-empty { padding: 1rem 0.75rem; font-size: 0.75rem; color: var(--color-mute); text-align: center; }
+
 
 /* ── Modals ────────────────────────────────────────────────────────────── */
 .modal-backdrop {
@@ -173,13 +252,13 @@
   backdrop-filter: blur(4px);
 }
 .modal-container {
-  background-color: #171717;
-  border: 1px solid #404040;
-  border-radius: 1rem;
+  background-color: var(--color-panel);
+  border: 1px solid var(--color-hair);
+  border-radius: var(--radius-xl);
   width: 100%;
   max-width: 24rem;
   max-height: calc(100vh - 4rem);
-  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+  box-shadow: var(--shadow-2xl);
   display: flex;
   flex-direction: column;
   /* Keeps header/footer pinned and lets only `.modal-body` scroll when the
@@ -188,57 +267,72 @@
   margin: auto 0;
 }
 .modal-header {
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #262626;
+  padding: var(--spacing-4) var(--spacing-5);
+  border-bottom: 1px solid var(--color-hair);
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
 }
-.modal-title { font-size: 1rem; font-weight: 500; color: #fff; display: flex; align-items: center; gap: 0.5rem; }
-.modal-close { background: transparent; border: none; color: #a3a3a3; cursor: pointer; transition: color 150ms; }
-.modal-close:hover { color: #fff; }
-.modal-body { padding: 1.5rem; overflow-y: auto; min-height: 0; }
+.modal-title { font-size: var(--font-size-sm); font-weight: 600; color: var(--color-chalk); display: flex; align-items: center; gap: 0.5rem; }
+.modal-title svg { width: 0.875rem; height: 0.875rem; flex-shrink: 0; color: var(--color-mute); }
+.modal-close { background: transparent; border: none; color: var(--color-mute); cursor: pointer; transition: color 150ms; line-height: 0; }
+.modal-close:hover { color: var(--color-chalk); }
+.modal-body { padding: var(--spacing-4) var(--spacing-5); overflow-y: auto; min-height: 0; }
 .modal-footer {
-  padding: 1.25rem 1.5rem;
-  border-top: 1px solid #262626;
+  padding: var(--spacing-3-5) var(--spacing-5);
+  border-top: 1px solid var(--color-hair);
+  background-color: var(--color-ink);
   display: flex;
   justify-content: flex-end;
-  gap: 0.75rem;
+  gap: var(--spacing-2);
   flex-shrink: 0;
 }
 .btn-secondary {
   padding: 0.5rem 1rem;
-  background-color: transparent;
-  border: 1px solid #404040;
-  color: #d4d4d4;
-  border-radius: 0.5rem;
+  background-color: var(--color-raise);
+  border: 1px solid var(--color-hair);
+  color: var(--color-chalk);
+  border-radius: var(--radius-lg);
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: background-color 150ms;
 }
-.btn-secondary:hover { background-color: #262626; color: #fff; }
+.btn-secondary:hover { background-color: var(--color-hair); }
 .btn-primary {
   padding: 0.5rem 1rem;
-  background-color: #fff;
+  background-color: var(--color-white);
   border: none;
-  color: #171717;
-  border-radius: 0.5rem;
+  color: var(--color-ink-text);
+  border-radius: var(--radius-lg);
   cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  transition: background-color 150ms;
 }
-.btn-primary:hover { background-color: #f5f5f5; }
+.btn-primary:hover { background-color: var(--color-chalk); }
 
 /* Choice List inside modal */
-.choice-list { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+.choice-list { display: flex; flex-direction: column; gap: 0.625rem; margin-bottom: 1rem; }
 .choice-item { display: flex; align-items: center; gap: 0.5rem; }
 .choice-item input { flex: 1; }
 .btn-add-choice {
-  background: transparent; border: 1px dashed #404040; color: #737373;
-  padding: 0.5rem; border-radius: 0.5rem; width: 100%; cursor: pointer;
-  font-size: 0.875rem; transition: all 150ms;
+  background: rgba(255,255,255,0.02);
+  border: 1px dashed var(--color-hair-hover);
+  color: var(--color-mute);
+  padding: 0.625rem;
+  border-radius: var(--radius-lg);
+  width: 100%;
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  transition: all 150ms;
 }
-.btn-add-choice:hover { border-color: #737373; color: #d4d4d4; }
+.btn-add-choice:hover { border-color: var(--color-mute); color: var(--color-chalk); }
 
 /* Weight (%) input, per Random option row — used only by RandomModal
    (the Random Block's own weight input, inside the flow editor's canvas,
@@ -248,9 +342,9 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  background-color: #0a0a0a;
-  border: 1px solid #404040;
-  border-radius: 0.375rem;
+  background-color: var(--color-raise);
+  border: 1px solid var(--color-hair);
+  border-radius: var(--radius-md);
   padding: 0.25rem 0.5rem;
   flex-shrink: 0;
 }
@@ -258,7 +352,7 @@
   width: 3rem;
   background: transparent;
   border: none;
-  color: #f59e0b;
+  color: var(--color-amber);
   font-size: 0.8125rem;
   font-weight: 600;
   text-align: right;
@@ -268,7 +362,7 @@
 .random-weight-input::-webkit-outer-spin-button,
 .random-weight-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .random-weight-input[type="number"] { -moz-appearance: textfield; }
-.random-weight-pct { font-size: 0.75rem; color: #737373; }
+.random-weight-pct { font-size: 0.75rem; color: var(--color-mute); }
 
 /* Insert-variable button + dropdown, per Choice option row */
 .choice-var-wrap { position: relative; flex-shrink: 0; }
@@ -277,10 +371,10 @@
   top: 100%;
   right: 0;
   margin-top: 0.375rem;
-  background-color: #171717;
-  border: 1px solid #404040;
-  border-radius: 0.5rem;
-  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+  background-color: var(--color-panel);
+  border: 1px solid var(--color-hair-hover);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2xl);
   width: 14rem;
   max-height: 12rem;
   overflow-y: auto;
@@ -295,22 +389,22 @@
   padding: 0.5rem 0.75rem;
   background: transparent;
   border: none;
-  border-bottom: 1px solid #262626;
+  border-bottom: 1px solid var(--color-hair);
   cursor: pointer;
   text-align: left;
 }
 .choice-var-menu-item:last-child { border-bottom: none; }
-.choice-var-menu-item:hover { background-color: #262626; }
+.choice-var-menu-item:hover { background-color: var(--color-raise); }
 .choice-var-menu-key { font-size: 0.8125rem; font-weight: 600; color: #5eead4; }
 .choice-var-menu-value {
   font-size: 0.75rem;
-  color: #737373;
+  color: var(--color-mute);
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.choice-var-menu-empty { padding: 0.75rem; font-size: 0.8125rem; color: #737373; margin: 0; }
+.choice-var-menu-empty { padding: 0.75rem; font-size: 0.8125rem; color: var(--color-mute); margin: 0; }
 
 /* ── Token modal form fields (Choice / Input / Date / Clipboard) ─────────
    These modals (BaseModal subclasses) build their bodies with plain
@@ -324,53 +418,226 @@
   gap: 0.5rem;
 }
 .field-group label {
-  font-size: 0.75rem;
-  color: #a3a3a3;
+  font-size: 0.6875rem;
+  color: var(--color-mute);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: var(--letter-spacing-widest);
   font-weight: 500;
 }
 .form-input {
-  background-color: #0a0a0a;
-  border: 1px solid #404040;
-  border-radius: 0.5rem;
+  background-color: var(--color-raise);
+  border: 1px solid var(--color-hair);
+  border-radius: var(--radius-lg);
   padding: 0.5rem 0.75rem;
-  color: #fff;
-  font-size: 0.875rem;
+  color: var(--color-chalk);
+  font-size: var(--font-size-sm);
   outline: none;
   width: 100%;
   box-sizing: border-box;
   font-family: inherit;
   transition: border-color 150ms;
 }
-.form-input::placeholder { color: #525252; }
-.form-input:focus { border-color: #737373; }
+.form-input::placeholder { color: var(--color-mute); }
+.form-input:focus { border-color: var(--color-amber); }
 /* Number input spinners look out of place on the dark theme; keep them but
    let them inherit the field's own color instead of the OS default. */
 .form-input[type="number"] { color-scheme: dark; }
 
 .text-sm { font-size: 0.8125rem; line-height: 1.5; }
-.text-gray { color: #a3a3a3; }
+.text-gray { color: var(--color-mute); }
 .modal-body code {
-  background-color: #262626;
-  border: 1px solid #404040;
+  background-color: var(--color-raise);
+  border: 1px solid var(--color-hair-hover);
   border-radius: 0.25rem;
   padding: 0.0625rem 0.375rem;
   font-size: 0.8125rem;
-  color: #e5e5e5;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--color-chalk);
+  font-family: var(--font-family-mono);
 }
 
 .btn-icon {
-  background: transparent;
-  border: none;
+  background-color: var(--color-raise);
+  border: 1px solid var(--color-hair);
+  color: var(--color-mute);
   cursor: pointer;
-  padding: 0.25rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 0.375rem;
-  transition: background-color 150ms, color 150ms;
+  border-radius: var(--radius-lg);
+  transition: background-color 150ms, color 150ms, border-color 150ms;
   flex-shrink: 0;
 }
-.btn-icon:hover { background-color: #262626; }
+.btn-icon:hover { background-color: var(--color-hair); color: var(--color-chalk); }
+.btn-icon svg { width: 0.9375rem; height: 0.9375rem; }
+
+/* "Insert variable" icon button — violet-tinted, matches the token pill
+   accent color used throughout the editor for variable references. */
+.btn-icon-variable {
+  background-color: var(--color-violet-15);
+  border-color: rgb(139 92 246 / 0.3);
+  color: var(--color-violet-soft);
+}
+.btn-icon-variable:hover { background-color: rgb(139 92 246 / 0.25); color: var(--color-white); }
+
+/* "Delete option" icon button — neutral by default, turns danger-red only
+   on hover so a row of them doesn't read as "everything here is an
+   error". */
+.btn-icon-danger:hover { color: var(--color-coral); border-color: rgb(239 68 68 / 0.3); }
+
+/* ── Input / Date / Clipboard modal field extras ──────────────────────────
+   Shared by InputModal.ts, DateModal.ts, ClipboardModal.ts. */
+
+/* Small italic helper line under a field, explaining what it does. */
+.field-hint {
+  font-size: 0.6875rem;
+  color: var(--color-mute);
+  font-style: italic;
+  margin: 0;
+}
+
+/* "Opcional" pill next to a field label. */
+.field-optional-badge {
+  font-size: 0.625rem;
+  padding: 0.0625rem 0.375rem;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-raise);
+  color: var(--color-mute);
+  border: 1px solid var(--color-hair);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-widest);
+}
+.field-label-row { display: flex; align-items: center; justify-content: space-between; }
+
+/* DateModal: monospace amber format input + inline live preview */
+.date-format-wrap { position: relative; }
+.date-format-input {
+  font-family: var(--font-family-mono);
+  color: var(--color-amber);
+  padding-right: 8rem;
+}
+.date-format-preview {
+  position: absolute;
+  right: var(--spacing-3);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.625rem;
+  color: var(--color-mute);
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 7.5rem;
+}
+
+/* DateModal: available-tokens reference box */
+.token-reference-box {
+  padding: var(--spacing-3-5);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-ink);
+  border: 1px solid var(--color-hair);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-3);
+}
+.token-reference-title {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--color-mute);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin: 0;
+}
+.token-reference-title svg { width: 0.75rem; height: 0.75rem; color: var(--color-amber); flex-shrink: 0; }
+.token-reference-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-2) var(--spacing-3);
+}
+.token-reference-item { display: flex; flex-direction: column; gap: 0.125rem; }
+.token-reference-item code { font-size: 0.625rem; color: rgb(245 158 11 / 0.8); font-family: var(--font-family-mono); }
+.token-reference-item.is-time code { color: var(--color-violet-soft); }
+.token-reference-item span { font-size: 0.625rem; color: var(--color-mute); }
+
+/* DateModal: quick-format preset buttons */
+.date-preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-3); margin-top: var(--spacing-4); }
+.date-preset-btn {
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-md);
+  background-color: rgb(255 255 255 / 0.03);
+  border: 1px solid var(--color-hair);
+  color: var(--color-mute);
+  font-size: 0.6875rem;
+  font-family: var(--font-family-mono);
+  text-align: center;
+  cursor: pointer;
+  transition: all 150ms;
+}
+.date-preset-btn:hover { color: var(--color-chalk); border-color: var(--color-hair-hover); }
+
+/* ClipboardModal: "global setting" pill next to the field label */
+.clipboard-global-badge {
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-full);
+  background-color: var(--color-amber-15);
+  border: 1px solid rgb(245 158 11 / 0.2);
+  color: var(--color-amber);
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ClipboardModal: index slider + live value readout */
+.clipboard-slider-row { display: flex; align-items: center; gap: var(--spacing-4); }
+.clipboard-slider-col { flex: 1; display: flex; flex-direction: column; gap: var(--spacing-2); }
+.clipboard-slider {
+  width: 100%;
+  height: 0.3125rem;
+  border-radius: var(--radius-full);
+  background-color: var(--color-hair);
+  appearance: none;
+  cursor: pointer;
+  accent-color: var(--color-amber);
+}
+.clipboard-slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.625rem;
+  color: var(--color-mute);
+  font-family: var(--font-family-mono);
+}
+.clipboard-index-display {
+  width: 3.5rem;
+  height: 2.75rem;
+  border-radius: var(--radius-lg);
+  background-color: var(--color-ink);
+  border: 1px solid rgb(245 158 11 / 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-amber);
+  flex-shrink: 0;
+}
+
+/* ClipboardModal: "how this works" info callout */
+.clipboard-info-box {
+  margin-top: var(--spacing-4);
+  padding: var(--spacing-4);
+  border-radius: var(--radius-xl);
+  background-color: var(--color-ink);
+  border: 1px solid var(--color-hair);
+  border-left: 2px solid rgb(245 158 11 / 0.4);
+  display: flex;
+  gap: var(--spacing-3);
+}
+.clipboard-info-box svg { width: 1.125rem; height: 1.125rem; color: var(--color-amber); flex-shrink: 0; margin-top: 0.125rem; }
+.clipboard-info-box-title { font-size: 0.75rem; color: var(--color-chalk); font-weight: 500; margin: 0 0 0.25rem 0; }
+.clipboard-info-box-desc { font-size: 0.6875rem; color: var(--color-mute); line-height: var(--line-height-relaxed); margin: 0; }
+.clipboard-info-box-desc .highlight { color: var(--color-amber); font-weight: 600; }

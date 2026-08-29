@@ -82,7 +82,19 @@ export class TextMonitor {
 
     let textBeforeCursor = '';
     if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
-      const pos = target.selectionStart ?? target.value.length;
+      // Per the HTML spec, only "text-based" <input> types (text, search,
+      // url, tel, password, email — and textarea) support selectionStart/
+      // selectionEnd. Reading either on a type like "number", "range",
+      // "color", "date" etc. *throws* a DOMException (InvalidStateError),
+      // not just returns null — which was silently aborting this whole
+      // handler (and thus all shortcut detection) on every keystroke in
+      // those fields, with nothing ever logged to explain why.
+      let pos: number;
+      try {
+        pos = target.selectionStart ?? target.value.length;
+      } catch {
+        pos = target.value.length;
+      }
       textBeforeCursor = target.value.substring(0, pos);
     } else if (target.isContentEditable) {
       const sel = window.getSelection();

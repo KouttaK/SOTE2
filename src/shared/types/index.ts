@@ -43,8 +43,7 @@ export interface Block {
    * for backward compatibility with flows saved before block-adding was
    * unified (see editor.ts's renderFlow()).
    * For `type: 'action'` → a full BranchTarget (ActionBlock | ConditionBlock
-   * | RandomBlock | ScriptBlock), not just a plain ActionBlock. This is what
-   * lets the
+   * | RandomBlock), not just a plain ActionBlock. This is what lets the
    * unified "+ Adicionar Bloco" menu offer Random (or a nested Condition)
    * directly at the top level of a flow with no dedicated Condition step —
    * exactly the same way a branch's own leaf already could. Resolved at
@@ -104,18 +103,16 @@ export interface ConditionCriterion {
 /**
  * What a branch (a rule's `action`, or a ConditionBlock's `elseBranch`)
  * ultimately leads to: a leaf ActionBlock (the normal case); another whole
- * ConditionBlock, to support nested conditions; a RandomBlock, to support
- * choosing between several alternative outputs at random; or a
- * ScriptBlock, to compute the output with arbitrary sandboxed JS instead
- * of a fixed rule/text. This recursive union is what lets "Se X, então Se
- * Y, então Z" trees (and "Se X, então (aleatoriamente A ou B)", and "Se X,
- * então (calcular via script)" trees) be built to arbitrary depth while
- * staying 100% backward-compatible with existing saved Flows: an old
- * rule's `action` is always a plain ActionBlock (no `rules`/`options`/
- * `code` field), so `isConditionBlock()`/`isRandomBlock()`/`isScriptBlock()`
- * below correctly treat it as a leaf.
+ * ConditionBlock, to support nested conditions; or a RandomBlock, to
+ * support choosing between several alternative outputs at random. This
+ * recursive union is what lets "Se X, então Se Y, então Z" trees (and "Se
+ * X, então (aleatoriamente A ou B)" trees) be built to arbitrary depth
+ * while staying 100% backward-compatible with existing saved Flows: an
+ * old rule's `action` is always a plain ActionBlock (no `rules`/`options`
+ * field), so `isConditionBlock()`/`isRandomBlock()` below correctly treat
+ * it as a leaf.
  */
-export type BranchTarget = ActionBlock | ConditionBlock | RandomBlock | ScriptBlock;
+export type BranchTarget = ActionBlock | ConditionBlock | RandomBlock;
 
 /** Narrows a BranchTarget to a nested ConditionBlock (as opposed to a leaf ActionBlock). */
 export function isConditionBlock(target: BranchTarget | null | undefined): target is ConditionBlock {
@@ -147,6 +144,14 @@ export interface RandomBlockOption {
 export interface RandomBlock {
   type: 'random';
   options: RandomBlockOption[];
+  /**
+   * Free canvas position (in unscaled editor-canvas units) for this
+   * block, only meaningful when it is a Nível 3 block detached from a
+   * Condition branch (see FlowEditorPage.renderDetachedBranchTarget).
+   * Undefined until the user drags it for the first time, at which point
+   * the editor assigns a default slot position.
+   */
+  pos?: { x: number; y: number };
 }
 
 /** Narrows a BranchTarget to a RandomBlock (as opposed to a leaf ActionBlock or a ConditionBlock). */
@@ -154,42 +159,32 @@ export function isRandomBlock(target: BranchTarget | null | undefined): target i
   return !!target && (target as RandomBlock).type === 'random' && Array.isArray((target as RandomBlock).options);
 }
 
-/**
- * "Bloco de Script/Fórmula" — an alternative to a plain leaf ActionBlock
- * (or to Condition's fixed rules) that computes its own text output via
- * arbitrary JS instead: formatting a number, building a conditional
- * string more elaborate than Condition's rules can express, etc. `code` is
- * the BODY of a function (write `return ...;`, not a full function
- * declaration) — it's run as `new Function('ctx', code)(ctx)` inside a
- * fully isolated extension page (see content/engine/ScriptSandbox.ts and
- * src/sandbox/main.ts), never in the content script's own context, so it
- * can never touch the visited page's DOM/cookies or any browser.*
- * extension API — its only inputs are whatever's in `ctx` (Global
- * Variables, hostname, current date/time, the focused field's type and
- * current content) and its only output is the string it returns, which
- * becomes this leaf's action content. `type: 'script'` is the discriminant
- * that lets `isScriptBlock()` tell this apart from every other leaf type.
- */
-export interface ScriptBlock {
-  type: 'script';
-  code: string;
-}
-
-/** Narrows a BranchTarget to a ScriptBlock (as opposed to any other leaf type). */
-export function isScriptBlock(target: BranchTarget | null | undefined): target is ScriptBlock {
-  return !!target && (target as ScriptBlock).type === 'script' && typeof (target as ScriptBlock).code === 'string';
-}
-
 export interface ActionBlock {
   format: 'plaintext' | 'richtext';
   content: string;
   tokens: Token[];
+  /**
+   * Free canvas position (in unscaled editor-canvas units), only
+   * meaningful when this leaf is a Nível 3 block detached from a
+   * Condition branch — see RandomBlock.pos above for the same field.
+   */
+  pos?: { x: number; y: number };
 }
 
 export interface FlowStats {
   usageCount: number;
   lastUsed?: number;
   keysSaved: number;
+  /**
+   * Times the expansion pipeline threw after a trigger matched (token/
+   * variable resolution, injection into the field, etc. — see the
+   * `catch` block around handleTrigger() in content.ts). Absent/undefined
+   * on flows saved before this existed; treat as 0. Together with
+   * `usageCount` (successful completions only — it's incremented from a
+   * completely separate code path that only runs *after* injection
+   * succeeds) this gives a real success rate instead of an assumed 100%.
+   */
+  failureCount?: number;
 }
 
 export interface Flow {
@@ -301,6 +296,14 @@ export interface Settings {
   blocklist: string[];
   commandPaletteShortcut: string;
   analytics: Record<string, number>;
+  /**
+   * Daily count of failed expansion attempts (trigger matched, but the
+   * pipeline threw before injection completed) — same shape/bucketing
+   * (local calendar day, see localDate.ts) as `analytics` above, which
+   * only ever counts successes. Absent on settings saved before this
+   * existed; treat as {}.
+   */
+  analyticsFailures?: Record<string, number>;
   language?: string;
   theme?: string;
   /** Max number of items kept in the clipboard history (default 10, max 50). */

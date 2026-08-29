@@ -17,6 +17,8 @@ import { domainMatchesAny } from '../shared/storage/helpers.js';
 import type { Flow, Settings, Variable } from '../shared/types/index.js';
 import { sendMessage } from '../shared/messaging/client.js';
 import { t, initI18n, getLanguage } from '../shared/i18n/index.js';
+import { escapeHtml, htmlToPreviewText as htmlToPlainText } from '../shared/utils/dom.js';
+import { resolveVariablesInText } from '../shared/utils/variableResolver.js';
 
 // ---------------------------------------------------------------------------
 // DOM references (asserted non-null — element IDs are guaranteed by index.html)
@@ -172,40 +174,14 @@ const SVG_COPY = /* html */ `
   <path d="M448 384H256c-35.3 0-64-28.7-64-64V64c0-35.3 28.7-64 64-64H396.1c12.7 0 24.9 5.1 33.9 14.1l67.9 67.9c9 9 14.1 21.2 14.1 33.9V320c0 35.3-28.7 64-64 64zM64 128h96v48H64c-8.8 0-16 7.2-16 16V448c0 8.8 7.2 16 16 16H256c8.8 0 16-7.2 16-16V416h48v32c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V192c0-35.3 28.7-64 64-64z"/>
 </svg>`;
 
-function escapeHtml(str: string): string {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
 /**
- * Converts the rich HTML produced by the Action-block contenteditable
- * editor (e.g. "<p>Hello</p><p>World</p>") into a single line of plain
- * text. Mirrors dashboard/pages/flows.ts's htmlToPreviewText — without
- * this, slicing raw HTML and dropping it straight into another element's
- * innerHTML can produce nested/broken tags (multi-line previews) and
- * shows literal tags instead of text.
- */
-function htmlToPlainText(html: string): string {
-  const withBreaks = (html || '').replace(/<\/(p|div|li|h[1-6])>|<br\s*\/?>/gi, ' $&');
-  const div = document.createElement('div');
-  div.innerHTML = withBreaks;
-  return (div.textContent || div.innerText || '').replace(/\s+/g, ' ').trim();
-}
-
 /**
  * Replaces every `{{KEY}}` placeholder in plain text with the matching
- * Global Variable's value, same substitution the runtime engine performs
- * in content.ts and the editor's Preview modal performs in PreviewModal.ts.
- * Unknown keys are left untouched.
+ * Global Variable's value. Thin wrapper around the shared resolver so
+ * call sites here don't need to pass `allVariables` explicitly.
  */
 function resolveVariablesText(text: string): string {
-  if (!allVariables.length || !text.includes('{{')) return text;
-  const map = new Map(allVariables.map((v) => [v.key, v.value]));
-  return text.replace(/\{\{\s*([A-Z0-9_]+)\s*\}\}/g, (match, key: string) => {
-    const value = map.get(key);
-    return value === undefined ? match : value;
-  });
+  return resolveVariablesInText(text, false, allVariables);
 }
 
 /** Builds a snippet row DOM element matching ref_pages/popup.htm exactly. */

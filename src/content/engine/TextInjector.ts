@@ -111,10 +111,24 @@ export class TextInjector {
   private static injectIntoInput(el: HTMLInputElement | HTMLTextAreaElement, shortcut: string, text: string, cursorOffset: number | null) {
     // Strip HTML if we are injecting into plain text field
     const plainText = this.stripHtml(text);
-    
-    const start = el.selectionStart || 0;
-    const end = el.selectionEnd || 0;
-    
+
+    // Same restriction as TextMonitor's own read of these — only
+    // "text-based" <input> types (plus textarea) support selection at
+    // all; type="number"/"range"/"color"/"date" etc. throw a
+    // DOMException the instant selectionStart/selectionEnd/
+    // setSelectionRange are touched, which was silently aborting the
+    // whole injection (the value never even got updated) in those
+    // fields.
+    let start: number;
+    let end: number;
+    try {
+      start = el.selectionStart ?? 0;
+      end = el.selectionEnd ?? 0;
+    } catch {
+      start = el.value.length;
+      end = el.value.length;
+    }
+
     const currentValue = el.value;
     
     // Calculate where the shortcut starts
@@ -133,9 +147,16 @@ export class TextInjector {
     // Reposition cursor: honor an explicit Cursor token position if one was
     // resolved (clamped to the inserted text's length, just in case),
     // otherwise fall back to the end of the injected text as before.
+    // Wrapped the same way: setSelectionRange throws on the same field
+    // types selectionStart does, and there's no meaningful text caret to
+    // reposition there anyway (the value itself is already correct).
     const offset = cursorOffset !== null ? Math.min(Math.max(cursorOffset, 0), plainText.length) : plainText.length;
     const newCursorPos = shortcutStart + offset;
-    el.setSelectionRange(newCursorPos, newCursorPos);
+    try {
+      el.setSelectionRange(newCursorPos, newCursorPos);
+    } catch {
+      // Field type doesn't support a text caret (number/range/color/...) — nothing to do.
+    }
   }
 
   private static injectIntoContentEditable(el: HTMLElement, shortcut: string, html: string, isRichText: boolean, cursorOffset: number | null) {
@@ -193,7 +214,7 @@ export class TextInjector {
 
     // Now insert the new content
     if (isRichText) {
-      document.execCommand('insertHTML', false, html);
+      document.execCommand('insertHTML', false, this.unwrapSingleBlockWrapper(html));
     } else {
       document.execCommand('insertText', false, this.stripHtml(html));
     }
@@ -233,6 +254,54 @@ export class TextInjector {
     } else {
       element.value = value;
     }
+  }
+
+  /**
+   * The Action editor's contenteditable always serializes even a single
+   * one-line action wrapped in a block element — `this.editorEl.innerHTML`
+   * in ActionBlock.ts literally defaults an empty action to `<p><br></p>`,
+   * and a real single-line action ends up as `<p>texto em <b>negrito</b></p>`
+   * the same way. That block wrapper carries no real meaning for a
+   * one-liner (it's just how contentEditable happens to store even a
+   * single line) — but inserting it as-is via `execCommand('insertHTML')`
+   * hands the *host* editor a whole extra paragraph element to make sense
+   * of, and some rich editors (Gmail's compose box in particular) react
+   * to that by splitting it into its own paragraph — producing a stray
+   * line break that was never actually in the Action's content, and never
+   * happens for a plain <input>/<textarea> (which never sees this HTML at
+   * all — see injectIntoInput's stripHtml).
+   *
+   * If `html` is *exactly* one top-level block element (optionally with
+   * surrounding whitespace) and nothing else beside it, this returns just
+   * that element's inner HTML instead — safe precisely because there's
+   * only one wrapper and nothing else at the top level to reorder/lose.
+   * A genuinely multi-paragraph action (multiple <p>/<div> siblings, real
+   * line breaks the person actually typed) is left completely untouched,
+   * since unwrapping would then discard real, intentional structure.
+   */
+  private static unwrapSingleBlockWrapper(html: string): string {
+    const trimmed = html.trim();
+    if (!trimmed) return html;
+
+    const tmp = document.createElement('div');
+    tmp.innerHTML = trimmed;
+
+    const children = Array.from(tmp.childNodes).filter((node) => {
+      // Ignore whitespace-only text nodes when deciding "is this the only
+      // top-level thing here" — real content never sits directly beside
+      // the wrapper in what the editor produces.
+      return !(node.nodeType === Node.TEXT_NODE && !node.textContent?.trim());
+    });
+
+    if (children.length !== 1) return html;
+
+    const only = children[0];
+    if (only.nodeType !== Node.ELEMENT_NODE) return html;
+
+    const tag = (only as Element).tagName;
+    if (tag !== 'P' && tag !== 'DIV') return html;
+
+    return (only as Element).innerHTML;
   }
 
   private static stripHtml(html: string): string {

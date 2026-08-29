@@ -122,20 +122,4 @@ export function domainMatchesAny(domain: string, patterns: string[]): boolean {
   return false;
 }
 
-/** @deprecated Use `domainMatchesAny` — kept as an alias for existing call sites/imports. */
-export function isBlocklisted(domain: string, blocklist: string[]): boolean {
-  return domainMatchesAny(domain, blocklist);
-}
 
-/**
- * Extracts the hostname from a full URL, stripping port if present.
- * Returns an empty string for invalid/unsupported URLs.
- */
-export function getActiveDomain(url: string): string {
-  try {
-    const parsed = new URL(url);
-    return parsed.hostname;
-  } catch {
-    return '';
-  }
-}

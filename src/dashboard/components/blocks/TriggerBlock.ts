@@ -5,10 +5,11 @@
 import type { TriggerBlock as ITriggerBlock, TriggerMode, Settings } from '../../../shared/types/index.js';
 import { t } from '../../../shared/i18n/index.js';
 import { shortcutConflictsWithSearchTrigger } from '../../../content/engine/SearchTriggerDetector.js';
+import { escapeHtml } from '../../../shared/utils/dom.js';
 
 const ICONS = {
-  play: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor"><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg>`,
-  keyboard: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor"><path d="M64 64C28.7 64 0 92.7 0 128V384c0 35.3 28.7 64 64 64H512c35.3 0 64-28.7 64-64V128c0-35.3-28.7-64-64-64H64zm16 64h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H80c-8.8 0-16-7.2-16-16V144c0-8.8 7.2-16 16-16zM64 240c0-8.8 7.2-16 16-16h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H80c-8.8 0-16-7.2-16-16V240zm16 80h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H80c-8.8 0-16-7.2-16-16V336c0-8.8 7.2-16 16-16zm80-176c0-8.8 7.2-16 16-16h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H176c-8.8 0-16-7.2-16-16V144zm16 80h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H176c-8.8 0-16-7.2-16-16V240c0-8.8 7.2-16 16-16zM160 336c0-8.8 7.2-16 16-16H400c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H176c-8.8 0-16-7.2-16-16V336zM272 128h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H272c-8.8 0-16-7.2-16-16V144c0-8.8 7.2-16 16-16zM256 240c0-8.8 7.2-16 16-16h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H272c-8.8 0-16-7.2-16-16V240zM368 128h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H368c-8.8 0-16-7.2-16-16V144c0-8.8 7.2-16 16-16zM352 240c0-8.8 7.2-16 16-16h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H368c-8.8 0-16-7.2-16-16V240zM464 128h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H464c-8.8 0-16-7.2-16-16V144c0-8.8 7.2-16 16-16zM448 240c0-8.8 7.2-16 16-16h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H464c-8.8 0-16-7.2-16-16V240zm16 80h32c8.8 0 16 7.2 16 16v32c0 8.8-7.2 16-16 16H464c-8.8 0-16-7.2-16-16V336c0-8.8 7.2-16 16-16z"/></svg>`,
+  bolt: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M349.4 44.6c5.9-13.7 1.5-29.7-10.6-38.5s-28.6-8-39.9 1.8l-256 224c-10 8.8-13.6 22.9-8.9 35.3S50.7 288 64 288H175.5L98.6 467.4c-5.9 13.7-1.5 29.7 10.6 38.5s28.6 8 39.9-1.8l256-224c10-8.8 13.6-22.9 8.9-35.3s-16.6-20.7-30-20.7H272.5L349.4 44.6z"/></svg>`,
+  info: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM216 336H232V272H216c-13.3 0-24-10.7-24-24s10.7-24 24-24h40c13.3 0 24 10.7 24 24v88h8c13.3 0 24 10.7 24 24s-10.7 24-24 24H216c-13.3 0-24-10.7-24-24s10.7-24 24-24zm40-208a32 32 0 1 1 0 64 32 32 0 1 1 0-64z"/></svg>`,
 };
 
 export class TriggerBlock {
@@ -26,7 +27,7 @@ export class TriggerBlock {
     this.settings = settings;
     this.onChange = onChange;
     this.el = document.createElement('div');
-    this.el.className = 'block-card';
+    this.el.className = 'trigger-node';
     this.el.id = 'trigger-block';
     this.render();
   }
@@ -44,60 +45,46 @@ export class TriggerBlock {
     // trigger mode, where a shortcut is expanded as soon as it's typed
     // after that prefix character. In the default "trigger" mode
     // (word-boundary based: type the word then Space/Tab/Enter), there is
-    // no prefix at all, so the hint used to be shown — hardcoded to "/" —
-    // even when it didn't apply and even if the user had configured a
-    // different character in Settings.
+    // no prefix at all.
     const usesPrefix = this.settings?.triggerMode === 'exact_match';
     const prefixChar = this.settings?.exactMatchChar || '/';
-    const prefixHintHtml = usesPrefix
-      ? `<div class="input-hint">
-          ${ICONS.keyboard} ${t('trigger.block.prefix_label')} <span style="color:#e5e5e5">${escapeHtml(prefixChar)}</span>
-        </div>`
-      : '';
 
     this.el.innerHTML = /* html */ `
-      <div class="block-header">
-        <div class="block-icon">${ICONS.play}</div>
-        <div class="block-title-wrap">
-          <p class="block-step">${t('trigger.block.step')}</p>
-          <h2 class="block-title">${t('trigger.block.title')}</h2>
+      <div class="trigger-node-head">
+        <div class="trigger-node-icon">${ICONS.bolt}</div>
+        <div class="trigger-node-title-wrap">
+          <p class="trigger-node-label">${t('trigger.block.badge')}</p>
+          <h3 class="trigger-node-shortcut-wrap">
+            <span class="trigger-node-prefix" id="trigger-prefix-char">${usesPrefix ? escapeHtml(prefixChar) : ''}</span><input
+              type="text" id="trigger-shortcut" class="trigger-node-shortcut-input"
+              value="${escapeHtml(this.data.shortcut)}"
+              placeholder="${t('editor.trigger.shortcut_placeholder')}"
+              spellcheck="false" autocomplete="off"
+            />
+          </h3>
         </div>
-        <span class="block-badge">${t('trigger.block.badge')}</span>
       </div>
-      <div class="block-body">
-        
-        <!-- Shortcut input -->
-        <div style="margin-bottom: 1.25rem;">
-          <label class="form-label">${t('trigger.block.field_label')}</label>
-          <div class="input-wrap">
-            <div class="input-field">
-              <span>${usesPrefix ? escapeHtml(prefixChar) : ''}</span>
-              <input type="text" id="trigger-shortcut" value="${escapeHtml(this.data.shortcut)}" placeholder="${t('editor.trigger.shortcut_placeholder')}" />
-            </div>
-            ${prefixHintHtml}
-          </div>
-          <p class="input-hint" id="trigger-reserved-warning" style="display:none; color:#f59e0b;"></p>
-        </div>
 
-        <!-- Mode Select Removed -->
-        <!-- Exact Match Character Removed -->
+      <p class="input-hint" id="trigger-reserved-warning" style="display:none; color: var(--color-coral); margin: -0.5rem 0 0.75rem;"></p>
 
-        <!-- Toggles -->
-        <div class="toggle-row">
-          <div class="toggle-info">
-            <p>${t('trigger.block.smartcase_title')}</p>
-            <p>${t('trigger.block.smartcase_desc')}</p>
+      <div class="trigger-node-body">
+        <div class="trigger-toggle-row">
+          <span class="trigger-toggle-label">${t('trigger.block.smartcase_title')}</span>
+          <div class="trigger-toggle-right">
+            <span class="trigger-toggle-state ${this.data.smartCase ? 'is-on' : ''}" id="trigger-smartcase-state">${this.data.smartCase ? t('editor.status.active') : t('editor.status.inactive')}</span>
+            <div class="switch ${this.data.smartCase ? 'is-on' : ''}" id="trigger-smartcase"></div>
           </div>
-          <div class="switch ${this.data.smartCase ? 'is-on' : ''}" id="trigger-smartcase"></div>
         </div>
-        
-        <div class="toggle-row">
-          <div class="toggle-info">
-            <p>${t('trigger.block.capitalize_title')}</p>
-            <p>${t('trigger.block.capitalize_desc')}</p>
+        <p class="trigger-node-hint">${ICONS.info} ${t('trigger.block.smartcase_desc')}</p>
+
+        <div class="trigger-toggle-row">
+          <span class="trigger-toggle-label">${t('trigger.block.capitalize_title')}</span>
+          <div class="trigger-toggle-right">
+            <span class="trigger-toggle-state ${this.data.forceCapitalize ? 'is-on' : ''}" id="trigger-capitalize-state">${this.data.forceCapitalize ? t('editor.status.active') : t('editor.status.inactive')}</span>
+            <div class="switch ${this.data.forceCapitalize ? 'is-on' : ''}" id="trigger-capitalize"></div>
           </div>
-          <div class="switch ${this.data.forceCapitalize ? 'is-on' : ''}" id="trigger-capitalize"></div>
         </div>
+        <p class="trigger-node-hint">${ICONS.info} ${t('trigger.block.capitalize_desc')}</p>
       </div>
     `;
 
@@ -113,18 +100,23 @@ export class TriggerBlock {
     });
     this.updateReservedPrefixWarning();
 
-
+    const smartCaseState = this.el.querySelector<HTMLElement>('#trigger-smartcase-state')!;
     const smartCase = this.el.querySelector<HTMLElement>('#trigger-smartcase')!;
     smartCase.addEventListener('click', () => {
       this.data.smartCase = !this.data.smartCase;
       smartCase.classList.toggle('is-on', this.data.smartCase);
+      smartCaseState.classList.toggle('is-on', this.data.smartCase);
+      smartCaseState.textContent = this.data.smartCase ? t('editor.status.active') : t('editor.status.inactive');
       this.onChange();
     });
 
+    const forceCapState = this.el.querySelector<HTMLElement>('#trigger-capitalize-state')!;
     const forceCap = this.el.querySelector<HTMLElement>('#trigger-capitalize')!;
     forceCap.addEventListener('click', () => {
       this.data.forceCapitalize = !this.data.forceCapitalize;
       forceCap.classList.toggle('is-on', this.data.forceCapitalize);
+      forceCapState.classList.toggle('is-on', this.data.forceCapitalize);
+      forceCapState.textContent = this.data.forceCapitalize ? t('editor.status.active') : t('editor.status.inactive');
       this.onChange();
     });
   }
@@ -152,10 +144,4 @@ export class TriggerBlock {
   }
 }
 
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+

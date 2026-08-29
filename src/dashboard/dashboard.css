@@ -1,17 +1,16 @@
 /*
  * dashboard.css — SOTE Dashboard Shell Styles
  *
- * Replicação pixel-perfeita de ref_pages/SOTE/home.htm
- * Todas as cores, espaçamentos e tipografias extraídos do arquivo de referência.
- *
- * Paleta: dark mode — fundo neutral-950 (#0a0a0a), superfícies neutral-900 (#171717)
- * Bordas: neutral-800 (#262626)
- * Sidebar: w-64 fixo = 16rem
+ * Layout: header full-width sticky no topo (logo + nav rápido + busca + CTA)
+ * seguido de uma linha com sidebar (240px, ícones + badges) e o conteúdo.
+ * Paleta: ink / chalk / violet — extraída de ref_pages/*.htm
  */
 
 @import url('../assets/styles/variables.css');
 
-/* ── Reset base ─────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════════
+   RESET BASE
+   ══════════════════════════════════════════════════════════════════════════ */
 
 *, ::before, ::after {
   box-sizing: border-box;
@@ -23,17 +22,15 @@ html, body {
   margin: 0;
   padding: 0;
   height: 100%;
-  background-color: #0a0a0a;  /* neutral-950 */
-  color: #ffffff;
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  background-color: var(--color-ink);
+  color: var(--color-chalk);
+  font-family: var(--font-family-base);
   font-size: 1rem;
   line-height: 1.5;
   -webkit-text-size-adjust: 100%;
 }
 
-#app {
-  height: 100%;
-}
+#app { height: 100%; }
 
 button {
   cursor: pointer;
@@ -57,118 +54,390 @@ p, span { margin: 0; }
 ul, ol { list-style: none; margin: 0; padding: 0; }
 svg { display: block; }
 
-/* ── Root layout: sidebar + main column ─────────────────────────────────── */
-/* Mirrors: div.flex.min-h-screen.bg-neutral-950 from home.htm */
+/* ══════════════════════════════════════════════════════════════════════════
+   ROOT LAYOUT
+   ══════════════════════════════════════════════════════════════════════════ */
 
+/* `.dash-root` é a linha externa: sidebar (altura cheia, começa no topo
+   da página) ao lado da coluna principal (header + conteúdo). Era uma
+   COLUNA antes (header em cima, sidebar+conteúdo embaixo) — por isso o
+   sidebar só começava depois do header, sem alcançar o topo da página. */
 .dash-root {
+  height: 100vh;
   display: flex;
-  min-height: 100vh;
-  background-color: #0a0a0a;
+  flex-direction: row;
+  background-color: var(--color-ink);
 }
 
-/* ── Sidebar ────────────────────────────────────────────────────────────── */
-/* w-64 fixed left-0 top-0 h-full bg-neutral-900 border-r border-neutral-800 flex flex-col */
-
-#dash-sidebar {
-  width: 16rem;           /* w-64 */
-  position: fixed;
-  left: 0;
-  top: 0;
-  height: 100vh;
-  background-color: #171717; /* neutral-900 */
-  border-right: 1px solid #262626; /* border-neutral-800 */
+/* Coluna principal — header (fixo) + conteúdo (rolável) — ao lado do
+   sidebar, ocupando o espaço restante da linha. Substitui a antiga
+   `.dash-body-row`, que agrupava sidebar+conteúdo lado a lado embaixo do
+   header; agora só o header e o conteúdo ficam empilhados aqui dentro. */
+.dash-main-col {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  z-index: 20;
+  min-width: 0;
+  min-height: 0;
 }
 
-/* Logo block: px-6 py-5 border-b border-neutral-800 flex items-center gap-3 */
-.dash-sidebar-logo {
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #262626;
+/* ══════════════════════════════════════════════════════════════════════════
+   HEADER — nav rápido (esquerda) · busca + ações (direita)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.dash-header,
+#dash-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+  height: var(--header-height);
+  flex-shrink: 0;
+  background-color: var(--color-ink);
+  border-bottom: 1px solid var(--color-hair);
+  padding: 0 var(--spacing-7);
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+}
+
+.dash-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-10);
+  min-width: 0;
+}
+
+.dash-header-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2-5);
   flex-shrink: 0;
 }
 
-/* w-8 h-8 bg-neutral-800 rounded-xl flex items-center justify-center */
-.dash-logo-icon {
-  width: 2rem;
-  height: 2rem;
-  background-color: #262626; /* neutral-800 */
-  border-radius: 0.75rem;
+.dash-logo-mark {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-lg);
+  background: var(--color-violet);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  color: var(--color-white);
 }
 
-.dash-logo-icon span {
-  color: #ffffff;
-  font-size: 0.875rem;
+.dash-logo-mark svg { width: 1rem; height: 1rem; }
+
+.dash-logo-text {
   font-weight: 600;
-  letter-spacing: -0.025em;
+  font-size: var(--font-size-lg);
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--color-chalk);
 }
 
-/* text-white tracking-widest font-medium */
-.dash-logo-wordmark {
-  color: #ffffff;
-  letter-spacing: 0.1em;
+.dash-header-nav {
+  display: none;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-size: var(--font-size-sm);
+}
+
+@media (min-width: 768px) {
+  .dash-header-nav { display: flex; }
+}
+
+.dash-header-nav-link {
+  padding: var(--spacing-1-5) var(--spacing-3-5);
+  border-radius: var(--radius-md);
+  color: var(--color-mute);
   font-weight: 500;
-  font-size: 0.875rem;
+  transition: color var(--transition-duration) var(--transition-easing),
+              background-color var(--transition-duration) var(--transition-easing);
 }
 
-/* ── Sidebar nav ────────────────────────────────────────────────────────── */
-/* flex-1 px-3 py-4 space-y-1 overflow-y-auto */
+.dash-header-nav-link:hover { color: var(--color-chalk); }
 
-.dash-sidebar-nav {
-  flex: 1;
-  padding: 1rem 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  overflow-y: auto;
+.dash-header-nav-link.is-active {
+  background-color: var(--color-raise);
+  color: var(--color-chalk);
 }
 
-/* Section divider label */
-.dash-nav-divider {
-  padding: 1rem 0.75rem 0.5rem;
-}
-
-.dash-nav-section-label {
-  font-size: 0.625rem;
-  color: #525252;         /* neutral-600 */
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-weight: 500;
-}
-
-/* Nav link: flex items-center gap-3 px-3 py-2 rounded-xl text-neutral-400 hover:bg-neutral-800 hover:text-white transition-colors text-sm */
-.dash-nav-link {
+.dash-header-actions {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.75rem;
-  color: #a3a3a3;         /* neutral-400 */
-  font-size: 0.875rem;
-  transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
-              color            150ms cubic-bezier(0.4, 0, 0.2, 1);
+  gap: var(--spacing-3);
+}
+
+/* ── Header override slot — usado por páginas full-bleed (Flow Editor)
+   para assumir o header compartilhado por completo, replicando
+   EXATAMENTE o <header> de ref_pages/criadorFluxo.htm:
+
+     <header id="header" class="h-16 bg-panel/80 backdrop-blur-md
+       border-b border-line flex items-center justify-between px-6 z-40">
+
+   Mapeamento, classe a classe:
+     h-16                    → height: var(--header-height) (4rem),
+                                já aplicado sempre por `.dash-header,
+                                #dash-header` acima (não repetido aqui).
+     flex items-center
+       justify-between        → idem: já aplicado sempre, acima.
+     border-b border-line     → border-bottom: 1px solid var(--color-hair),
+                                idem, já aplicado sempre, acima (a paleta
+                                deste projeto chama esse tom de "hair" em
+                                vez de "line", mesmo token/mesma cor).
+     bg-panel/80               → background-color abaixo, via
+                                --color-panel-rgb (ver variables.css).
+     backdrop-blur-md          → backdrop-filter: blur(12px) abaixo.
+     px-6                      → padding: 0 var(--spacing-6) abaixo.
+     z-40                      → z-index: 40 abaixo.
+   ─────────────────────────────────────────────────────────────────── */
+
+.dash-header-default {
+  display: contents; /* children keep participating in #dash-header's own flex row */
+}
+
+.dash-header-slot {
+  display: none;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+  min-width: 0;
+}
+
+#dash-header.is-override {
+  padding: 0 var(--spacing-6); /* px-6 */
+  background-color: rgba(var(--color-panel-rgb), 0.8); /* bg-panel/80 */
+  backdrop-filter: blur(12px); /* backdrop-blur-md */
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 40; /* z-40 */
+}
+
+#dash-header.is-override .dash-header-slot {
+  display: flex;
+}
+
+/* IMPORTANT: [hidden] and .dash-header-default's own `display: contents`
+   share the same specificity, so which one wins is just source-order
+   luck — this made the default header's sync button/nav/create-flow CTA
+   bleed through on top of the editor's own header. Force it explicitly. */
+#dash-header.is-override #dash-header-default {
+  display: none !important;
+}
+
+/* Search */
+.dash-search-bar {
+  display: none;
+  align-items: center;
+  gap: var(--spacing-1-5);
+  position: relative;
+  width: 18rem;
+  border: 1px solid var(--color-hair);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-2) var(--spacing-2-5);
+  background-color: var(--color-raise);
+  transition: border-color var(--transition-duration) var(--transition-easing);
+}
+
+@media (min-width: 640px) {
+  .dash-search-bar { display: flex; }
+}
+
+.dash-search-bar:focus-within { border-color: var(--color-hair-hover); }
+
+.dash-search-icon {
+  color: var(--color-mute);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.dash-search-icon svg { width: 0.875rem; height: 0.875rem; }
+
+.dash-search-input {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-chalk);
+  background: transparent;
+}
+
+.dash-search-input::placeholder { color: var(--color-mute); opacity: .7; }
+
+.dash-search-kbd {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-2xs);
+  color: var(--color-mute);
+  border: 1px solid var(--color-hair);
+  border-radius: var(--radius-sm);
+  padding: 0.125rem 0.375rem;
+  background-color: var(--color-ink);
+  flex-shrink: 0;
+}
+
+/* Generic pill button (Filtros / Ordenar / Atualizar) */
+.dash-header-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1-5);
+  padding: var(--spacing-2) var(--spacing-3-5);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-hair);
+  background-color: var(--color-raise);
+  font-size: var(--font-size-xs);
+  color: var(--color-mute);
   cursor: pointer;
+  transition: border-color var(--transition-duration) var(--transition-easing),
+              color var(--transition-duration) var(--transition-easing);
   user-select: none;
 }
 
-.dash-nav-link:hover {
-  background-color: #262626; /* neutral-800 */
-  color: #ffffff;
+.dash-header-btn:hover { border-color: var(--color-hair-hover); color: var(--color-chalk); }
+
+.dash-header-btn-icon svg,
+.dash-header-btn-icon-sm svg { width: 0.8rem; height: 0.8rem; }
+.dash-header-btn-icon-sm svg { width: 0.65rem; height: 0.65rem; }
+
+/* Icon-only button (sync etc) */
+.dash-icon-btn {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-hair);
+  background: var(--color-raise);
+  color: var(--color-mute);
+  cursor: pointer;
+  transition: border-color var(--transition-duration), color var(--transition-duration);
+  flex-shrink: 0;
 }
 
-/* Active state: bg-neutral-800 text-white */
-.dash-nav-link.is-active {
-  background-color: #262626;
-  color: #ffffff;
+.dash-icon-btn svg { width: 0.9rem; height: 0.9rem; }
+.dash-icon-btn:hover { border-color: var(--color-hair-hover); color: var(--color-chalk); }
+
+.dash-header-divider {
+  width: 1px;
+  height: 1.5rem;
+  background-color: var(--color-hair);
+  margin: 0 0.125rem;
 }
+
+/* CTA button — violeta com glow, igual às ref_pages */
+.dash-cta-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-4);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-violet);
+  color: var(--color-white);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color var(--transition-duration) var(--transition-easing);
+  cursor: pointer;
+  box-shadow: var(--shadow-violet-glow);
+  flex-shrink: 0;
+}
+
+.dash-cta-btn:hover { background-color: var(--color-violet-hover); }
+
+.dash-cta-icon { display: flex; align-items: center; }
+.dash-cta-icon svg { width: 0.75rem; height: 0.75rem; }
+
+.dash-header-btn-label { }
+.dash-cta-label { }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SIDEBAR — 240px, altura cheia (do topo da página até embaixo), logo +
+   ícone + label + badge
+   ══════════════════════════════════════════════════════════════════════════ */
+
+#dash-sidebar {
+  display: none;
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  border-right: 1px solid var(--color-hair);
+  background-color: var(--color-panel);
+  flex-direction: column;
+  /* Antes: `position: sticky; top: var(--header-height); height: calc(100vh
+     - var(--header-height));` — o sidebar começava só depois do header.
+     Agora ele é filho direto de `.dash-root` (linha, 100vh de altura) e
+     não do antigo `.dash-body-row` (que ficava abaixo do header) — então
+     basta ocupar 100% da altura do pai para ir do topo da página até
+     embaixo. `position: sticky` continua útil caso a página inteira
+     role verticalmente algum dia (mantém o sidebar fixo na tela). */
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+@media (min-width: 1024px) {
+  #dash-sidebar { display: flex; }
+}
+
+/* Logo — topo do sidebar, mesma altura do header ao lado (--header-height)
+   para as bordas inferiores de ambos se alinharem numa linha só. */
+.dash-sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2-5);
+  height: var(--header-height);
+  padding: 0 var(--spacing-5);
+  border-bottom: 1px solid var(--color-hair);
+  flex-shrink: 0;
+}
+
+.dash-sidebar-nav {
+  padding: var(--spacing-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-0-5);
+  font-size: var(--font-size-sm);
+  overflow-y: auto;
+}
+
+.dash-nav-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-lg);
+  color: var(--color-mute);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--transition-duration) var(--transition-easing),
+              color var(--transition-duration) var(--transition-easing);
+  user-select: none;
+}
+
+.dash-nav-link-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  min-width: 0;
+}
+
+.dash-nav-link:hover {
+  color: var(--color-chalk);
+  background-color: var(--color-raise-50);
+}
+
+.dash-nav-link.is-active {
+  background-color: var(--color-raise);
+  color: var(--color-chalk);
+  /* Matches ref_pages/criadorFluxo.htm's active sidebar item exactly:
+     "bg-raised text-white border border-white/5 shadow-sm" — the active
+     link previously had no border/shadow of its own, so it read as flat
+     compared to the reference mockup. */
+  border: 1px solid rgba(255,255,255,0.05);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.dash-nav-link.is-active .dash-nav-icon { color: var(--color-violet); }
 
 .dash-nav-icon {
   width: 1rem;
@@ -180,314 +449,350 @@ svg { display: block; }
   color: inherit;
 }
 
-.dash-nav-icon svg {
-  width: 1rem;
-  height: 1rem;
-}
+.dash-nav-icon svg { width: 1rem; height: 1rem; }
 
 .dash-nav-label {
   flex: 1;
   min-width: 0;
-}
-
-/* Badge (flow count pill) */
-.dash-nav-badge {
-  font-size: 0.625rem;
-  color: #737373;        /* neutral-500 */
-  background-color: #262626;
-  border: 1px solid #404040; /* neutral-700 */
-  border-radius: 9999px;
-  padding: 0.125rem 0.5rem;
-  flex-shrink: 0;
-}
-
-/* ── Sidebar user block ─────────────────────────────────────────────────── */
-/* px-4 py-4 border-t border-neutral-800 */
-
-.dash-sidebar-user {
-  padding: 1rem;
-  border-top: 1px solid #262626;
-  flex-shrink: 0;
-}
-
-.dash-user-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.75rem;
-  cursor: pointer;
-  transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.dash-user-row:hover {
-  background-color: #262626;
-}
-
-/* w-8 h-8 bg-neutral-700 rounded-full */
-.dash-user-avatar {
-  width: 2rem;
-  height: 2rem;
-  background-color: #404040; /* neutral-700 */
-  border-radius: 9999px;
-  flex-shrink: 0;
-}
-
-.dash-user-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.dash-user-name {
-  font-size: 0.875rem;
-  color: #ffffff;
-  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.dash-user-plan {
-  font-size: 0.75rem;
-  color: #737373; /* neutral-500 */
-}
-
-.dash-user-menu-icon {
-  color: #525252; /* neutral-600 */
-  width: 1rem;
-  height: 1rem;
-  display: flex;
-  align-items: center;
+.dash-nav-badge {
+  margin-left: auto;
+  font-family: var(--font-family-mono);
+  background: var(--color-ink);
+  border: 1px solid var(--color-hair);
+  color: var(--color-mute);
+  font-size: var(--font-size-2xs);
+  font-weight: 600;
+  padding: 0 0.375rem;
+  border-radius: var(--radius-sm);
   flex-shrink: 0;
 }
 
-.dash-user-menu-icon svg {
-  width: 0.25rem;
-  height: 1rem;
-}
-
-/* ── Main column ────────────────────────────────────────────────────────── */
-/* ml-64 flex-1 flex flex-col */
-
-.dash-main-col {
-  margin-left: 16rem;  /* ml-64 */
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-/* ── Header ─────────────────────────────────────────────────────────────── */
-/* sticky top-0 z-10 bg-neutral-900 border-b border-neutral-800 px-8 py-4 flex items-center justify-between */
-
-#dash-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background-color: #171717; /* neutral-900 */
-  border-bottom: 1px solid #262626;
-  padding: 1rem 2rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-/* Search bar: flex items-center gap-2 flex-1 max-w-md border border-neutral-700 rounded-xl px-3 py-2 bg-neutral-800 */
-.dash-search-bar {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex: 1;
-  max-width: 28rem;
-  border: 1px solid #404040; /* neutral-700 */
-  border-radius: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  background-color: #262626; /* neutral-800 */
-  transition: border-color 150ms ease;
-}
-
-.dash-search-bar:focus-within {
-  border-color: #737373; /* neutral-500 */
-}
-
-.dash-search-icon {
-  color: #525252; /* neutral-600 */
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.dash-search-icon svg {
-  width: 0.875rem;
-  height: 0.875rem;
-}
-
-.dash-search-input {
-  flex: 1;
-  min-width: 0;
-  font-size: 0.875rem;
-  color: #ffffff;
-  background: transparent;
-}
-
-.dash-search-input::placeholder {
-  color: #525252; /* neutral-600 */
-}
-
-.dash-search-kbd {
-  font-size: 0.75rem;
-  color: #525252;
-  border: 1px solid #404040;
-  border-radius: 0.25rem;
-  padding: 0.125rem 0.375rem;
-  background-color: #171717;
-  flex-shrink: 0;
-  font-family: inherit;
-}
-
-/* Header actions group */
-.dash-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/* Generic pill button: flex items-center gap-1.5 px-3 py-2 rounded-xl border border-neutral-700 bg-neutral-800 text-sm text-neutral-400 hover:border-neutral-600 hover:text-white transition-colors */
-.dash-header-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.75rem;
-  border: 1px solid #404040; /* neutral-700 */
-  background-color: #262626; /* neutral-800 */
-  font-size: 0.875rem;
-  color: #a3a3a3;             /* neutral-400 */
-  cursor: pointer;
-  transition: border-color 150ms ease, color 150ms ease;
-  user-select: none;
-}
-
-.dash-header-btn:hover {
-  border-color: #525252; /* neutral-600 */
-  color: #ffffff;
-}
-
-.dash-header-btn-icon svg,
-.dash-header-btn-icon-sm svg {
-  width: 0.875rem;
-  height: 0.875rem;
-}
-
-.dash-header-btn-icon-sm svg {
-  width: 0.75rem;
-  height: 0.75rem;
-  color: #525252;
-}
-
-.dash-header-divider {
-  width: 1px;
-  height: 1.5rem;
-  background-color: #262626; /* neutral-800 */
-  margin: 0 0.25rem;
-}
-
-/* CTA button: flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-neutral-900 text-sm font-medium hover:bg-neutral-100 transition-colors */
-.dash-cta-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 0.75rem;
-  background-color: #ffffff;
-  color: #171717;             /* neutral-900 */
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: background-color 150ms ease;
-  cursor: pointer;
-}
-
-.dash-cta-btn:hover {
-  background-color: #f5f5f5; /* neutral-100 */
-}
-
-.dash-cta-icon {
-  display: flex;
-  align-items: center;
-}
-
-.dash-cta-icon svg {
-  width: 0.875rem;
-  height: 0.875rem;
-}
-
-/* ── Content area ───────────────────────────────────────────────────────── */
-/* flex-1 px-8 py-6 overflow-auto */
+/* ══════════════════════════════════════════════════════════════════════════
+   CONTENT AREA
+   ══════════════════════════════════════════════════════════════════════════ */
 
 .dash-content {
   flex: 1;
-  padding: 1.5rem 2rem;
   overflow-y: auto;
   position: relative;
   min-height: 0;
+  min-width: 0;
+  background-color: var(--color-ink);
 }
 
-/* ── Skeleton loader ─────────────────────────────────────────────────────── */
+/* Standard page inner wrapper — usado pelas páginas para centralizar/limitar largura */
+.dash-page-inner {
+  padding: var(--spacing-7);
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-8);
+}
+
+@media (min-width: 768px) {
+  .dash-page-inner { padding: var(--spacing-9); }
+}
+
+/* Breadcrumb usado no topo de cada página (/workspace > página) */
+.dash-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-mute);
+  margin-bottom: var(--spacing-2);
+}
+
+.dash-breadcrumb svg { width: 0.6rem; height: 0.6rem; }
+.dash-breadcrumb .is-current { color: var(--color-chalk); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SKELETON LOADER
+   ══════════════════════════════════════════════════════════════════════════ */
 
 .dash-skeleton-wrap {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--spacing-3);
+  padding: var(--spacing-7);
+  max-width: var(--content-max-width);
+  margin: 0 auto;
 }
 
-.dash-skeleton-header {
-  margin-bottom: 1rem;
-}
+.dash-skeleton-header { margin-bottom: var(--spacing-4); }
 
 @keyframes skeleton-pulse {
-  0%, 100% { opacity: 0.4; }
-  50%       { opacity: 0.8; }
+  0%, 100% { opacity: 0.3; }
+  50%       { opacity: 0.6; }
 }
 
 .dash-skeleton-block,
 .dash-skeleton-row {
-  background-color: #262626; /* neutral-800 */
-  border-radius: 0.5rem;
+  background-color: var(--color-raise);
+  border-radius: var(--radius-lg);
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
 .dash-skeleton-row {
   height: 3.5rem;
-  border-radius: 0.75rem;
-  border: 1px solid #262626;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-hair);
 }
 
-/* ── Error state ────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════════
+   ERROR + PLACEHOLDER
+   ══════════════════════════════════════════════════════════════════════════ */
 
 .dash-error {
-  color: #a3a3a3;
-  font-size: 0.875rem;
-  padding: 2rem;
+  color: var(--color-mute);
+  font-size: var(--font-size-sm);
+  padding: var(--spacing-8);
   text-align: center;
 }
-
-/* ── Page placeholder (stubs) ────────────────────────────────────────────── */
 
 .page-placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 60vh;
-  color: #525252;
-  font-size: 0.875rem;
+  color: var(--color-mute);
+  font-size: var(--font-size-sm);
 }
 
-/* ── Scrollbar styling (matches dark theme) ─────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════════
+   SCROLLBAR (dark theme)
+   ══════════════════════════════════════════════════════════════════════════ */
 
-::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background-color: #404040;  /* neutral-700 */
-  border-radius: 9999px;
+  background-color: var(--color-hair);
+  border-radius: 3px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SHARED PAGE / MODAL / BUTTON PATTERNS
+   Declared once here (dashboard.css loads globally via dashboard/index.html
+   before any page-specific CSS) instead of being byte-for-byte copy-pasted
+   under a different class name in every page's own stylesheet. Selectors
+   keep their original page-specific names — only the declaration moved,
+   so no HTML/TS changes were needed.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Page header title — analytics.css, settings.css, variables.css */
+.analytics-header-title,
+.settings-header-title,
+.vars-header-title {
+  color: var(--color-white);
+  font-size: var(--font-size-2xl);
+  font-weight: 600;
+  letter-spacing: var(--letter-spacing-tight);
+  margin: 0;
+}
+
+/* Page header subtitle — analytics.css, variables.css */
+.analytics-header-subtitle,
+.vars-header-subtitle {
+  color: var(--color-mute);
+  font-size: var(--font-size-sm);
+  margin: var(--spacing-1) 0 0 0;
+}
+
+/* Modal title — variables.css (analytics.ts now uses the shared ConfirmModal component) */
+.modal-title {
+  color: var(--color-white);
+  font-size: var(--font-size-lg);
+  margin: 0;
+}
+
+/* Modal footer (action row) — variables.css */
+.modal-footer {
+  margin-top: var(--spacing-6);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-3);
+}
+
+/* Secondary button — variables.css (.btn-secondary) */
+.btn-secondary {
+  background-color: var(--color-raise);
+  color: var(--color-chalk);
+  border: 1px solid var(--color-hair);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-2) var(--spacing-4);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+.btn-secondary:hover {
+  background-color: var(--color-hair-hover);
+}
+
+/* Danger button — variables.css (.btn-danger), forms.css (.btn-danger-solid),
+   ConfirmModal.ts (.btn-danger) */
+.btn-danger,
+.btn-danger-solid {
+  background-color: var(--color-coral);
+  color: var(--color-white);
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-2) var(--spacing-4);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+.btn-danger:hover,
+.btn-danger-solid:hover {
+  background-color: #dc2626;
+}
+.btn-danger:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CONFIRM MODAL (dashboard/components/ConfirmModal.ts)
+   Shared "dangerous action" confirmation dialog — icon-in-circle header,
+   optional extra warning content, optional type-to-confirm gate. Used by
+   analytics.ts, settings.ts, forms.ts and variables.ts in place of the
+   near-identical modal markup each of those pages used to hand-roll.
+   ══════════════════════════════════════════════════════════════════════════ */
+.confirm-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(2px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  padding: var(--spacing-8) var(--spacing-4);
+}
+.confirm-modal-content {
+  background-color: var(--color-panel);
+  border: 1px solid var(--color-hair);
+  border-radius: var(--radius-xl);
+  width: 100%;
+  max-width: 26rem;
+  box-shadow: var(--shadow-2xl);
+  overflow: hidden;
+  margin: auto 0;
+}
+.confirm-modal-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4) var(--spacing-5);
+  border-bottom: 1px solid var(--color-hair);
+  background-color: rgb(239 68 68 / 0.05);
+}
+.confirm-modal-icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-full);
+  background-color: rgb(239 68 68 / 0.1);
+  color: var(--color-coral);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.confirm-modal-icon svg { width: 1.125rem; height: 1.125rem; }
+.confirm-modal-title { font-size: var(--font-size-sm); font-weight: 600; color: var(--color-chalk); margin: 0; }
+.confirm-modal-close {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: var(--color-mute);
+  cursor: pointer;
+  line-height: 0;
+  flex-shrink: 0;
+  transition: color 150ms;
+}
+.confirm-modal-close:hover { color: var(--color-chalk); }
+.confirm-modal-close svg { width: 1rem; height: 1rem; }
+.confirm-modal-body {
+  padding: var(--spacing-5) var(--spacing-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+.confirm-modal-message { font-size: var(--font-size-sm); color: var(--color-chalk); line-height: var(--line-height-relaxed); margin: 0; }
+.confirm-modal-gate {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+.confirm-modal-gate-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--font-size-2xs);
+  font-weight: 500;
+  color: var(--color-mute);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-widest);
+}
+.confirm-modal-gate-hint { color: rgb(245 158 11 / 0.8); text-transform: none; letter-spacing: normal; }
+.confirm-modal-gate-box {
+  padding: var(--spacing-3);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-ink);
+  border: 1px solid rgb(245 158 11 / 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+.confirm-modal-gate-desc { font-size: var(--font-size-2xs); color: var(--color-mute); }
+.confirm-modal-gate-desc code {
+  color: var(--color-chalk);
+  font-family: var(--font-family-mono);
+  user-select: all;
+}
+.confirm-modal-gate-box input {
+  background-color: var(--color-panel);
+  border: 1px solid var(--color-hair);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-2) var(--spacing-3);
+  color: var(--color-white);
+  font-size: var(--font-size-sm);
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  transition: border-color 150ms;
+}
+.confirm-modal-gate-box input::placeholder { color: var(--color-mute); }
+.confirm-modal-gate-box input:focus { border-color: var(--color-coral); }
+.confirm-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4) var(--spacing-6);
+  border-top: 1px solid var(--color-hair);
+  background-color: var(--color-ink);
+}
+.confirm-modal-warning {
+  background-color: rgb(239 68 68 / 0.08);
+  border: 1px solid rgb(239 68 68 / 0.3);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4);
+}
+.confirm-modal-warning-title {
+  color: #fca5a5;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  margin: 0 0 var(--spacing-2) 0;
+}
+.confirm-modal-warning-desc {
+  color: #fca5a5;
+  font-size: var(--font-size-xs);
+  margin: var(--spacing-2) 0 0 0;
 }

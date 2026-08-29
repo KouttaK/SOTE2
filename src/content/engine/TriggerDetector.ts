@@ -2,7 +2,7 @@
  * src/content/engine/TriggerDetector.ts
  */
 
-import type { Flow, Settings, TriggerBlock, ActionBlock, Variable } from '../../shared/types/index.js';
+import type { Flow, Settings, TriggerBlock, ActionBlock } from '../../shared/types/index.js';
 import { domainMatchesAny } from '../../shared/storage/helpers.js';
 import { resolveFlowActionBlock } from './ConditionResolver.js';
 
@@ -67,10 +67,20 @@ export class TriggerDetector {
   /**
    * Called on every printable character typed.
    * Checks for exact match shortcuts (exactMatchChar + shortcut).
+   *
+   * Picks the LONGEST matching shortcut among all candidates, not just the
+   * first one found — matching only checks the tail of the buffer, so a
+   * shorter shortcut that happens to be a suffix of a longer one (e.g.
+   * "f1" is a suffix of "pf1") would otherwise "match" too and could win
+   * purely by being earlier in `this.flows`, even though the longer,
+   * more specific shortcut is what was actually typed.
    */
   public detectExactMatchMode(buffer: string): TriggerMatch | null {
     if (!this.canTrigger()) return null;
     if (this.settings.triggerMode !== 'exact_match') return null;
+
+    let best: TriggerMatch | null = null;
+    let bestLength = -1;
 
     for (const flow of this.flows) {
       if (!flow.enabled) continue;
@@ -84,12 +94,13 @@ export class TriggerDetector {
       if (buffer.length < expected.length) continue;
       const tail = buffer.slice(-expected.length);
 
-      if (this.matchesShortcut(tail, expected, trigger.smartCase) && this.checkConditions(flow)) {
-        return { flow, shortcutTyped: tail, isExactMatch: true };
+      if (expected.length > bestLength && this.matchesShortcut(tail, expected, trigger.smartCase) && this.checkConditions(flow)) {
+        best = { flow, shortcutTyped: tail, isExactMatch: true };
+        bestLength = expected.length;
       }
     }
 
-    return null;
+    return best;
   }
 
   private canTrigger(): boolean {
@@ -130,22 +141,20 @@ export class TriggerDetector {
 
   /**
    * Evaluates rules to find which ActionBlock to execute. When a rule's
-   * `action` (or the `elseBranch`) is itself a nested ConditionBlock,
-   * RandomBlock, or ScriptBlock rather than a plain ActionBlock, it's
-   * resolved further — recursing to arbitrary depth — until a leaf
-   * ActionBlock is reached. `element` is the field the user was typing in
-   * when the shortcut fired — needed to evaluate `field_type`/
-   * `field_content` criteria and to build a Script block's `ctx`.
-   * `variables` is likewise needed for that same `ctx`. Async because
-   * resolving a Script block means round-tripping to the sandboxed
-   * extension page (see ScriptSandbox.ts).
+   * `action` (or the `elseBranch`) is itself a nested ConditionBlock or
+   * RandomBlock rather than a plain ActionBlock, it's resolved further —
+   * recursing to arbitrary depth — until a leaf ActionBlock is reached.
+   * `element` is the field the user was typing in when the shortcut fired
+   * — needed to evaluate `field_type`/`field_content` criteria.
+   * `shortcutTyped` lets `field_content` exclude the shortcut itself,
+   * which is still sitting in the field at this point.
    *
    * The actual resolution logic lives in ConditionResolver.ts, shared with
    * ActionContentResolver.ts's `flow_ref` ("Incluir Fluxo") handling, so an
    * included flow's own condition rules are honored exactly the same way
    * they would be if that flow had been triggered directly.
    */
-  public async resolveActionBlock(flow: Flow, element: HTMLElement | null | undefined, variables: Variable[]): Promise<ActionBlock | null> {
-    return resolveFlowActionBlock(flow, element, variables);
+  public resolveActionBlock(flow: Flow, element: HTMLElement | null | undefined, shortcutTyped?: string): ActionBlock | null {
+    return resolveFlowActionBlock(flow, element, shortcutTyped);
   }
 }

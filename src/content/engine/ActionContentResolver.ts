@@ -89,7 +89,7 @@ function resolveTokenForPill(pillEl: Element, tokens: Token[]): Token | null {
 async function resolveFlowRefToken(
   token: Token,
   element: HTMLElement,
-  deps: { choicePopup: ChoicePopup; variables: Variable[]; context: ExpansionContext; flows?: Flow[] },
+  deps: { choicePopup: ChoicePopup; variables: Variable[]; context: ExpansionContext; flows?: Flow[]; shortcutTyped?: string },
   visitedFlowIds: Set<string>,
 ): Promise<{ content: string; isRichText: boolean } | null> {
   const config = (token.config || {}) as unknown as FlowRefTokenConfig;
@@ -108,7 +108,7 @@ async function resolveFlowRefToken(
     return { content: '', isRichText: false };
   }
 
-  const nestedActionBlock = await resolveFlowActionBlock(targetFlow, element, deps.variables);
+  const nestedActionBlock = resolveFlowActionBlock(targetFlow, element, deps.shortcutTyped);
   if (!nestedActionBlock) {
     // The included flow has conditions but none matched (and no Else) —
     // nothing to include right now, same as that flow simply not firing.
@@ -139,7 +139,7 @@ async function resolveFlowRefToken(
 export async function resolveActionBlockContent(
   actionBlock: ActionBlock,
   element: HTMLElement,
-  deps: { choicePopup: ChoicePopup; variables: Variable[]; context: ExpansionContext; flows?: Flow[] },
+  deps: { choicePopup: ChoicePopup; variables: Variable[]; context: ExpansionContext; flows?: Flow[]; shortcutTyped?: string },
   visitedFlowIds: Set<string> = new Set(),
 ): Promise<ResolvedActionContent | null> {
   const isRichText = actionBlock.format === 'richtext';

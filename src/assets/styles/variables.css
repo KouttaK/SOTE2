@@ -1,149 +1,156 @@
 /*
  * variables.css — SOTE Design System Tokens
- *
- * Extraído das ref_pages/SOTE/*.htm (TailwindCSS neutral palette + Font Awesome 6).
- * Todas as cores, espaçamentos, radii e sombras são mapeados 1:1 das classes
- * Tailwind observadas nos arquivos de referência.
- *
+ * Paleta unificada "ink/chalk/violet" extraída das ref_pages/*.htm
  * Compatível com Shadow DOM: usar :host em vez de :root no content script.
  */
 
-/* --------------------------------------------------------------------------
-   Paleta de cores — extraída de ref_pages/SOTE/*.htm
-   (Tailwind neutral scale, conforme tailwind.config primary = neutral)
-   -------------------------------------------------------------------------- */
-
 :host,
 :root {
-  /* Superfícies — backgrounds */
-  --color-bg-base:      #0a0a0a; /* neutral-950 — fundo do dashboard */
-  --color-bg-raised:    #171717; /* neutral-900 — sidebar, header, cards */
-  --color-bg-elevated:  #262626; /* neutral-800 — items ativos, hover states */
-  --color-bg-overlay:   #404040; /* neutral-700 — badges, toggles, chips */
-
-  /* Popup (tema escuro) — alinhado com o resto do dashboard */
-  --color-bg-popup:         #171717; /* neutral-900 — card do popup */
-  --color-bg-popup-muted:   #262626; /* neutral-800 — fundo de itens elevados */
-  --color-bg-popup-subtle:  #404040; /* neutral-700 — hover/estado ativo */
+  /* Superfícies */
+  --color-ink:      #0b0b0f;
+  --color-panel:    #111116;
+  --color-panel-rgb: 17, 17, 22; /* mesmo tom de --color-panel acima, como
+    tripla r,g,b — necessário para compor opacidade (ex.: bg-panel/80) via
+    rgba(var(--color-panel-rgb), 0.8), já que não dá para extrair r,g,b de
+    dentro de uma var() em hexadecimal com CSS puro. */
+  --color-raise:    #18181f;
+  --color-raise-60: rgb(24 24 31 / 0.6);
+  --color-raise-50: rgb(24 24 31 / 0.5);
 
   /* Bordas */
-  --color-border-strong:  #525252; /* neutral-600 */
-  --color-border-default: #404040; /* neutral-700 */
-  --color-border-subtle:  #262626; /* neutral-800 */
-  --color-border-faint:   #171717; /* neutral-900 */
+  --color-hair:        #28282f;
+  --color-hair-hover:  #3a3a44;
+  --color-hair-70:     rgb(40 40 48 / 0.7);
+  --color-hair-60:     rgb(40 40 48 / 0.6);
 
-  /* Bordas do popup (tema escuro) */
-  --color-border-light-strong:  #525252; /* neutral-600 */
-  --color-border-light-default: #404040; /* neutral-700 */
-  --color-border-light-subtle:  #262626; /* neutral-800 */
+  /* Texto */
+  --color-chalk: #e9eaec;
+  --color-white: #ffffff;
+  --color-mute:  #7a7d86;
+  --color-ink-text: #0b0b0f;
 
-  /* Texto — escala escura (dashboard) */
-  --color-text-primary:   #ffffff; /* white */
-  --color-text-secondary: #f5f5f5; /* neutral-100 */
-  --color-text-tertiary:  #d4d4d4; /* neutral-300 */
-  --color-text-muted:     #a3a3a3; /* neutral-400 */
-  --color-text-faint:     #737373; /* neutral-500 */
-  --color-text-disabled:  #525252; /* neutral-600 */
+  /* Acentos */
+  --color-violet:      #8b5cf6;
+  --color-violet-hover: rgb(139 92 246 / 0.9);
+  --color-violet-15:   rgb(139 92 246 / 0.15);
+  --color-violet-soft: #c4b5fd;
+  --color-lime:        #bef264;
+  --color-coral:       #ef4444;
+  --color-amber:       #f59e0b;
+  --color-amber-15:    rgb(245 158 11 / 0.15);
 
-  /* Texto do popup (tema escuro — mesma escala do dashboard) */
-  --color-text-popup-primary:   #ffffff; /* white */
-  --color-text-popup-secondary: #f5f5f5; /* neutral-100 */
-  --color-text-popup-tertiary:  #d4d4d4; /* neutral-300 */
-  --color-text-popup-muted:     #a3a3a3; /* neutral-400 */
-  --color-text-popup-faint:     #737373; /* neutral-500 */
+  /* Compat: aliases usados por CSS legado não migrado */
+  --color-bg-base:      var(--color-ink);
+  --color-bg-raised:    var(--color-panel);
+  --color-bg-elevated:  var(--color-raise);
+  --color-bg-overlay:   var(--color-hair-hover);
+  --color-bg-popup:         var(--color-panel);
+  --color-bg-popup-muted:   var(--color-raise);
+  --color-bg-popup-subtle:  var(--color-hair-hover);
+  --color-border-strong:  var(--color-hair-hover);
+  --color-border-default: var(--color-hair);
+  --color-border-subtle:  var(--color-hair);
+  --color-border-faint:   var(--color-panel);
+  --color-border-light-strong:  var(--color-hair-hover);
+  --color-border-light-default: var(--color-hair);
+  --color-border-light-subtle:  var(--color-hair);
+  --color-text-primary:   var(--color-chalk);
+  --color-text-secondary: var(--color-chalk);
+  --color-text-tertiary:  var(--color-mute);
+  --color-text-muted:     var(--color-mute);
+  --color-text-faint:     var(--color-mute);
+  --color-text-disabled:  var(--color-hair-hover);
+  --color-text-popup-primary:   var(--color-chalk);
+  --color-text-popup-secondary: var(--color-chalk);
+  --color-text-popup-tertiary:  var(--color-mute);
+  --color-text-popup-muted:     var(--color-mute);
+  --color-text-popup-faint:     var(--color-mute);
+  --color-cta-bg:      var(--color-violet);
+  --color-cta-bg-hover: var(--color-violet-hover);
+  --color-cta-text:    var(--color-white);
+  --color-cursor: var(--color-violet);
 
-  /* Acento / CTA — extraído de home.htm: botão "Create New Flow" */
-  --color-cta-bg:      #ffffff; /* white */
-  --color-cta-bg-hover: #f5f5f5; /* neutral-100 */
-  --color-cta-text:    #171717; /* neutral-900 */
-
-  /* Estado: cursor piscante (palletcomand.htm) */
-  --color-cursor: #ffffff;
-
-  /* --------------------------------------------------------------------------
-     Tipografia — extraída de todos os .htm
-     Font: ui-sans-serif, system-ui (Tailwind default — sem Google Fonts)
-     -------------------------------------------------------------------------- */
-  --font-family-base: ui-sans-serif, system-ui, sans-serif,
+  /* Tipografia — Inter (sans) + JetBrains Mono (mono) */
+  --font-family-base: "Inter", ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    "Liberation Mono", "Courier New", monospace;
+  --font-family-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, "Liberation Mono", "Courier New", monospace;
 
-  --font-size-xs:   0.75rem;   /* 12px — text-xs  */
-  --font-size-sm:   0.875rem;  /* 14px — text-sm  */
-  --font-size-base: 1rem;      /* 16px — text-base */
-  --font-size-xl:   1.25rem;   /* 20px — text-xl  */
-  --font-size-2xl:  1.5rem;    /* 24px — text-2xl */
+  --font-size-2xs:  0.625rem;
+  --font-size-xs:   0.75rem;
+  --font-size-sm:   0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg:   1.125rem;
+  --font-size-xl:   1.25rem;
+  --font-size-2xl:  1.5rem;
+  --font-size-3xl:  1.875rem;
 
   --line-height-tight:   1.25;
+  --line-height-snug:    1.375;
   --line-height-base:    1.5;
   --line-height-relaxed: 1.625;
 
-  --letter-spacing-tight:   -0.025em; /* tracking-tight   */
-  --letter-spacing-widest:   0.1em;   /* tracking-widest  */
+  --letter-spacing-tight:   -0.025em;
+  --letter-spacing-widest:   0.1em;
 
-  /* --------------------------------------------------------------------------
-     Espaçamentos — extraídos dos utilitários Tailwind observados
-     -------------------------------------------------------------------------- */
-  --spacing-0-5: 0.125rem; /* 2px  */
-  --spacing-1:   0.25rem;  /* 4px  */
-  --spacing-1-5: 0.375rem; /* 6px  */
-  --spacing-2:   0.5rem;   /* 8px  */
-  --spacing-2-5: 0.625rem; /* 10px */
-  --spacing-3:   0.75rem;  /* 12px */
-  --spacing-4:   1rem;     /* 16px */
-  --spacing-5:   1.25rem;  /* 20px */
-  --spacing-6:   1.5rem;   /* 24px */
-  --spacing-8:   2rem;     /* 32px */
-  --spacing-10:  2.5rem;   /* 40px */
+  /* Espaçamentos */
+  --spacing-0-5: 0.125rem;
+  --spacing-1:   0.25rem;
+  --spacing-1-5: 0.375rem;
+  --spacing-2:   0.5rem;
+  --spacing-2-5: 0.625rem;
+  --spacing-3:   0.75rem;
+  --spacing-3-5: 0.875rem;
+  --spacing-4:   1rem;
+  --spacing-5:   1.25rem;
+  --spacing-6:   1.5rem;
+  --spacing-7:   1.75rem;
+  --spacing-8:   2rem;
+  --spacing-9:   2.25rem;
+  --spacing-10:  2.5rem;
 
-  /* --------------------------------------------------------------------------
-     Border-radius — extraídos dos rounded-* observados
-     -------------------------------------------------------------------------- */
-  --radius-sm:    0.25rem;  /* rounded    */
-  --radius-md:    0.375rem; /* rounded-md */
-  --radius-lg:    0.5rem;   /* rounded-lg */
-  --radius-xl:    0.75rem;  /* rounded-xl */
-  --radius-2xl:   1rem;     /* rounded-2xl (popup card, palette modal) */
-  --radius-full:  9999px;   /* rounded-full (badges, toggles) */
+  /* Border-radius */
+  --radius-sm:    0.25rem;
+  --radius-md:    0.375rem;
+  --radius-lg:    0.5rem;
+  --radius-xl:    0.75rem;
+  --radius-2xl:   1rem;
+  --radius-full:  9999px;
 
-  /* --------------------------------------------------------------------------
-     Sombras — extraídas das shadow-* observadas
-     -------------------------------------------------------------------------- */
+  /* Sombras */
   --shadow-sm:  0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md:  0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  --shadow-violet-glow: 0 0 18px rgba(139, 92, 246, .3);
 
-  /* --------------------------------------------------------------------------
-     Transições — extraídas das transition-* observadas (duration: 150ms)
-     -------------------------------------------------------------------------- */
+  /* Transições */
   --transition-duration:        150ms;
   --transition-easing:          cubic-bezier(0.4, 0, 0.2, 1);
   --transition-colors-props:    color, background-color, border-color,
                                 text-decoration-color, fill, stroke;
   --transition-opacity-props:   opacity;
 
-  /* --------------------------------------------------------------------------
-     Dimensões fixas de componentes — extraídas das ref_pages
-     -------------------------------------------------------------------------- */
-  --sidebar-width:        16rem;    /* w-64 */
-  --popup-width:          350px;    /* width do popup card */
-  --palette-max-width:    32rem;    /* max-w-lg ≈ 512px; usamos 32rem para safe */
-  --palette-height:       420px;    /* height do container preview */
+  /* Dimensões fixas de layout */
+  --header-height:        4rem;
+  --sidebar-width:        240px;
+  --popup-width:          350px;
+  --palette-max-width:    32rem;
+  --palette-height:       420px;
+  --content-max-width:    1400px;
 
-  /* Icon sizes (usados em múltiplos componentes) */
-  --icon-size-xs: 1rem;    /* w-4 h-4 */
-  --icon-size-sm: 1.25rem; /* w-5 h-5 */
-  --icon-size-md: 1.75rem; /* w-7 h-7 */
-  --icon-size-lg: 2rem;    /* w-8 h-8 */
-  --icon-size-xl: 2.25rem; /* w-9 h-9 */
+  /* Icon sizes */
+  --icon-size-xs: 1rem;
+  --icon-size-sm: 1.25rem;
+  --icon-size-md: 1.75rem;
+  --icon-size-lg: 2rem;
+  --icon-size-xl: 2.25rem;
 
-  /* Toggle (popup master toggle) */
-  --toggle-width:  2.75rem; /* w-11 */
-  --toggle-height: 1.5rem;  /* h-6  */
-  --toggle-knob:   1.25rem; /* w-5 h-5 */
+  /* Toggle */
+  --toggle-width:  2.75rem;
+  --toggle-height: 1.5rem;
+  --toggle-knob:   1.25rem;
 
   /* Z-index layers */
-  --z-header:  10; /* z-10 — header */
-  --z-sidebar: 20; /* z-20 — sidebar */
+  --z-header:  30;
+  --z-sidebar: 20;
 }

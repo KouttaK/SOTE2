@@ -1,32 +1,23 @@
 /**
  * src/dashboard/components/blocks/ConditionBlock.ts
  *
- * Each condition (Se / Senão Se) and the optional Senão (Else) is rendered
- * as its OWN separate visual card — not grouped inside a single shared
- * "Condition" block. editor.ts places one ConditionRuleBlock (or the single
- * ConditionElseBlock) per branch/column in the flow canvas, each followed
- * by its own dedicated Action block.
+ * Every branch (Se / Senão Se / Senão) of a Condition step is rendered
+ * inside ONE unified card built by editor.ts's renderConditionCard() —
+ * this file just provides ConditionRuleBlock, the inline "SE"/"SENÃO SE"
+ * rule-editing row (chips + AND/OR criteria group) that gets slotted into
+ * each branch-row's content. It renders no card/header chrome of its own.
  *
- * Visual style matches the reference design (ref_pages/SOTE/craicao.htm):
- * pill-style dropdowns/inputs with leading icons, a single "Condition Rule"
- * row per card, and a "..." overflow menu in the header instead of an X
- * button. The overflow menu is also where new branches are added
- * ("+ Adicionar Senão Se" / "+ Adicionar Senão (Else)") and existing ones
- * are removed.
+ * Rule-row style matches the reference design (ref_pages/criadorFluxo.htm):
+ * pill-style dropdowns/inputs with leading icons, one row per rule, with an
+ * inline "×" button to remove just that rule (adding new branches — "+
+ * Adicionar Senão Se" / "+ Adicionar Senão" — is a footer control on the
+ * unified card itself, not per-rule).
  */
 
 import type { ConditionRule, ConditionCriterion } from '../../../shared/types/index.js';
 import { t } from '../../../shared/i18n/index.js';
-
-/** Escapes HTML-significant characters before interpolating user-typed rule
- * values (e.g. the domain string) into an innerHTML attribute. */
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+import { escapeHtml } from '../../../shared/utils/dom.js';
+import { ConfirmModal } from '../../components/ConfirmModal.js';
 
 /**
  * Produces a short human-readable summary of a single type/operator/value
@@ -136,243 +127,46 @@ const ICONS = {
   calendar: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M152 24c0-13.3-10.7-24-24-24s-24 10.7-24 24V64H64C28.7 64 0 92.7 0 128v16 48V448c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V192 144 128c0-35.3-28.7-64-64-64H344V24c0-13.3-10.7-24-24-24s-24 10.7-24 24V64H152V24zM48 192H400V448c0 8.8-7.2 16-16 16H64c-8.8 0-16-7.2-16-16V192z"/></svg>`,
   fieldType: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"></rect><line x1="6" y1="10" x2="6" y2="10"></line><line x1="10" y1="10" x2="10" y2="10"></line><line x1="14" y1="10" x2="14" y2="10"></line><line x1="18" y1="10" x2="18" y2="10"></line><line x1="7" y1="15" x2="17" y2="15"></line></svg>`,
   fieldContent: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="12" x2="14" y2="12"></line><line x1="4" y1="18" x2="18" y2="18"></line></svg>`,
+  xmark: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor"><path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z"/></svg>`,
+  pencil: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M410.3 231l11.3-11.3-33.9-33.9-62.1-62.1L291.7 89.8l-11.3 11.3-22.6 22.6L58.6 322.9c-10.4 10.4-18 23.3-22.2 37.4L1 480.7c-2.5 8.4-.2 17.5 6.1 23.7s15.3 8.5 23.7 6.1l120.3-35.4c14.1-4.2 27-11.8 37.4-22.2L387.7 253.7 410.3 231zM160 399.4l-9.1 22.7c-4 3.1-8.5 5.4-13.3 6.9L59.4 452l23-78.1c1.4-4.9 3.8-9.4 6.9-13.3l22.7-9.1v32c0 8.8 7.2 16 16 16h32zM362.7 18.7L348.3 33.2 325.7 55.8 314.3 67.1l33.9 33.9 62.1 62.1 33.9 33.9 11.3-11.3 22.6-22.6 14.5-14.5c25-25 25-65.5 0-90.5L453.3 18.7c-25-25-65.5-25-90.5 0zm-47.4 168l-144 144c-6.2 6.2-16.4 6.2-22.6 0s-6.2-16.4 0-22.6l144-144c6.2-6.2 16.4-6.2 22.6 0s6.2 16.4 0 22.6z"/></svg>`,
+  alignLeft: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M288 64c0 17.7-14.3 32-32 32H32C14.3 96 0 81.7 0 64S14.3 32 32 32H256c17.7 0 32 14.3 32 32zm0 256c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H256c17.7 0 32 14.3 32 32zM0 192c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 448c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg>`,
 };
 
-// CSS injected once into document
-const COND_BLOCK_CSS = `
-.condition-rule-label {
-  display: block;
-  font-size: 0.75rem;
-  color: #737373;
-  margin-bottom: 0.375rem;
-}
-
-/* The branch column card is narrow (23rem), so cramming
-   [type select][operator][value] into a single row never had enough
-   room. Squeezing the operator+value container down to fit alongside
-   the type select (via its min-width:0) didn't force a clean wrap —
-   it forced an internal wrap *inside* that squeezed container, which
-   then got vertically centered against the type select by
-   align-items:center, producing a scrambled, misaligned card.
-   Stacking the type select on its own full-width row (matching the
-   label + full-width field pattern used elsewhere in the extension,
-   e.g. .form-label + .input-field) removes the fight for space:
-   the row below then has the full card width for operator + value. */
-.condition-rule-stack { display: flex; flex-direction: column; gap: 0.5rem; }
-.condition-rule-stack > .pill-select-wrap { width: 100%; }
-.condition-rule-stack > .pill-select-wrap .pill-select { width: 100%; }
-
-.condition-rule-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-/* min-width (not a fixed width) keeps every dropdown in a condition row
-   visually anchored to the same baseline size — matching the reference
-   design's fixed-width "Domain" / operator pills — while still letting
-   longer Portuguese labels ("Dia da Semana", "Não é nenhum dos dias")
-   grow past it instead of being clipped. Without this, switching the
-   rule type made the whole row jump/reflow depending on label length. */
-.pill-select-wrap { position: relative; flex-shrink: 0; }
-.pill-select {
-  appearance: none;
-  -webkit-appearance: none;
-  background-color: #0a0a0a;
-  color: #d4d4d4;
-  border: 1px solid #404040;
-  border-radius: 0.5rem;
-  padding: 0.625rem 1.75rem 0.625rem 0.75rem;
-  font-size: 0.8125rem;
-  cursor: pointer;
-  font-family: inherit;
-  box-sizing: border-box;
-  min-width: 9rem;
-}
-.pill-select-wrap--op .pill-select { min-width: 6rem; }
-.pill-select:hover { border-color: #525252; }
-.pill-select:focus { outline: none; border-color: #737373; }
-.pill-select-wrap::after {
-  content: '';
-  position: absolute;
-  right: 0.75rem;
-  top: 50%;
-  width: 0.375rem;
-  height: 0.375rem;
-  border-right: 1.5px solid #737373;
-  border-bottom: 1.5px solid #737373;
-  transform: translateY(-65%) rotate(45deg);
-  pointer-events: none;
-}
-
-.pill-value {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background-color: #0a0a0a;
-  border: 1px solid #404040;
-  border-radius: 0.5rem;
-  padding: 0.625rem 0.75rem;
-  flex: 1;
-  min-width: 8rem;
-  box-sizing: border-box;
-  transition: border-color 0.15s;
-}
-.pill-value:focus-within { border-color: #737373; }
-.pill-value svg { width: 0.75rem; height: 0.75rem; color: #525252; flex-shrink: 0; }
-.pill-value input {
-  flex: 1;
-  min-width: 0;
-  background: transparent;
-  border: none;
-  color: #fff;
-  font-size: 0.8125rem;
-  outline: none;
-  font-family: inherit;
-}
-
-/* Two-field rows (e.g. "Entre {hora} e {hora}") should split the space
-   evenly and stay vertically centered on the "e" connector, instead of
-   each field sizing independently to its own min-width. */
-.pill-value-pair {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex: 1;
-  min-width: 0;
-}
-.pill-value-pair .pill-value { flex: 1 1 0; min-width: 6rem; }
-.pill-value-pair .pill-pair-sep {
-  flex-shrink: 0;
-  font-size: 0.75rem;
-  color: #737373;
-}
-
-.day-buttons { display: flex; gap: 0.375rem; flex-wrap: wrap; }
-.day-btn {
-  padding: 0.375rem 0.625rem;
-  border-radius: 0.375rem;
-  border: 1px solid #404040;
-  background: #0a0a0a;
-  color: #737373;
-  font-size: 0.75rem;
-  cursor: pointer;
-  transition: all 0.15s;
-  font-family: inherit;
-}
-.day-btn:hover { border-color: #525252; color: #d4d4d4; }
-.day-btn.active { background: #ffffff; border-color: #ffffff; color: #171717; }
-
-.else-card-body {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  color: #a3a3a3;
-  font-size: 0.8125rem;
-}
-.else-card-body svg { width: 1rem; height: 1rem; color: #525252; flex-shrink: 0; }
-
-/* AND/OR ("E"/"OU") extra-criteria group — replaces the old "convert to
-   nested condition" affordance with something readable at a glance:
-   one shared combinator for the whole rule, plus one compact row per
-   extra criterion, each clearly labeled with the connector word. */
-.condition-criteria-group {
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px dashed #404040;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.cond-combinator-row {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-}
-.cond-combinator-label {
-  font-size: 0.75rem;
-  color: #737373;
-}
-.cond-combinator-toggle {
-  display: inline-flex;
-  border: 1px solid #404040;
-  border-radius: 0.5rem;
-  overflow: hidden;
-}
-.cond-combinator-btn {
-  background: #0a0a0a;
-  color: #a3a3a3;
-  border: none;
-  padding: 0.375rem 0.75rem;
-  font-size: 0.75rem;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.cond-combinator-btn:not(:last-child) { border-right: 1px solid #404040; }
-.cond-combinator-btn:hover { color: #d4d4d4; }
-.cond-combinator-btn.active { background: #ffffff; color: #171717; }
-
-.cond-extra-rows { display: flex; flex-direction: column; gap: 0.5rem; }
-.cond-extra-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-.cond-extra-row-connector {
-  flex-shrink: 0;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: #737373;
-  min-width: 1.5rem;
-}
-.cond-remove-criterion-btn {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 0.375rem;
-  border: 1px solid #404040;
-  background: #0a0a0a;
-  color: #737373;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.cond-remove-criterion-btn svg { width: 0.625rem; height: 0.625rem; }
-.cond-remove-criterion-btn:hover { border-color: #ef4444; color: #ef4444; }
-
-.add-criterion-btn {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  background: transparent;
-  border: 1px dashed #404040;
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  color: #a3a3a3;
-  font-size: 0.75rem;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.add-criterion-btn svg { width: 0.625rem; height: 0.625rem; }
-.add-criterion-btn:hover { border-color: #737373; color: #fff; }
-`;
-
-let condStylesInjected = false;
-function injectCondStyles() {
-  if (condStylesInjected) return;
-  const style = document.createElement('style');
-  style.textContent = COND_BLOCK_CSS;
-  document.head.appendChild(style);
-  condStylesInjected = true;
-}
+/*
+ * Tarefa 4 (bug crítico de layout): este arquivo costumava injetar um
+ * <style> próprio em document.head (ver injectCondStyles(), removida)
+ * com uma cópia PARALELA e desatualizada das regras de
+ * `.pill-select`, `.pill-select-wrap`, `.pill-value`, `.pill-value-pair`,
+ * `.condition-rule-row` e `.branch-rule-row` — regras que `editor.css`
+ * também define, já revisadas e corretas.
+ *
+ * Como esse <style> era inserido em tempo de execução (na primeira vez
+ * que um ConditionRuleBlock era construído), ele sempre acabava depois de
+ * `editor.css` no <head>, e por empate de especificidade CSS a versão
+ * MAIS ANTIGA vencia a mais nova, propriedade por propriedade:
+ *   - `.pill-select` no editor.css desenha a seta do dropdown com
+ *     `background-image` (um SVG embutido); a versão antiga aqui desenhava
+ *     OUTRA seta via `.pill-select-wrap::after` (um triângulo de borda) —
+ *     como são propriedades diferentes (background-image vs. um
+ *     pseudo-elemento à parte), as duas nunca se sobrescreviam: as DUAS
+ *     setas apareciam ao mesmo tempo, sobrepostas.
+ *   - `.pill-select-wrap` aqui forçava `flex-shrink: 0` (nunca encolhe),
+ *     enquanto o editor.css pede `flex: 1 1 auto` — com a versão antiga
+ *     vencendo, os campos de operador/valor não conseguiam encolher e
+ *     invadiam o botão/campo vizinho.
+ *   - padding/border-radius levemente diferentes entre as duas cópias
+ *     faziam um campo "não bater" com o espaço que o outro estilo
+ *     reservava para ele — daí "campo em cima de campo".
+ *
+ * A correção não é só apagar a cópia antiga: algumas regras (grupo
+ * E/OU de critérios, botões de dia da semana, botão "+ Adicionar
+ * critério") só existiam aqui — essas foram movidas para
+ * `editor.css`, na seção "CONDITION RULE — REGRAS ÚNICAS MIGRADAS DE
+ * ConditionBlock.ts", para não perder nenhum estilo. As que duplicavam
+ * `editor.css` (e causavam o bug) foram simplesmente removidas — o
+ * componente agora depende 100% da folha de estilos real da página,
+ * nunca mais injeta a sua própria.
+ */
 
 /** Shared header menu wiring for both card types below. */
 function bindHeaderMenu(el: HTMLElement, items: { label: string; icon: string; danger?: boolean; onClick: () => void }[]) {
@@ -401,18 +195,18 @@ function bindHeaderMenu(el: HTMLElement, items: { label: string; icon: string; d
 }
 
 export interface ConditionRuleBlockOptions {
-  label: string; // 'SE' | 'SENÃO SE'
   onChange: () => void;
   /** Removes just this rule (or the whole condition step, if it's the only branch). */
   onRemove: () => void;
-  /** Present only on the last rule card — appends a new "Senão Se" branch. */
-  onAddSenaoSe?: () => void;
-  /** Present only on the last rule card when no Else exists yet. */
-  onAddElse?: () => void;
 }
 
 /**
- * A single condition (Se / Senão Se) rendered as its own standalone block.
+ * The "SE" / "SENÃO SE" rule-editing row — chips (type/operator/value) +
+ * AND/OR criteria group. Rendered *inline* inside a branch-row's
+ * `.branch-content` by the unified Condition card (see editor.ts's
+ * renderConditionCard()) rather than as its own standalone bordered card —
+ * matches the new reference, which shows every branch stacked inside one
+ * card instead of each rule getting its own separate block+column.
  */
 export class ConditionRuleBlock {
   private el: HTMLElement;
@@ -423,8 +217,7 @@ export class ConditionRuleBlock {
     this.data = data;
     this.opts = opts;
     this.el = document.createElement('div');
-    this.el.className = 'block-card';
-    injectCondStyles();
+    this.el.className = 'branch-rule-wrap';
     this.render();
   }
 
@@ -439,69 +232,77 @@ export class ConditionRuleBlock {
   private render() {
     const rule = this.data;
     this.el.innerHTML = /* html */ `
-      <div class="block-header">
-        <div class="block-icon">${ICONS.branch}</div>
-        <div class="block-title-wrap">
-          <p class="block-step">${this.opts.label}</p>
-          <h2 class="block-title">${t('condition.rule.title')}</h2>
+      <div class="branch-rule-row">
+        <div class="pill-select-wrap">
+          <select class="pill-select rule-type">
+            <option value="domain"        ${rule.type === 'domain'        ? 'selected' : ''}>${t('condition.domain')}</option>
+            <option value="time"          ${rule.type === 'time'          ? 'selected' : ''}>${t('condition.time')}</option>
+            <option value="weekday"       ${rule.type === 'weekday'       ? 'selected' : ''}>${t('condition.weekday')}</option>
+            <option value="date"          ${rule.type === 'date'          ? 'selected' : ''}>${t('condition.date')}</option>
+            <option value="field_type"    ${rule.type === 'field_type'    ? 'selected' : ''}>${t('condition.field_type')}</option>
+            <option value="field_content" ${rule.type === 'field_content' ? 'selected' : ''}>${t('condition.field_content')}</option>
+          </select>
         </div>
-        <span class="block-badge">${t('condition.rule.badge')}</span>
-        <div class="block-menu-wrap">
-          <button class="block-menu-btn" title="${t('common.more_options')}">${ICONS.ellipsis}</button>
-          <div class="block-menu" style="display:none;"></div>
-        </div>
+        <div class="rule-value-container condition-rule-row"></div>
+        <button type="button" class="branch-rule-remove-btn icon-btn" title="${t('editor.condition.remove_rule')}">${ICONS.xmark}</button>
       </div>
-      <div class="block-body">
-        <label class="condition-rule-label">${t('editor.condition.rule_label')}</label>
-        <div class="condition-rule-stack">
-          <div class="pill-select-wrap">
-            <select class="pill-select rule-type">
-              <option value="domain"        ${rule.type === 'domain'        ? 'selected' : ''}>${t('condition.domain')}</option>
-              <option value="time"          ${rule.type === 'time'          ? 'selected' : ''}>${t('condition.time')}</option>
-              <option value="weekday"       ${rule.type === 'weekday'       ? 'selected' : ''}>${t('condition.weekday')}</option>
-              <option value="date"          ${rule.type === 'date'          ? 'selected' : ''}>${t('condition.date')}</option>
-              <option value="field_type"    ${rule.type === 'field_type'    ? 'selected' : ''}>${t('condition.field_type')}</option>
-              <option value="field_content" ${rule.type === 'field_content' ? 'selected' : ''}>${t('condition.field_content')}</option>
-            </select>
-          </div>
-          <div class="rule-value-container condition-rule-row"></div>
-        </div>
-        <div class="condition-criteria-group"></div>
-      </div>
+      <div class="rule-value-secondary"></div>
+      <div class="condition-criteria-group"></div>
     `;
 
+    // `.rule-value-container` (linha 1) só recebe o seletor de tipo/operador
+    // — sempre cabe numa única linha. `.rule-value-secondary` (linha 2,
+    // largura cheia, oculta via CSS `:empty` quando não usada) recebe o
+    // conteúdo que só o Horário ("de"/"até") e o Dia da Semana (botões dos
+    // dias) precisam — ver renderTimeInputs()/renderWeekdayInputs() logo
+    // abaixo. Antes esse conteúdo secundário era injetado no MESMO
+    // container da linha 1 (com `flexBasis:100%` via JS para forçar a
+    // quebra), mas esse container tinha `flex-wrap: nowrap` no CSS — logo
+    // o navegador nunca quebrava a linha, e o conteúdo (que não cabia)
+    // estourava horizontalmente para fora do `.branch-rule-wrap`,
+    // sobrepondo o botão "Inserir Texto" (`.branch-action`) ao lado. Ter
+    // um container próprio, sempre de largura 100%, elimina o conflito na
+    // raiz em vez de depender de flex-wrap para "salvar" o layout.
     const valueContainer = this.el.querySelector('.rule-value-container') as HTMLElement;
-    this.renderValueInput(rule, valueContainer, () => this.opts.onChange());
+    const secondaryContainer = this.el.querySelector('.rule-value-secondary') as HTMLElement;
+    this.renderValueInput(rule, valueContainer, () => this.opts.onChange(), secondaryContainer);
 
     this.el.querySelector('.rule-type')!.addEventListener('change', (e) => {
       rule.type = (e.target as HTMLSelectElement).value as any;
       rule.value = '';
-      this.renderValueInput(rule, valueContainer, () => this.opts.onChange());
+      this.renderValueInput(rule, valueContainer, () => this.opts.onChange(), secondaryContainer);
       this.opts.onChange();
     });
 
     this.renderCriteriaGroup();
 
-    const menuItems: { label: string; icon: string; danger?: boolean; onClick: () => void }[] = [];
-    if (this.opts.onAddSenaoSe) {
-      menuItems.push({ label: t('condition.menu.add_elseif'), icon: ICONS.plus, onClick: this.opts.onAddSenaoSe });
-    }
-    if (this.opts.onAddElse) {
-      menuItems.push({ label: t('editor.condition.add_else'), icon: ICONS.plus, onClick: this.opts.onAddElse });
-    }
-    menuItems.push({
-      label: t('editor.condition.remove_rule'), icon: ICONS.trash, danger: true, onClick: () => {
-        if (confirm(t('condition.confirm.remove_rule'))) this.opts.onRemove();
-      }
+    this.el.querySelector('.branch-rule-remove-btn')!.addEventListener('click', () => {
+      ConfirmModal.show({
+        title: t('confirm_modal.remove_condition_title'),
+        message: t('condition.confirm.remove_rule'),
+        confirmLabel: t('common.remove'),
+        onConfirm: () => this.opts.onRemove(),
+      });
     });
-    bindHeaderMenu(this.el, menuItems);
   }
 
-  private renderValueInput(target: ConditionCriterion, container: HTMLElement, onSave: () => void) {
+  /**
+   * `secondaryContainer` é opcional: a regra principal (chamada acima, em
+   * render()) sempre passa um, dando a Horário/Dia da Semana uma segunda
+   * linha própria de largura cheia. Já as linhas de critério extra E/OU
+   * (chamadas por renderCriteriaGroup() abaixo) não passam nenhum —
+   * `.cond-extra-row` já usa `flex-wrap: wrap` livremente no CSS, então
+   * o conteúdo secundário cai de volta para o comportamento antigo
+   * (anexado ao mesmo container, com `flexBasis: 100%` via JS) sem
+   * qualquer conflito, já que ali não existe o `flex-wrap: nowrap` que
+   * causava o bug na linha principal.
+   */
+  private renderValueInput(target: ConditionCriterion, container: HTMLElement, onSave: () => void, secondaryContainer?: HTMLElement) {
     container.innerHTML = '';
+    if (secondaryContainer) secondaryContainer.innerHTML = '';
     if (target.type === 'domain') this.renderDomainInputs(target, container, onSave);
-    else if (target.type === 'time') this.renderTimeInputs(target, container, onSave);
-    else if (target.type === 'weekday') this.renderWeekdayInputs(target, container, onSave);
+    else if (target.type === 'time') this.renderTimeInputs(target, container, onSave, secondaryContainer);
+    else if (target.type === 'weekday') this.renderWeekdayInputs(target, container, onSave, secondaryContainer);
     else if (target.type === 'date') this.renderDateInputs(target, container, onSave);
     else if (target.type === 'field_type') this.renderFieldTypeInputs(target, container, onSave);
     else if (target.type === 'field_content') this.renderFieldContentInputs(target, container, onSave);
@@ -520,21 +321,26 @@ export class ConditionRuleBlock {
     const groupEl = this.el.querySelector('.condition-criteria-group') as HTMLElement;
     const criteria = rule.criteria || [];
 
-    let html = '';
-    if (criteria.length > 0) {
-      const combinator = rule.combinator || 'AND';
-      html += `
-        <div class="cond-combinator-row">
-          <span class="cond-combinator-label">${t('condition.criteria.match_label')}</span>
-          <div class="cond-combinator-toggle">
-            <button type="button" class="cond-combinator-btn ${combinator === 'AND' ? 'active' : ''}" data-c="AND">${t('condition.criteria.and')}</button>
-            <button type="button" class="cond-combinator-btn ${combinator === 'OR' ? 'active' : ''}" data-c="OR">${t('condition.criteria.or')}</button>
-          </div>
-        </div>
-      `;
+    // No extra AND/OR criteria on this rule: render nothing (matches the
+    // compact reference card exactly — no floating "+ Adicionar condição"
+    // button). Existing criteria from a flow saved before this redesign
+    // still display and remain fully editable/removable below.
+    if (criteria.length === 0) {
+      groupEl.innerHTML = '';
+      return;
     }
+
+    const combinator = rule.combinator || 'AND';
+    let html = `
+      <div class="cond-combinator-row">
+        <span class="cond-combinator-label">${t('condition.criteria.match_label')}</span>
+        <div class="cond-combinator-toggle">
+          <button type="button" class="cond-combinator-btn ${combinator === 'AND' ? 'active' : ''}" data-c="AND">${t('condition.criteria.and')}</button>
+          <button type="button" class="cond-combinator-btn ${combinator === 'OR' ? 'active' : ''}" data-c="OR">${t('condition.criteria.or')}</button>
+        </div>
+      </div>
+    `;
     html += `<div class="cond-extra-rows"></div>`;
-    html += `<button type="button" class="add-criterion-btn">${ICONS.plus} ${t('condition.criteria.add')}</button>`;
     groupEl.innerHTML = html;
 
     groupEl.querySelectorAll('.cond-combinator-btn').forEach((btn) => {
@@ -586,14 +392,6 @@ export class ConditionRuleBlock {
         this.renderCriteriaGroup();
       });
     });
-
-    groupEl.querySelector('.add-criterion-btn')!.addEventListener('click', () => {
-      if (!rule.criteria) rule.criteria = [];
-      if (!rule.combinator) rule.combinator = 'AND';
-      rule.criteria.push({ type: 'domain', operator: 'contains', value: '' });
-      this.opts.onChange();
-      this.renderCriteriaGroup();
-    });
   }
 
   private renderDomainInputs(target: ConditionCriterion, container: HTMLElement, onSave: () => void) {
@@ -628,7 +426,7 @@ export class ConditionRuleBlock {
   }
 
   // TIME — operator select + dynamic fields
-  private renderTimeInputs(target: ConditionCriterion, container: HTMLElement, onSave: () => void) {
+  private renderTimeInputs(target: ConditionCriterion, container: HTMLElement, onSave: () => void, secondaryContainer?: HTMLElement) {
     let parsed: { op: string; from?: string; to?: string; at?: string } = { op: 'between' };
     try { parsed = JSON.parse(target.value || '{}'); } catch { /* */ }
     if (!parsed.op) parsed.op = 'between';
@@ -649,12 +447,18 @@ export class ConditionRuleBlock {
     // "Após") or two ("Entre") — this keeps the card's expansion consistent
     // across operators instead of the fields being squeezed inline next to
     // the operator select and only "expanding" for the 2-field case.
-    timeFields.style.flexBasis = '100%';
-    timeFields.style.width = '100%';
-    timeFields.style.marginTop = '0.5rem';
+    const fieldsTarget = secondaryContainer || container;
+    if (!secondaryContainer) {
+      // Sem uma segunda linha dedicada (caso do critério extra E/OU — ver
+      // renderValueInput()), força a quebra à moda antiga: o container ali
+      // já permite `flex-wrap: wrap`, então isso funciona sem sobreposição.
+      timeFields.style.flexBasis = '100%';
+      timeFields.style.width = '100%';
+      timeFields.style.marginTop = '0.5rem';
+    }
 
     container.appendChild(opWrap);
-    container.appendChild(timeFields);
+    fieldsTarget.appendChild(timeFields);
 
     const select = opWrap.querySelector('.time-op-select') as HTMLSelectElement;
 
@@ -698,10 +502,26 @@ export class ConditionRuleBlock {
       renderTimeFields(select.value);
       save();
     });
+
+    // Persist immediately: if this criterion was just created (or has no
+    // valid from/to/at yet), the fields above already show sensible
+    // defaults ("08:00"/"18:00"/"12:00") — but until now those were only
+    // ever written to `target.value` by a 'change' event on one of the
+    // inputs. A person who left the defaults untouched (a totally
+    // reasonable thing to do — they look already filled in) got a
+    // criterion whose real saved value was still `''`/`'{}'`, which the
+    // runtime evaluator can't parse into a usable from/to — silently
+    // never passing. Saving once here, right after the first render,
+    // guarantees `target.value` always matches what's on screen.
+    if (parsed.op === 'between') {
+      if (!parsed.from || !parsed.to) save();
+    } else if (!parsed.at) {
+      save();
+    }
   }
 
   // WEEKDAY — operator select + day buttons
-  private renderWeekdayInputs(target: ConditionCriterion, container: HTMLElement, onSave: () => void) {
+  private renderWeekdayInputs(target: ConditionCriterion, container: HTMLElement, onSave: () => void, secondaryContainer?: HTMLElement) {
     let parsed: { op: string; days: string[] } = { op: 'is', days: [] };
     try { parsed = JSON.parse(target.value || '{}'); } catch { /* */ }
     if (!parsed.op) parsed.op = 'is';
@@ -714,7 +534,11 @@ export class ConditionRuleBlock {
     };
 
     const opWrap = document.createElement('div');
-    opWrap.className = 'pill-select-wrap pill-select-wrap--op';
+    // Classe própria (não `--op`, fixa em 6rem): os rótulos deste select
+    // são frases inteiras ("Não é nenhum dos dias"), não uma palavra
+    // curta como "contém" — com a largura fixa de 6rem usada pelos
+    // demais critérios, o texto ficava cortado. Ver regra em editor.css.
+    opWrap.className = 'pill-select-wrap pill-select-wrap--op-wide';
     opWrap.innerHTML = `
       <select class="pill-select weekday-op-select">
         <option value="is"     ${parsed.op === 'is'     ? 'selected' : ''}>${t('condition.weekday.is')}</option>
@@ -724,9 +548,14 @@ export class ConditionRuleBlock {
 
     const dayButtons = document.createElement('div');
     dayButtons.className = 'day-buttons';
-    dayButtons.style.flexBasis = '100%';
-    dayButtons.style.width = '100%';
-    dayButtons.style.marginTop = '0.5rem';
+    const daysTarget = secondaryContainer || container;
+    if (!secondaryContainer) {
+      // Mesmo fallback do renderTimeInputs — usado apenas pelas linhas de
+      // critério extra E/OU, que já são flex-wrap por padrão.
+      dayButtons.style.flexBasis = '100%';
+      dayButtons.style.width = '100%';
+      dayButtons.style.marginTop = '0.5rem';
+    }
     dayButtons.innerHTML = dayKeys.map(k => `
       <button type="button" class="day-btn ${parsed.days.includes(k) ? 'active' : ''}" data-day="${k}">
         ${dayLabels[k]}
@@ -734,7 +563,7 @@ export class ConditionRuleBlock {
     `).join('');
 
     container.appendChild(opWrap);
-    container.appendChild(dayButtons);
+    daysTarget.appendChild(dayButtons);
 
     const save = () => {
       const op = (opWrap.querySelector('.weekday-op-select') as HTMLSelectElement).value;
@@ -759,7 +588,6 @@ export class ConditionRuleBlock {
     valueWrap.style.flex = '0 1 auto';
     valueWrap.style.minWidth = '10rem';
     valueWrap.innerHTML = `
-      ${ICONS.calendar}
       <input type="date" class="rule-value" value="${escapeHtml(target.value || '')}">
     `;
     container.appendChild(valueWrap);
@@ -833,7 +661,12 @@ export class ConditionRuleBlock {
     `;
 
     const valueWrap = document.createElement('div');
-    valueWrap.className = 'pill-value';
+    // Tarefa 4.1: `.pill-value--wide` dá a este campo um `flex-grow` maior
+    // e um `min-width` bem mais generoso que o padrão de `.pill-value`
+    // (4rem) — o texto livre digitado aqui costuma ser bem mais longo que
+    // um domínio ou um valor de data, então o campo precisava de mais
+    // espaço para ficar legível/usável (ver regra em editor.css).
+    valueWrap.className = 'pill-value pill-value--wide';
     valueWrap.innerHTML = `
       ${ICONS.fieldContent}
       <input type="text" class="rule-value" value="${escapeHtml(target.value || '')}" placeholder="${t('condition.field_content.placeholder')}" />
@@ -850,61 +683,5 @@ export class ConditionRuleBlock {
       target.value = (e.target as HTMLInputElement).value;
       onSave();
     });
-  }
-}
-
-export interface ConditionElseBlockOptions {
-  onRemove: () => void;
-}
-
-/**
- * The "Senão (Else)" fallback path, rendered as its own standalone block
- * with no condition editor — it always matches when no rule above did.
- */
-export class ConditionElseBlock {
-  private el: HTMLElement;
-  private opts: ConditionElseBlockOptions;
-
-  constructor(opts: ConditionElseBlockOptions) {
-    this.opts = opts;
-    this.el = document.createElement('div');
-    this.el.className = 'block-card';
-    injectCondStyles();
-    this.render();
-  }
-
-  public getElement(): HTMLElement {
-    return this.el;
-  }
-
-  private render() {
-    this.el.innerHTML = /* html */ `
-      <div class="block-header">
-        <div class="block-icon">${ICONS.arrowsSplit}</div>
-        <div class="block-title-wrap">
-          <p class="block-step">${t('condition.tag.else')}</p>
-          <h2 class="block-title">${t('condition.else.title')}</h2>
-        </div>
-        <span class="block-badge">${t('condition.else.badge')}</span>
-        <div class="block-menu-wrap">
-          <button class="block-menu-btn" title="${t('common.more_options')}">${ICONS.ellipsis}</button>
-          <div class="block-menu" style="display:none;"></div>
-        </div>
-      </div>
-      <div class="block-body">
-        <div class="else-card-body">
-          ${ICONS.arrowsSplit}
-          <span>${t('condition.else.body')}</span>
-        </div>
-      </div>
-    `;
-
-    bindHeaderMenu(this.el, [
-      {
-        label: t('condition.else.menu.remove'), icon: ICONS.trash, danger: true, onClick: () => {
-          if (confirm(t('condition.confirm.remove_else'))) this.opts.onRemove();
-        }
-      },
-    ]);
   }
 }
