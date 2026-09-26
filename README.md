@@ -76,7 +76,7 @@ O editor organiza a lógica do fluxo visualmente em uma sequência ou hierarquia
 ### Firefox (Canal Self-Hosted com Auto-Update)
 A extensão para Firefox é distribuída diretamente via canal assinado pela Mozilla hospedado no GitHub Pages:
 
-1. Baixe o pacote assinado: **[sote-1.0.18-firefox.xpi](https://kouttak.github.io/SOTE2/sote-1.0.18-firefox.xpi)**.
+1. Baixe o pacote assinado: **[sote-1.0.18-firefox.xpi](https://kouttak.github.io/SOTE2/releases/sote-1.0.18-firefox.xpi)**.
 2. Arraste o arquivo `.xpi` para dentro de qualquer janela do Firefox e confirme a instalação.
 3. O manifesto de atualização automática está configurado em: `https://kouttak.github.io/SOTE2/updates.json`.
    * Para conferir se a checagem automática de extensões está ativa, abra `about:config` no Firefox e valide se `extensions.update.enabled` está `true`.
@@ -142,8 +142,9 @@ npm run zip:firefox
 │   │   └── pages/          # Páginas e rotas da interface de gerenciamento
 │   ├── popup/              # Menu popup acionado no ícone da barra de navegação
 │   └── shared/             # StorageService, sanitização HTML, tipos, i18n e constantes de cores
+├── releases/               # Binários .xpi assinados para auto-update self-hosted
+├── docs/                   # Guias técnicos de desenvolvimento e publicação
 ├── updates.json            # Manifesto de atualização contínua para Firefox no GitHub Pages
-├── sote-1.0.18-firefox.xpi # Binário assinado da versão mais recente
 ├── CHANGELOG.md            # Histórico de versões e alterações detalhadas
 └── wxt.config.ts           # Configuração de compilação multi-browser
 ```

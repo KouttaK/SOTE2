@@ -4,7 +4,7 @@
       "updates": [
         {
           "version": "1.0.18",
-          "update_link": "https://kouttak.github.io/SOTE2/sote-1.0.18-firefox.xpi",
+          "update_link": "https://kouttak.github.io/SOTE2/releases/sote-1.0.18-firefox.xpi",
           "update_hash": "sha256:f5c1c52c92c7214aa5acda24f2c779390594f943e6a75f34e05b2bb46a687e4e",
           "applications": {
             "gecko": { "strict_min_version": "140.0" }
@@ -12,58 +12,10 @@
         },
         {
           "version": "1.0.15",
-          "update_link": "https://kouttak.github.io/SOTE2/sote2-1.0.15.xpi",
-          "update_hash": "sha256:3E9E5DBBC10E6E3C5002CC1475DBB71DCB6228CA5EFCFBBC32F1C2A655DFFA73",
+          "update_link": "https://kouttak.github.io/SOTE2/releases/sote2-1.0.15.xpi",
+          "update_hash": "sha256:ce0f7d8ecf536e18262bb757d108864e58f1b5396660f2ba624bf771f881c537",
           "applications": {
             "gecko": { "strict_min_version": "140.0" }
-          }
-        },
-        {
-          "version": "1.0.14",
-          "update_link": "https://kouttak.github.io/SOTE2/sote2-1.0.14.xpi",
-          "update_hash": "sha256:30CB5DC5E4BB813AAE12516B0E32572B152257C72368786DAF1F9B9E4C2FBB94",
-          "applications": {
-            "gecko": { "strict_min_version": "140.0" }
-          }
-        },
-        {
-          "version": "1.0.11",
-          "update_link": "https://kouttak.github.io/SOTE2/sote2-1.0.11.xpi",
-          "update_hash": "sha256:482824B389819DA7AE054118A1D938D4B6CF7139F5D56EA2FD153A24F472E600",
-          "applications": {
-            "gecko": { "strict_min_version": "140.0" }
-          }
-        },
-        {
-          "version": "1.0.8",
-          "update_link": "https://kouttak.github.io/SOTE2/sote2-1.0.8.xpi",
-          "update_hash": "sha256:5E575B14B8FDD35057B37F1905F04A1EEED9FE1CBF8F57048F762D0DF230F384",
-          "applications": {
-            "gecko": { "strict_min_version": "109.0" }
-          }
-        },
-        {
-          "version": "1.0.7",
-          "update_link": "https://kouttak.github.io/SOTE2/sote2-1.0.7.xpi",
-          "update_hash": "sha256:D6E414946CC0970B2259762946C2D0E075BB2809ABF3AFAB0E3E2FB115FB7CFB",
-          "applications": {
-            "gecko": { "strict_min_version": "109.0" }
-          }
-        },
-        {
-          "version": "1.0.6",
-          "update_link": "https://kouttak.github.io/SOTE2/sote2-1.0.6.xpi",
-          "update_hash": "sha256:E7047DCA486E77F5B220320A5FE0D0B74028AC76A31B09457D1DFF2ADEAD38D3",
-          "applications": {
-            "gecko": { "strict_min_version": "109.0" }
-          }
-        },
-        {
-          "version": "1.0.5",
-          "update_link": "https://kouttak.github.io/SOTE2/sote2-1.0.5.xpi",
-          "update_hash": "sha256:E918FF5699D5F7BBDDA21830B2CD00F14DA62A1AC16748B95D3404DF0C54BE22",
-          "applications": {
-            "gecko": { "strict_min_version": "109.0" }
           }
         }
       ]
