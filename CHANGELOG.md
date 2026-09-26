@@ -19,7 +19,7 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 - **Duplicação Segura de Blocos no Editor:** O comando de duplicação do editor agora consolida o estado atual do DOM antes de clonar via `structuredClone()`, gerando novos identificadores únicos (UUIDs) para blocos e pills filhas de forma totalmente independente.
 
 ### Alterado
-- **Paleta de Cores Acessível para Daltonismo (Delta-E > 15):** Reestruturação da paleta canônica com Fonte Única da Verdade (SSOT) em `tokenColors.ts` e variáveis CSS centralizadas, garantindo distinção segura em casos de protanopia e deuteranopia entre todos os 11 tipos de tokens e os 5 tipos de blocos estruturais.
+- **Paleta de Cores Revisada para Acessibilidade:** Reestruturação da paleta canônica com Fonte Única da Verdade (SSOT) em `tokenColors.ts` e variáveis CSS centralizadas, selecionando famílias cromáticas distintas para melhorar o contraste e a diferenciação visual entre todos os 11 tipos de tokens e os 5 tipos de blocos estruturais, inclusive sob formas comuns de daltonismo (protanopia e deuteranopia).
 - **Atualização do Manifest e Auto-Update Self-Hosted:** Atualizado `updates.json` com a nova versão assinada `sote-1.0.18-firefox.xpi` hospedada no GitHub Pages para Firefox Gecko 140.0+.
 
 ---
