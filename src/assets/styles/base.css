@@ -1,0 +1,292 @@
+/*
+ * base.css — SOTE Base Styles
+ *
+ * Reset mínimo compatível com Shadow DOM.
+ * Tipografia base e utilitários de layout extraídos das ref_pages/SOTE/*.htm.
+ *
+ * @import url('./variables.css') deve ser feito ANTES deste arquivo.
+ */
+
+@import url('./variables.css');
+
+/* --------------------------------------------------------------------------
+   Reset — compatível com Shadow DOM (sem body / html globais)
+   Baseado no reset do TailwindCSS v3 observado em todas as ref_pages.
+   -------------------------------------------------------------------------- */
+
+*,
+::before,
+::after {
+  box-sizing: border-box;
+  border-width: 0;
+  border-style: solid;
+}
+
+:host {
+  line-height: var(--line-height-base);
+  font-family: var(--font-family-base);
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  font-feature-settings: normal;
+  font-variation-settings: normal;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-size: inherit;
+  font-weight: inherit;
+  margin: 0;
+}
+
+p, blockquote, dl, dd, figure, hr, pre {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: inherit;
+}
+
+b, strong {
+  font-weight: bolder;
+}
+
+ol, ul, menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+button,
+input,
+optgroup,
+select,
+textarea {
+  font-family: inherit;
+  font-size: 100%;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  margin: 0;
+  padding: 0;
+  background-color: transparent;
+  background-image: none;
+}
+
+button,
+select {
+  text-transform: none;
+}
+
+button,
+[role="button"] {
+  cursor: pointer;
+}
+
+:disabled {
+  cursor: default;
+}
+
+input::placeholder,
+textarea::placeholder {
+  opacity: 1;
+}
+
+img,
+svg,
+video,
+canvas,
+audio,
+iframe,
+embed,
+object {
+  display: block;
+  vertical-align: middle;
+}
+
+img,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+[hidden] {
+  display: none;
+}
+
+textarea {
+  resize: vertical;
+}
+
+/* --------------------------------------------------------------------------
+   Tipografia base — extraída das classes text-* observadas nas ref_pages
+   -------------------------------------------------------------------------- */
+
+.text-xs   { font-size: var(--font-size-xs);   line-height: 1rem; }
+.text-sm   { font-size: var(--font-size-sm);   line-height: 1.25rem; }
+.text-base { font-size: var(--font-size-base); line-height: 1.5rem; }
+.text-xl   { font-size: var(--font-size-xl);   line-height: 1.75rem; }
+.text-2xl  { font-size: var(--font-size-2xl);  line-height: 2rem; }
+
+.tracking-tight   { letter-spacing: var(--letter-spacing-tight); }
+.tracking-widest  { letter-spacing: var(--letter-spacing-widest); }
+.leading-tight    { line-height: var(--line-height-tight); }
+.leading-relaxed  { line-height: var(--line-height-relaxed); }
+
+.uppercase { text-transform: uppercase; }
+.truncate  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.text-left   { text-align: left; }
+.text-center { text-align: center; }
+.text-right  { text-align: right; }
+
+/* --------------------------------------------------------------------------
+   Layout — utilitários extraídos das ref_pages
+   -------------------------------------------------------------------------- */
+
+/* Display */
+.flex        { display: flex; }
+.inline-flex { display: inline-flex; }
+.grid        { display: grid; }
+.hidden      { display: none; }
+
+/* Flex direction */
+.flex-col    { flex-direction: column; }
+.flex-row    { flex-direction: row; }
+
+/* Flex alignment */
+.items-start    { align-items: flex-start; }
+.items-center   { align-items: center; }
+.items-end      { align-items: flex-end; }
+.justify-start  { justify-content: flex-start; }
+.justify-center { justify-content: center; }
+.justify-end    { justify-content: flex-end; }
+.justify-between{ justify-content: space-between; }
+
+/* Flex sizing */
+.flex-1       { flex: 1 1 0%; }
+.flex-shrink-0{ flex-shrink: 0; }
+.min-w-0      { min-width: 0; }
+
+/* Gap — extraído dos gap-* observados */
+.gap-1   { gap: var(--spacing-1); }
+.gap-1-5 { gap: var(--spacing-1-5); }
+.gap-2   { gap: var(--spacing-2); }
+.gap-2-5 { gap: var(--spacing-2-5); }
+.gap-3   { gap: var(--spacing-3); }
+.gap-4   { gap: var(--spacing-4); }
+
+/* Grid columns — extraídas dos grid-cols-* observados */
+.grid-cols-3  { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-cols-12 { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+
+/* Overflow */
+.overflow-hidden { overflow: hidden; }
+
+/* Position */
+.relative { position: relative; }
+.absolute { position: absolute; }
+.fixed    { position: fixed; }
+.sticky   { position: sticky; }
+
+.inset-0  { inset: 0; }
+
+/* Sizing */
+.w-full  { width: 100%; }
+.h-full  { height: 100%; }
+.w-px    { width: 1px; }
+
+/* Cursor */
+.cursor-pointer { cursor: pointer; }
+.cursor-text    { cursor: text; }
+
+/* Pointer events */
+.pointer-events-none { pointer-events: none; }
+.select-none         { user-select: none; }
+
+/* Opacity */
+.opacity-0    { opacity: 0; }
+.opacity-100  { opacity: 1; }
+
+/* --------------------------------------------------------------------------
+   Padding/Margin utilities — mais usados nas ref_pages
+   -------------------------------------------------------------------------- */
+
+.px-1   { padding-left: var(--spacing-1);   padding-right: var(--spacing-1); }
+.px-1-5 { padding-left: var(--spacing-1-5); padding-right: var(--spacing-1-5); }
+.px-2   { padding-left: var(--spacing-2);   padding-right: var(--spacing-2); }
+.px-2-5 { padding-left: var(--spacing-2-5); padding-right: var(--spacing-2-5); }
+.px-3   { padding-left: var(--spacing-3);   padding-right: var(--spacing-3); }
+.px-4   { padding-left: var(--spacing-4);   padding-right: var(--spacing-4); }
+.px-5   { padding-left: var(--spacing-5);   padding-right: var(--spacing-5); }
+.px-6   { padding-left: var(--spacing-6);   padding-right: var(--spacing-6); }
+.px-8   { padding-left: var(--spacing-8);   padding-right: var(--spacing-8); }
+
+.py-0-5 { padding-top: var(--spacing-0-5); padding-bottom: var(--spacing-0-5); }
+.py-1   { padding-top: var(--spacing-1);   padding-bottom: var(--spacing-1); }
+.py-1-5 { padding-top: var(--spacing-1-5); padding-bottom: var(--spacing-1-5); }
+.py-2   { padding-top: var(--spacing-2);   padding-bottom: var(--spacing-2); }
+.py-2-5 { padding-top: var(--spacing-2-5); padding-bottom: var(--spacing-2-5); }
+.py-3   { padding-top: var(--spacing-3);   padding-bottom: var(--spacing-3); }
+.py-4   { padding-top: var(--spacing-4);   padding-bottom: var(--spacing-4); }
+.py-5   { padding-top: var(--spacing-5);   padding-bottom: var(--spacing-5); }
+.py-6   { padding-top: var(--spacing-6);   padding-bottom: var(--spacing-6); }
+.py-8   { padding-top: var(--spacing-8);   padding-bottom: var(--spacing-8); }
+
+.pt-2 { padding-top: var(--spacing-2); }
+.pt-4 { padding-top: var(--spacing-4); }
+.pb-3 { padding-bottom: var(--spacing-3); }
+.pb-4 { padding-bottom: var(--spacing-4); }
+
+.mb-1 { margin-bottom: var(--spacing-1); }
+.mb-2 { margin-bottom: var(--spacing-2); }
+.mb-5 { margin-bottom: var(--spacing-5); }
+.mb-6 { margin-bottom: var(--spacing-6); }
+.mb-8 { margin-bottom: var(--spacing-8); }
+.mt-1 { margin-top: var(--spacing-1); }
+.mt-4 { margin-top: var(--spacing-4); }
+.mt-5 { margin-top: var(--spacing-5); }
+.ml-auto { margin-left: auto; }
+
+/* --------------------------------------------------------------------------
+   Border-radius — extraídos dos rounded-* observados
+   -------------------------------------------------------------------------- */
+
+.rounded     { border-radius: var(--radius-sm); }
+.rounded-md  { border-radius: var(--radius-md); }
+.rounded-lg  { border-radius: var(--radius-lg); }
+.rounded-xl  { border-radius: var(--radius-xl); }
+.rounded-2xl { border-radius: var(--radius-2xl); }
+.rounded-full{ border-radius: var(--radius-full); }
+
+/* --------------------------------------------------------------------------
+   Border utilities
+   -------------------------------------------------------------------------- */
+
+.border   { border-width: 1px; border-style: solid; }
+.border-b { border-bottom-width: 1px; border-bottom-style: solid; }
+.border-t { border-top-width: 1px; border-top-style: solid; }
+.border-r { border-right-width: 1px; border-right-style: solid; }
+.border-dashed { border-style: dashed; }
+
+/* --------------------------------------------------------------------------
+   Shadow utilities — extraídas das shadow-* observadas
+   -------------------------------------------------------------------------- */
+
+.shadow-sm  { box-shadow: var(--shadow-sm); }
+.shadow-md  { box-shadow: var(--shadow-md); }
+.shadow-2xl { box-shadow: var(--shadow-2xl); }
+
+/* --------------------------------------------------------------------------
+   Outline
+   -------------------------------------------------------------------------- */
+
+.outline-none { outline: 2px solid transparent; outline-offset: 2px; }
+
+/* --------------------------------------------------------------------------
+   Visibility helper classes usados nas ref_pages (via JS)
+   -------------------------------------------------------------------------- */
+
+/* Usado por showElement() / hideElement() em dom.ts */
+.sote-hidden { display: none !important; }
+.sote-visible { display: flex; }

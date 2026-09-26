@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>SOTE</title>
+    <link rel="stylesheet" href="./popup.css" />
+  </head>
+  <body>
+
+    <!-- ── Popup card ────────────────────────────────────────────────────── -->
+    <div id="popup-card">
+
+      <!-- ── Header — Variação B: duas linhas ─────────────────────────── -->
+      <div id="popup-header">
+
+        <!-- Linha 1: Marca + Controles -->
+        <div class="header-row-brand">
+          <div class="popup-brand">
+            <div class="popup-logo-mark">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true" fill="currentColor">
+                <path d="M349.4 44.6c5.9-13.7 1.5-29.7-10.6-38.5s-28.6-8-39.9 1.8l-256 224c-10 8.8-13.6 22.9-8.9 35.3S50.7 288 64 288H175.5L98.6 467.4c-5.9 13.7-1.5 29.7 10.6 38.5s28.6 8 39.9-1.8l256-224c10-8.8 13.6-22.9 8.9-35.3s-16.6-20.7-30-20.7H272.5L349.4 44.6z"/>
+              </svg>
+            </div>
+            <span class="popup-brand-name">SOTE</span>
+          </div>
+
+          <div class="header-controls">
+            <!-- Snooze dropdown -->
+            <div class="snooze-dropdown-container">
+              <button id="btn-snooze" class="icon-btn" type="button" title="Snooze">
+                <!-- fa-clock -->
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true" fill="currentColor"><path d="M464 256A208 208 0 1 1 48 256a208 208 0 1 1 416 0zM0 256a256 256 0 1 0 512 0A256 256 0 1 0 0 256zM232 120V256c0 8 4 15.5 10.7 20l96 64c11 7.4 25.9 4.4 33.3-6.7s4.4-25.9-6.7-33.3L280 243.2V120c0-13.3-10.7-24-24-24s-24 10.7-24 24z"/></svg>
+              </button>
+              <div id="snooze-menu" class="snooze-menu" hidden>
+                <div class="snooze-menu-header" id="label-snooze-title">Pause for:</div>
+                <button class="snooze-option" type="button" data-duration="900000" id="opt-snooze-15m">15 minutes</button>
+                <button class="snooze-option" type="button" data-duration="3600000" id="opt-snooze-1h">1 hour</button>
+                <button class="snooze-option" type="button" data-duration="14400000" id="opt-snooze-4h">4 hours</button>
+                <button class="snooze-option" type="button" data-duration="28800000" id="opt-snooze-8h">8 hours</button>
+                <div class="snooze-menu-divider"></div>
+                <button class="snooze-option snooze-option--block" type="button" id="btn-block-site-perm">Block this site</button>
+              </div>
+            </div>
+
+            <!-- Master Toggle -->
+            <div id="toggle-track" class="popup-toggle-track is-on" role="switch" aria-checked="true" tabindex="0" title="Global Enabled">
+              <div class="popup-toggle-knob"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Linha 2: Status -->
+        <div class="header-row-status">
+          <div id="status-indicator" class="status-dot"></div>
+          <span id="status-state">Active</span>
+          <span id="status-domain-separator" class="status-separator">·</span>
+          <span id="status-domain"></span>
+        </div>
+
+      </div><!-- /#popup-header -->
+
+      <!-- ── Banner inline (Pausado / Bloqueado) — inserido via JS ──────── -->
+      <!-- #status-banner é criado e destruído pelo index.ts; não está no DOM em estado Ativo -->
+
+      <!-- ── Body (Productivity Zone) ──────────────────────────────────── -->
+      <div id="popup-body">
+
+        <!-- Quick Actions -->
+        <div id="popup-quick-actions">
+          <button class="quick-action-btn" type="button" id="btn-quick-capture">
+            <span id="label-quick-capture">Quick Capture</span>
+          </button>
+          <button class="quick-action-btn" type="button" id="btn-quick-variables">
+            <span id="label-quick-variables">Variables</span>
+          </button>
+        </div>
+
+        <!-- Search bar -->
+        <div id="popup-search">
+          <div class="search-wrap">
+            <!-- fa-magnifying-glass -->
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true" fill="currentColor">
+              <path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z"/>
+            </svg>
+            <input
+              id="search-input"
+              type="text"
+              placeholder="Search snippets..."
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <kbd>⌘K</kbd>
+          </div>
+        </div>
+
+        <!-- Recent snippets -->
+        <div id="popup-recent">
+          <p class="popup-section-label" id="label-recent-snippets">Recent Snippets</p>
+          <div id="snippets-list" class="snippets-list">
+            <!-- Rendered by index.ts -->
+          </div>
+        </div>
+
+      </div><!-- /#popup-body -->
+
+      <!-- ── Footer ─────────────────────────────────────────────────────── -->
+      <div id="popup-footer">
+        <button id="btn-open-dashboard" type="button">
+          <span id="label-open-dashboard">Open full Dashboard</span>
+          <!-- fa-arrow-up-right-from-square -->
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true" fill="currentColor">
+            <path d="M320 0c-17.7 0-32 14.3-32 32s14.3 32 32 32h82.7L201.4 265.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L448 109.3V192c0 17.7 14.3 32 32 32s32-14.3 32-32V32c0-17.7-14.3-32-32-32H320zM80 32C35.8 32 0 67.8 0 112V432c0 44.2 35.8 80 80 80H400c44.2 0 80-35.8 80-80V320c0-17.7-14.3-32-32-32s-32 14.3-32 32V432c0 8.8-7.2 16-16 16H80c-8.8 0-16-7.2-16-16V112c0-8.8 7.2-16 16-16H192c17.7 0 32-14.3 32-32s-14.3-32-32-32H80z"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- ── Secondary View: Quick Variables ─────────────────────────── -->
+      <div id="view-variables" hidden>
+        <div class="vars-view-header">
+          <button id="btn-vars-back" class="vars-back-btn" type="button" title="Back">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true" fill="currentColor">
+              <path d="M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.2 288 416 288c17.7 0 32-14.3 32-32s-14.3-32-32-32l-306.7 0L214.6 117.3c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/>
+            </svg>
+            <span id="label-vars-back">Back</span>
+          </button>
+          <span class="vars-view-title" id="label-vars-title">Quick Variables</span>
+        </div>
+
+        <div class="vars-view-body">
+          <p class="popup-section-label" id="label-vars-section">Recently updated</p>
+          <div id="vars-list" class="vars-list">
+            <!-- Rendered by index.ts -->
+          </div>
+        </div>
+
+        <div class="vars-view-footer">
+          <button id="btn-open-variables-dash" type="button">
+            <span id="label-open-vars-dash">Manage variables in dashboard</span>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true" fill="currentColor">
+              <path d="M320 0c-17.7 0-32 14.3-32 32s14.3 32 32 32h82.7L201.4 265.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L448 109.3V192c0 17.7 14.3 32 32 32s32-14.3 32-32V32c0-17.7-14.3-32-32-32H320zM80 32C35.8 32 0 67.8 0 112V432c0 44.2 35.8 80 80 80H400c44.2 0 80-35.8 80-80V320c0-17.7-14.3-32-32-32s-32 14.3-32 32V432c0 8.8-7.2 16-16 16H80c-8.8 0-16-7.2-16-16V112c0-8.8 7.2-16 16-16H192c17.7 0 32-14.3 32-32s-14.3-32-32-32H80z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /#popup-card -->
+
+    <!-- Feedback toast is now handled by shared Toast.ts component -->
+
+    <script type="module" src="./index.ts"></script>
+  </body>
+</html>

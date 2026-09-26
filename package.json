@@ -1,0 +1,30 @@
+{
+  "name": "sote",
+  "version": "1.0.18",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "build:chrome": "wxt build -b chrome",
+    "zip:firefox": "wxt zip -b firefox",
+    "test": "vitest run"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "jscpd": "^5.0.14",
+    "jsdom": "^29.1.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.0",
+    "vitest": "^4.1.9",
+    "wxt": "^0.20.27"
+  },
+  "dependencies": {
+    "@types/dompurify": "^3.0.5",
+    "dompurify": "^3.4.15"
+  }
+}

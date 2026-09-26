@@ -1,0 +1,306 @@
+<html lang="pt-BR"><head>
+    
+    
+    
+
+
+
+
+
+
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"><link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/regular/style.css"><link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/thin/style.css"><link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/bold/style.css"><link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.2/src/fill/style.css">
+
+
+<style>
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#282830;border-radius:99px}
+body{font-feature-settings:"ss01","cv01"}
+.toggle{width:38px;height:21px;border-radius:99px;background:#282830;position:relative;cursor:pointer;transition:.15s}
+.toggle.on{background:#8b5cf6}
+.toggle::after{content:"";position:absolute;top:2px;left:2px;width:17px;height:17px;border-radius:99px;background:#e9eaec;transition:.15s}
+.toggle.on::after{left:19px}
+.input-field{background:#0b0b0f;border:1px solid #282830;border-radius:8px;padding:8px 12px;font-size:14px;color:#e9eaec;outline:none;transition:border-color .15s}
+.input-field:focus{border-color:#8b5cf6}
+.card{background:#111116;border:1px solid #282830;border-radius:16px;overflow:hidden}
+</style><style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:Inter, sans-serif;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:"JetBrains Mono", monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.sticky{position:sticky}.top-0{top:0px}.top-16{top:4rem}.z-40{z-index:40}.mx-auto{margin-left:auto;margin-right:auto}.mb-4{margin-bottom:1rem}.mb-6{margin-bottom:1.5rem}.mt-1{margin-top:0.25rem}.mt-1\.5{margin-top:0.375rem}.flex{display:flex}.grid{display:grid}.hidden{display:none}.h-16{height:4rem}.h-7{height:1.75rem}.h-\[calc\(100vh-4rem\)\]{height:calc(100vh - 4rem)}.min-h-screen{min-height:100vh}.w-20{width:5rem}.w-32{width:8rem}.w-7{width:1.75rem}.w-\[240px\]{width:240px}.min-w-0{min-width:0px}.max-w-\[900px\]{max-width:900px}.flex-1{flex:1 1 0%}.shrink-0{flex-shrink:0}.cursor-pointer{cursor:pointer}.grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.flex-col{flex-direction:column}.items-center{align-items:center}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-1{gap:0.25rem}.gap-10{gap:2.5rem}.gap-2{gap:0.5rem}.gap-2\.5{gap:0.625rem}.gap-3{gap:0.75rem}.space-y-0\.5 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.125rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.125rem * var(--tw-space-y-reverse))}.space-y-1 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.25rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.25rem * var(--tw-space-y-reverse))}.space-y-12 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(3rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(3rem * var(--tw-space-y-reverse))}.space-y-4 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1rem * var(--tw-space-y-reverse))}.space-y-6 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.5rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.5rem * var(--tw-space-y-reverse))}.rounded{border-radius:0.25rem}.rounded-lg{border-radius:0.5rem}.rounded-md{border-radius:0.375rem}.rounded-xl{border-radius:0.75rem}.border{border-width:1px}.border-b{border-bottom-width:1px}.border-r{border-right-width:1px}.border-t{border-top-width:1px}.border-amber\/20{border-color:rgb(245 158 11 / 0.2)}.border-coral\/20{border-color:rgb(239 68 68 / 0.2)}.border-coral\/30{border-color:rgb(239 68 68 / 0.3)}.border-hair{--tw-border-opacity:1;border-color:rgb(40 40 48 / var(--tw-border-opacity, 1))}.border-hair\/50{border-color:rgb(40 40 48 / 0.5)}.bg-amber\/5{background-color:rgb(245 158 11 / 0.05)}.bg-coral{--tw-bg-opacity:1;background-color:rgb(239 68 68 / var(--tw-bg-opacity, 1))}.bg-coral\/5{background-color:rgb(239 68 68 / 0.05)}.bg-ink{--tw-bg-opacity:1;background-color:rgb(11 11 15 / var(--tw-bg-opacity, 1))}.bg-ink\/30{background-color:rgb(11 11 15 / 0.3)}.bg-panel{--tw-bg-opacity:1;background-color:rgb(17 17 22 / var(--tw-bg-opacity, 1))}.bg-raise{--tw-bg-opacity:1;background-color:rgb(24 24 31 / var(--tw-bg-opacity, 1))}.bg-violet{--tw-bg-opacity:1;background-color:rgb(139 92 246 / var(--tw-bg-opacity, 1))}.p-1{padding:0.25rem}.p-2{padding:0.5rem}.p-3{padding:0.75rem}.p-4{padding:1rem}.p-6{padding:1.5rem}.p-7{padding:1.75rem}.px-1\.5{padding-left:0.375rem;padding-right:0.375rem}.px-3{padding-left:0.75rem;padding-right:0.75rem}.px-3\.5{padding-left:0.875rem;padding-right:0.875rem}.px-4{padding-left:1rem;padding-right:1rem}.px-5{padding-left:1.25rem;padding-right:1.25rem}.px-7{padding-left:1.75rem;padding-right:1.75rem}.py-1{padding-top:0.25rem;padding-bottom:0.25rem}.py-1\.5{padding-top:0.375rem;padding-bottom:0.375rem}.py-2{padding-top:0.5rem;padding-bottom:0.5rem}.py-2\.5{padding-top:0.625rem;padding-bottom:0.625rem}.py-3{padding-top:0.75rem;padding-bottom:0.75rem}.pb-20{padding-bottom:5rem}.pt-4{padding-top:1rem}.text-center{text-align:center}.font-mono{font-family:"JetBrains Mono", monospace}.font-sans{font-family:Inter, sans-serif}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-\[11px\]{font-size:11px}.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:0.875rem;line-height:1.25rem}.text-xs{font-size:0.75rem;line-height:1rem}.font-bold{font-weight:700}.font-medium{font-weight:500}.font-semibold{font-weight:600}.uppercase{text-transform:uppercase}.leading-relaxed{line-height:1.625}.tracking-tight{letter-spacing:-0.025em}.tracking-widest{letter-spacing:0.1em}.text-amber{--tw-text-opacity:1;color:rgb(245 158 11 / var(--tw-text-opacity, 1))}.text-amber\/80{color:rgb(245 158 11 / 0.8)}.text-chalk{--tw-text-opacity:1;color:rgb(233 234 236 / var(--tw-text-opacity, 1))}.text-coral{--tw-text-opacity:1;color:rgb(239 68 68 / var(--tw-text-opacity, 1))}.text-coral\/70{color:rgb(239 68 68 / 0.7)}.text-mute{--tw-text-opacity:1;color:rgb(122 125 134 / var(--tw-text-opacity, 1))}.text-violet{--tw-text-opacity:1;color:rgb(139 92 246 / var(--tw-text-opacity, 1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.accent-violet{accent-color:#8b5cf6}.opacity-0{opacity:0}.shadow-lg{--tw-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-coral\/20{--tw-shadow-color:rgb(239 68 68 / 0.2);--tw-shadow:var(--tw-shadow-colored)}.transition{transition-property:color, background-color, border-color, fill, stroke, opacity, box-shadow, transform, filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.hover\:bg-coral\/10:hover{background-color:rgb(239 68 68 / 0.1)}.hover\:bg-coral\/90:hover{background-color:rgb(239 68 68 / 0.9)}.hover\:bg-hair:hover{--tw-bg-opacity:1;background-color:rgb(40 40 48 / var(--tw-bg-opacity, 1))}.hover\:bg-raise\/50:hover{background-color:rgb(24 24 31 / 0.5)}.hover\:bg-violet\/90:hover{background-color:rgb(139 92 246 / 0.9)}.hover\:text-chalk:hover{--tw-text-opacity:1;color:rgb(233 234 236 / var(--tw-text-opacity, 1))}.hover\:text-coral:hover{--tw-text-opacity:1;color:rgb(239 68 68 / var(--tw-text-opacity, 1))}.group:hover .group-hover\:text-chalk{--tw-text-opacity:1;color:rgb(233 234 236 / var(--tw-text-opacity, 1))}.group:hover .group-hover\:opacity-100{opacity:1}@media (min-width: 768px){.md\:flex{display:flex}.md\:p-10{padding:2.5rem}}@media (min-width: 1024px){.lg\:flex{display:flex}}</style></head>
+<body class="bg-ink text-chalk font-sans min-h-screen flex flex-col">
+
+<!-- Top bar -->
+<header class="flex items-center justify-between px-7 h-16 border-b border-hair bg-ink sticky top-0 z-40">
+  <div class="flex items-center gap-10">
+    <div class="flex items-center gap-2.5">
+      <div class="w-7 h-7 rounded-lg bg-violet flex items-center justify-center"><i class="ph-bold ph-lightning text-white text-base"></i></div>
+      <span class="text-lg font-semibold tracking-tight text-white">SOTE</span>
+    </div>
+    <nav class="hidden md:flex items-center gap-1 text-sm">
+      <a href="#" class="px-3.5 py-1.5 rounded-md text-mute hover:text-chalk transition">Fluxos</a>
+      <a href="#" class="px-3.5 py-1.5 rounded-md text-mute hover:text-chalk transition">Variáveis</a>
+      <a href="#" class="px-3.5 py-1.5 rounded-md text-mute hover:text-chalk transition">Analytics</a>
+      <a href="#" class="px-3.5 py-1.5 rounded-md bg-raise text-chalk font-medium">Configurações</a>
+    </nav>
+  </div>
+  <div class="flex items-center gap-3">
+    <button class="flex items-center gap-2 px-4 py-2 rounded-lg bg-violet hover:bg-violet/90 text-white text-sm font-medium transition">
+      Salvar Alterações
+    </button>
+  </div>
+</header>
+
+<div class="flex flex-1">
+  <!-- Sidebar -->
+  <aside class="hidden lg:flex w-[240px] shrink-0 border-r border-hair bg-panel flex-col sticky top-16 h-[calc(100vh-4rem)]">
+    <nav class="p-3 space-y-0.5 text-sm">
+      <a href="#" class="flex items-center justify-between px-3 py-2 rounded-lg text-mute hover:text-chalk hover:bg-raise/50 transition">
+        <span class="flex items-center gap-3"><i class="ph ph-squares-four text-base"></i> Fluxos</span>
+        <span class="text-[11px] font-mono bg-ink border border-hair rounded px-1.5">12</span>
+      </a>
+      <a href="#" class="flex items-center justify-between px-3 py-2 rounded-lg text-mute hover:text-chalk hover:bg-raise/50 transition">
+        <span class="flex items-center gap-3"><i class="ph ph-sliders-horizontal text-base"></i> Variáveis</span>
+        <span class="text-[11px] font-mono bg-ink border border-hair rounded px-1.5">5</span>
+      </a>
+      <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-mute hover:text-chalk hover:bg-raise/50 transition"><i class="ph ph-chart-line-up text-base"></i> Analytics</a>
+      <a href="#" class="flex items-center justify-between px-3 py-2 rounded-lg bg-raise text-chalk font-medium">
+        <span class="flex items-center gap-3"><i class="ph-fill ph-gear-six text-violet text-base"></i> Configurações</span>
+      </a>
+    </nav>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 min-w-0 bg-ink">
+    <div class="p-7 md:p-10 max-w-[900px] mx-auto space-y-12">
+      
+      <!-- Section Header -->
+      <section>
+        <h1 class="text-3xl font-semibold tracking-tight text-white">Configurações</h1>
+        <p class="text-mute mt-1.5 text-sm">Ajuste o comportamento global da engine SOTE e as variáveis de ambiente.</p>
+      </section>
+
+      <!-- 1. Comportamento Geral (Triggers) -->
+      <section class="space-y-4">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph-bold ph-key text-violet"></i>
+            <h2 class="text-sm font-bold uppercase tracking-widest text-mute">Comportamento Geral</h2>
+        </div>
+        <div class="card p-6 space-y-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-sm font-medium text-chalk">Modo de Escuta</h3>
+                    <p class="text-xs text-mute mt-1">Alternar entre ativação por tecla específica ou reconhecimento de texto.</p>
+                </div>
+                <div class="flex items-center bg-ink border border-hair rounded-lg p-1">
+                    <button class="px-3 py-1 text-xs font-medium bg-raise border border-hair rounded-md text-chalk">Tecla (Key)</button>
+                    <button class="px-3 py-1 text-xs font-medium text-mute hover:text-chalk transition">Exato (Exact Match)</button>
+                </div>
+            </div>
+            <div class="pt-4 border-t border-hair/50 flex items-center justify-between">
+                <div>
+                    <h3 class="text-sm font-medium text-chalk">Delay de Digitação</h3>
+                    <p class="text-xs text-mute mt-1">Tempo de espera em milissegundos para reconhecimento de gatilhos.</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <input type="range" class="w-32 accent-violet" min="50" max="500" step="10" value="150">
+                    <span class="font-mono text-xs text-violet">150ms</span>
+                </div>
+            </div>
+        </div>
+      </section>
+
+      <!-- 2. Área de Transferência -->
+      <section class="space-y-4">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph-bold ph-clipboard-text text-violet"></i>
+            <h2 class="text-sm font-bold uppercase tracking-widest text-mute">Área de Transferência</h2>
+        </div>
+        <div class="card p-6 space-y-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-sm font-medium text-chalk">Limite de Cache</h3>
+                    <p class="text-xs text-mute mt-1">Número máximo de itens salvos no histórico da extensão.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="number" class="input-field w-20 text-center" value="50">
+                    <span class="text-xs text-mute">itens</span>
+                </div>
+            </div>
+            <div class="pt-4 border-t border-hair/50 flex items-center justify-between">
+                <div>
+                    <h3 class="text-sm font-medium text-chalk">Gerenciar Memória</h3>
+                    <p class="text-xs text-mute mt-1">Visualize ou limpe o cache atual da área de transferência.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button class="px-3 py-1.5 rounded-lg border border-hair text-xs font-medium hover:bg-hair transition">Ver Cache</button>
+                    <button class="px-3 py-1.5 rounded-lg border border-coral/30 text-coral text-xs font-medium hover:bg-coral/10 transition">Limpar Tudo</button>
+                </div>
+            </div>
+        </div>
+      </section>
+
+      <!-- 3. Lista de Bloqueio (Blocklist) -->
+      <section class="space-y-4">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph-bold ph-prohibit text-violet"></i>
+            <h2 class="text-sm font-bold uppercase tracking-widest text-mute">Lista de Bloqueio (Blocklist)</h2>
+        </div>
+        <div class="card">
+            <div class="p-6 border-b border-hair">
+                <p class="text-xs text-mute mb-4 leading-relaxed">A engine de injeção verificará esta lista a cada carregamento para desativar a escuta de teclado nos domínios abaixo.</p>
+                <div class="flex gap-2">
+                    <input type="text" placeholder="ex: facebook.com ou accounts.google.com" class="input-field flex-1">
+                    <button class="px-4 py-2 bg-raise border border-hair rounded-lg text-xs font-bold hover:bg-hair transition">Adicionar</button>
+                </div>
+            </div>
+            <div class="p-2 space-y-1 bg-ink/30">
+                <div class="flex items-center justify-between px-4 py-2 hover:bg-raise/50 rounded-lg transition group">
+                    <span class="text-sm font-mono text-mute group-hover:text-chalk">bank.example.com</span>
+                    <button class="text-mute hover:text-coral opacity-0 group-hover:opacity-100 transition"><i class="ph-bold ph-x"></i></button>
+                </div>
+                <div class="flex items-center justify-between px-4 py-2 hover:bg-raise/50 rounded-lg transition group">
+                    <span class="text-sm font-mono text-mute group-hover:text-chalk">*.gov.br</span>
+                    <button class="text-mute hover:text-coral opacity-0 group-hover:opacity-100 transition"><i class="ph-bold ph-x"></i></button>
+                </div>
+            </div>
+        </div>
+      </section>
+
+      <!-- 4. Gatilho de Busca (Search Trigger) -->
+      <section class="space-y-4">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph-bold ph-magnifying-glass text-violet"></i>
+            <h2 class="text-sm font-bold uppercase tracking-widest text-mute">Gatilho de Busca</h2>
+        </div>
+        <div class="card p-6">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h3 class="text-sm font-medium text-chalk">Atalho Mestre</h3>
+                    <p class="text-xs text-mute mt-1">Sequência que abre a barra de pesquisa flutuante em qualquer site.</p>
+                </div>
+                <div class="flex items-center gap-2 bg-ink border border-hair rounded-lg px-3 py-1.5">
+                    <span class="text-xs font-mono text-violet font-bold">//</span>
+                    <i class="ph ph-pencil-simple text-mute text-xs cursor-pointer"></i>
+                </div>
+            </div>
+            <div class="p-4 rounded-xl bg-amber/5 border border-amber/20 flex gap-3">
+                <i class="ph ph-info text-amber"></i>
+                <p class="text-[11px] text-amber/80 leading-relaxed">Este atalho é reservado. O Bloco de Gatilho de fluxos individuais exibirá um alerta se você tentar usar uma sequência que comece com "//".</p>
+            </div>
+        </div>
+      </section>
+
+      <!-- 5. Backup e Sincronização -->
+      <section class="space-y-4">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph-bold ph-cloud-arrow-up text-violet"></i>
+            <h2 class="text-sm font-bold uppercase tracking-widest text-mute">Backup e Sincronização</h2>
+        </div>
+        <div class="card p-6 space-y-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-sm font-medium text-chalk">Cloud Sync</h3>
+                    <p class="text-xs text-mute mt-1">Usar <code>browser.storage.sync</code> para manter dados entre navegadores.</p>
+                </div>
+                <div class="toggle on"></div>
+            </div>
+            <div class="pt-4 border-t border-hair/50 grid grid-cols-2 gap-3">
+                <button class="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-raise border border-hair text-xs font-bold hover:bg-hair transition">
+                    <i class="ph-bold ph-export"></i> Exportar JSON
+                </button>
+                <button class="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-raise border border-hair text-xs font-bold hover:bg-hair transition">
+                    <i class="ph-bold ph-import"></i> Importar/Mesclar
+                </button>
+            </div>
+        </div>
+      </section>
+
+      <!-- 6. Danger Zone -->
+      <section class="space-y-4 pb-20">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph-bold ph-warning-octagon text-coral"></i>
+            <h2 class="text-sm font-bold uppercase tracking-widest text-coral/70">Danger Zone</h2>
+        </div>
+        <div class="card border-coral/20 bg-coral/5 p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-sm font-medium text-white">Reset de Fábrica</h3>
+                    <p class="text-xs text-coral/70 mt-1">Apaga todos os fluxos, variáveis e caches. Esta ação é irreversível.</p>
+                </div>
+                <button class="px-5 py-2.5 rounded-xl bg-coral text-white text-xs font-bold shadow-lg shadow-coral/20 hover:bg-coral/90 transition">Limpar Tudo</button>
+            </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+
+  <script>
+    (function() {
+      function blockEvent(e) {
+        if (!e) return false;
+        if (typeof e.preventDefault === 'function') e.preventDefault();
+        if (typeof e.stopPropagation === 'function') e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        return false;
+      }
+
+      // Block all anchor navigations (including http(s), mailto, tel, hash, fragments)
+      document.addEventListener('click', function(e) {
+        var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+        if (!a) return;
+        return blockEvent(e);
+      }, true);
+
+      // Neutralize programmatic navigation attempts
+      try { window.open = function() { return null }; } catch (_) {}
+      try {
+        var noop = function(){};
+        history.pushState = noop;
+        history.replaceState = noop;
+      } catch (_) {}
+      try {
+        if (window.location) {
+          window.location.assign = function(){};
+          window.location.replace = function(){};
+        }
+      } catch (_) {}
+    })();
+  </script>
+<script>(function() {
+  function _uxpResizeCharts() {
+    if (window.Plotly) {
+      document.querySelectorAll('.plot-container.plotly').forEach(function(pc) {
+        var gd = pc.parentElement;
+        if (!gd) return;
+        var rect = gd.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return;
+        try { window.Plotly.relayout(gd, { width: Math.round(rect.width), height: Math.round(rect.height) }); } catch(e) {}
+      });
+    }
+    if (window.ApexCharts && window.Apex && window.Apex._chartInstances) {
+      window.Apex._chartInstances.forEach(function(inst) {
+        try { (inst.chart || inst).updateOptions({}, false, false); } catch(e) {}
+      });
+    }
+    if (window.Chart) {
+      try { Object.values(window.Chart.instances || {}).forEach(function(c) { c.resize(); }); } catch(e) {}
+    }
+  }
+
+  window.addEventListener('load', function() {
+    setTimeout(function() { _uxpResizeCharts(); setTimeout(_uxpResizeCharts, 500); }, 300);
+    try {
+      var _lastW = 0, _lastH = 0, _timer = 0;
+      new ResizeObserver(function() {
+        var w = document.documentElement.clientWidth;
+        var h = document.documentElement.clientHeight;
+        if (w === _lastW && h === _lastH) return;
+        _lastW = w; _lastH = h;
+        clearTimeout(_timer);
+        _timer = setTimeout(_uxpResizeCharts, 150);
+      }).observe(document.documentElement);
+    } catch(e) {}
+  });
+})();</script>
+</body></html>

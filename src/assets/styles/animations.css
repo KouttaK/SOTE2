@@ -1,0 +1,172 @@
+/*
+ * animations.css — SOTE Animations & Transitions
+ *
+ * Extraído das ref_pages/SOTE/*.htm.
+ *
+ * Fontes de animações identificadas:
+ *   1. Tailwind transition-colors / transition-opacity (todas as páginas)
+ *   2. Font Awesome 6 keyframes (todas as páginas — via FA JS runtime)
+ *   3. animate-pulse do Tailwind (palletcomand.htm — cursor piscante)
+ *
+ * NOTA: Os keyframes do Font Awesome (fa-beat, fa-bounce, fa-fade, etc.)
+ * são carregados pela biblioteca em runtime e NÃO precisam ser replicados aqui.
+ * Apenas as animações usadas diretamente no HTML das ref_pages são incluídas.
+ */
+
+/* --------------------------------------------------------------------------
+   Transition utilities — extraídas de transition-colors e transition-opacity
+   observadas em TODOS os arquivos .htm
+   -------------------------------------------------------------------------- */
+
+.transition-colors {
+  transition-property: color, background-color, border-color,
+    text-decoration-color, fill, stroke;
+  transition-timing-function: var(--transition-easing);
+  transition-duration: var(--transition-duration);
+}
+
+.transition-opacity {
+  transition-property: opacity;
+  transition-timing-function: var(--transition-easing);
+  transition-duration: var(--transition-duration);
+}
+
+/* --------------------------------------------------------------------------
+   @keyframes pulse — extraído de animate-pulse do Tailwind
+   Usado em: palletcomand.htm — cursor piscante na command palette
+   Classe: .animate-pulse (span.w-0.5.h-5.bg-white.ml-0.5.animate-pulse)
+   -------------------------------------------------------------------------- */
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* --------------------------------------------------------------------------
+   Animações de entrada/saída de UI — usadas pelo animateIn / animateOut
+   em dom.ts. Derivadas dos padrões de transição das ref_pages.
+
+   Todas as telas usam fade + slide como padrão de reveal de modais/overlays.
+   -------------------------------------------------------------------------- */
+
+/* Fade in — usado para revelar overlays (command palette, modals) */
+@keyframes sote-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Fade out — usado para ocultar overlays */
+@keyframes sote-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Slide up + fade — entrada do modal command palette (palletcomand.htm) */
+@keyframes sote-slide-up-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) translateX(-50%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) translateX(-50%);
+  }
+}
+
+/* Slide down + fade — saída do modal command palette */
+@keyframes sote-slide-up-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) translateX(-50%);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) translateX(-50%);
+  }
+}
+
+/* Scale in — entrada de dropdowns e menus contextuais */
+@keyframes sote-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Scale out — saída de dropdowns */
+@keyframes sote-scale-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Classes utilitárias para animações — usadas por animateIn / animateOut
+   -------------------------------------------------------------------------- */
+
+.sote-anim-fade-in {
+  animation: sote-fade-in 150ms var(--transition-easing) both;
+}
+
+.sote-anim-fade-out {
+  animation: sote-fade-out 150ms var(--transition-easing) both;
+}
+
+.sote-anim-slide-up-in {
+  animation: sote-slide-up-in 180ms var(--transition-easing) both;
+}
+
+.sote-anim-slide-up-out {
+  animation: sote-slide-up-out 150ms var(--transition-easing) both;
+}
+
+.sote-anim-scale-in {
+  animation: sote-scale-in 150ms var(--transition-easing) both;
+}
+
+.sote-anim-scale-out {
+  animation: sote-scale-out 120ms var(--transition-easing) both;
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion — respeita prefers-reduced-motion (padrão das ref_pages)
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse,
+  .sote-anim-fade-in,
+  .sote-anim-fade-out,
+  .sote-anim-slide-up-in,
+  .sote-anim-slide-up-out,
+  .sote-anim-scale-in,
+  .sote-anim-scale-out {
+    animation-duration: 1ms;
+    animation-iteration-count: 1;
+  }
+
+  .transition-colors,
+  .transition-opacity {
+    transition-duration: 0s;
+  }
+}

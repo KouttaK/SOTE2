@@ -1,0 +1,821 @@
+/*
+ * popup.css — SOTE Popup Styles
+ * Tema escuro alinhado com o design system do Dashboard.
+ * Importa variables.css para acesso direto aos tokens (--color-panel, --color-raise, etc.),
+ * garantindo consistência visual (sem hexadecimais hardcoded).
+ */
+
+@import url('../assets/styles/variables.css');
+
+/* ── Reset base ──────────────────────────────────────────────────────────── */
+
+*,
+::before,
+::after {
+  box-sizing: border-box;
+  border-width: 0;
+  border-style: solid;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  font-family: var(--font-family-base);
+  line-height: var(--line-height-base);
+  -webkit-text-size-adjust: 100%;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 100%;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+}
+
+input {
+  font-family: inherit;
+  font-size: 100%;
+  color: inherit;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0;
+  margin: 0;
+}
+
+a { color: inherit; text-decoration: none; }
+p, span, div { margin: 0; }
+ol, ul { list-style: none; margin: 0; padding: 0; }
+
+svg { display: block; }
+
+/* ── Popup card container ─────────────────────────────────────────────────── */
+#popup-card {
+  width: var(--popup-width);
+  background-color: var(--color-ink);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-2xl);
+  border: 1px solid var(--color-hair);
+  overflow: hidden;
+}
+
+/* ── Header — Variação B (duas linhas) ───────────────────────────────────── */
+#popup-header {
+  border-bottom: 1px solid var(--color-hair);
+}
+
+/* Linha 1: Marca + Controles */
+.header-row-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px var(--spacing-3) 6px;
+}
+
+/* Linha 2: Status */
+.header-row-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px var(--spacing-3) 8px;
+  min-height: 22px;
+}
+
+/* ── Brand (logo + name) ─────────────────────────────────────────────────── */
+.popup-brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.popup-logo-mark {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-violet, #8b5cf6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-white, #ffffff);
+  flex-shrink: 0;
+}
+
+.popup-logo-mark svg {
+  width: 12px;
+  height: 12px;
+}
+
+.popup-brand-name {
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.4px;
+  color: var(--color-white);
+  line-height: 1;
+}
+
+/* ── Header controls (snooze + toggle) ───────────────────────────────────── */
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ── Status line (linha 2) ────────────────────────────────────────────────── */
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background-color: var(--color-chalk, #e9eaec);
+  transition: background-color var(--transition-duration) var(--transition-easing);
+}
+
+.status-dot.active {
+  background-color: var(--color-lime, #bef264);
+  box-shadow: 0 0 6px rgba(190, 242, 100, 0.45);
+}
+
+.status-dot.paused {
+  background-color: var(--color-amber, #f59e0b);
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.45);
+}
+
+.status-dot.blocked {
+  background-color: var(--color-coral, #ef4444);
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.45);
+}
+
+#status-state {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-chalk);
+  line-height: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.status-separator {
+  color: var(--color-mute);
+  opacity: 0.5;
+  font-size: 10px;
+  line-height: 1;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+#status-domain {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--color-mute);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1;
+  min-width: 0;
+}
+
+/* ── Status Banner inline (Pausado / Bloqueado) ──────────────────────────── */
+/* O elemento #status-banner é injetado pelo JS; não existe no DOM em estado Ativo */
+#status-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+  padding: 7px var(--spacing-3);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  line-height: 1.3;
+  border-bottom: 1px solid transparent;
+}
+
+#status-banner.status-banner--paused {
+  background-color: rgba(245, 158, 11, 0.10);
+  border-bottom-color: rgba(245, 158, 11, 0.20);
+  color: var(--color-amber, #f59e0b);
+}
+
+#status-banner.status-banner--blocked {
+  background-color: rgba(239, 68, 68, 0.10);
+  border-bottom-color: rgba(239, 68, 68, 0.20);
+  color: var(--color-coral, #ef4444);
+}
+
+#status-banner .banner-text {
+  flex: 1;
+  min-width: 0;
+}
+
+#status-banner .banner-cancel {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: inherit;
+  opacity: 0.85;
+  cursor: pointer;
+  flex-shrink: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  padding: 0;
+  background: none;
+  border: none;
+}
+
+#status-banner .banner-cancel:hover {
+  opacity: 1;
+}
+
+/* ── Snooze dropdown ─────────────────────────────────────────────────────── */
+.snooze-dropdown-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.snooze-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 180px;
+  background-color: var(--color-raise);
+  border: 1px solid var(--color-hair);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xl);
+  padding: var(--spacing-1);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 100;
+}
+
+.snooze-menu[hidden] {
+  display: none;
+}
+
+.snooze-menu-header {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-mute);
+  padding: 4px 6px 2px;
+}
+
+.snooze-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--color-chalk);
+  font-size: var(--font-size-xs);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color var(--transition-duration) var(--transition-easing);
+}
+
+.snooze-option:hover {
+  background-color: var(--color-panel);
+  color: var(--color-white);
+}
+
+/* Divisor visual dentro do snooze menu */
+.snooze-menu-divider {
+  height: 1px;
+  background-color: var(--color-hair);
+  margin: 3px 4px;
+  flex-shrink: 0;
+}
+
+/* Opção "Bloquear este site" — destaque sutil de alerta */
+.snooze-option--block {
+  color: var(--color-coral, #ef4444);
+}
+
+.snooze-option--block:hover {
+  background-color: rgba(239, 68, 68, 0.12);
+  color: var(--color-coral, #ef4444);
+}
+
+/* ── Icon buttons ─────────────────────────────────────────────────────────── */
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: var(--radius-sm, 4px);
+  border: 1px solid transparent;
+  background-color: transparent;
+  color: var(--color-mute);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--transition-duration) var(--transition-easing);
+}
+
+.icon-btn:hover {
+  background-color: var(--color-panel);
+  border-color: var(--color-hair);
+  color: var(--color-white);
+}
+
+.icon-btn.is-active {
+  color: var(--color-white);
+  background-color: var(--color-panel);
+  border-color: var(--color-hair);
+}
+
+.icon-btn svg {
+  width: 14px;
+  height: 14px;
+  max-width: 14px;
+  max-height: 14px;
+  flex-shrink: 0;
+}
+
+/* ── Master Toggle ────────────────────────────────────────────────────────── */
+.popup-toggle-track {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  width: 30px;
+  height: 17px;
+  background-color: var(--color-hair-hover, #3a3a44);
+  border-radius: var(--radius-full, 9999px);
+  border: 1px solid var(--color-hair);
+  transition: background-color var(--transition-duration) var(--transition-easing),
+              border-color var(--transition-duration) var(--transition-easing);
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.popup-toggle-track:focus-visible {
+  outline: 2px solid var(--color-violet);
+  outline-offset: 1px;
+}
+
+.popup-toggle-track.is-on {
+  background-color: var(--color-violet, #8b5cf6);
+  border-color: var(--color-violet, #8b5cf6);
+}
+
+.popup-toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 11px;
+  height: 11px;
+  background-color: var(--color-white, #ffffff);
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform var(--transition-duration) var(--transition-easing);
+}
+
+.popup-toggle-track.is-on .popup-toggle-knob {
+  transform: translateX(13px);
+}
+
+/* ── Quick Actions ───────────────────────────────────────────────────────── */
+#popup-quick-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-2);
+}
+
+.quick-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-xl);
+  border: 1px dashed var(--color-hair);
+  background-color: transparent;
+  color: var(--color-chalk);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--transition-duration) var(--transition-easing),
+              border-color var(--transition-duration) var(--transition-easing),
+              color var(--transition-duration) var(--transition-easing);
+}
+
+.quick-action-btn:hover {
+  background-color: var(--color-panel);
+  border-color: var(--color-hair-hover);
+  color: var(--color-white);
+}
+
+.quick-action-btn:active {
+  background-color: var(--color-raise);
+}
+
+/* ── Body ─────────────────────────────────────────────────────────────────── */
+#popup-body {
+  padding: var(--spacing-3) var(--spacing-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+/* ── Section label ─────────────────────────────────────────────────────────── */
+.popup-section-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-mute);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-widest);
+  margin-bottom: var(--spacing-2);
+}
+
+/* ── Search bar ───────────────────────────────────────────────────────────── */
+#popup-search .search-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  border: 1px solid var(--color-hair);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-2) var(--spacing-3);
+  background-color: var(--color-panel);
+}
+
+#popup-search svg {
+  color: var(--color-mute);
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+#popup-search input {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-chalk);
+}
+
+#popup-search input::placeholder {
+  color: var(--color-mute);
+}
+
+#popup-search kbd {
+  font-size: var(--font-size-xs);
+  color: var(--color-mute);
+  border: 1px solid var(--color-hair);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-0-5) var(--spacing-1);
+  background-color: var(--color-ink);
+  flex-shrink: 0;
+  font-family: var(--font-family-base);
+}
+
+/* ── Recent snippets ──────────────────────────────────────────────────────── */
+#popup-recent .snippets-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1-5);
+}
+
+.snippet-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-hair);
+  background-color: var(--color-panel);
+  transition: background-color var(--transition-duration) var(--transition-easing),
+              border-color var(--transition-duration) var(--transition-easing);
+  cursor: default;
+}
+
+.snippet-row:hover {
+  border-color: var(--color-hair);
+  background-color: var(--color-raise);
+}
+
+.snippet-icon-box {
+  width: 26px;
+  height: 26px;
+  background-color: var(--color-hair);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.snippet-icon-box svg {
+  color: var(--color-chalk);
+  width: 13px;
+  height: 13px;
+}
+
+.snippet-text-block {
+  flex: 1;
+  min-width: 0;
+}
+
+.snippet-shortcut {
+  font-size: var(--font-size-sm);
+  color: var(--color-chalk);
+  margin: 0;
+}
+
+.snippet-preview {
+  font-size: var(--font-size-xs);
+  color: var(--color-mute);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0;
+}
+
+.snippet-copy-btn {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-hair);
+  background-color: var(--color-raise);
+  color: var(--color-mute);
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background-color var(--transition-duration) var(--transition-easing),
+              color var(--transition-duration) var(--transition-easing);
+}
+
+.snippet-copy-btn:hover {
+  color: var(--color-white);
+  background-color: var(--color-hair);
+}
+
+.snippet-copy-btn svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* ── Footer ───────────────────────────────────────────────────────────────── */
+#popup-footer {
+  padding: var(--spacing-2) var(--spacing-4) var(--spacing-4);
+  border-top: 1px solid var(--color-hair);
+  margin-top: var(--spacing-1);
+}
+
+#btn-open-dashboard {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  width: 100%;
+  padding: var(--spacing-2) 0;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-hair);
+  background-color: var(--color-panel);
+  transition: background-color var(--transition-duration) var(--transition-easing),
+              border-color var(--transition-duration) var(--transition-easing);
+  cursor: pointer;
+}
+
+#btn-open-dashboard:hover {
+  background-color: var(--color-raise);
+  border-color: var(--color-hair-hover);
+}
+
+#btn-open-dashboard span {
+  font-size: var(--font-size-sm);
+  color: var(--color-chalk);
+}
+
+#btn-open-dashboard svg {
+  color: var(--color-mute);
+  width: 12px;
+  height: 12px;
+}
+
+/* ── Secondary View: Quick Variables ─────────────────────────────────────── */
+#view-variables {
+  display: flex;
+  flex-direction: column;
+}
+
+#view-variables[hidden] {
+  display: none !important;
+}
+
+.vars-view-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px var(--spacing-3);
+  border-bottom: 1px solid var(--color-hair);
+}
+
+.vars-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  color: var(--color-mute);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-duration) var(--transition-easing);
+}
+
+.vars-back-btn:hover {
+  background-color: var(--color-panel);
+  color: var(--color-white);
+}
+
+.vars-back-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+.vars-view-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-white);
+  letter-spacing: 0.3px;
+}
+
+.vars-view-body {
+  padding: var(--spacing-3) var(--spacing-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.vars-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.quick-var-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: var(--spacing-2) var(--spacing-2-5);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-hair);
+  background-color: var(--color-panel);
+  transition: border-color var(--transition-duration) var(--transition-easing);
+}
+
+.quick-var-item:hover,
+.quick-var-item:focus-within {
+  border-color: var(--color-hair-hover);
+}
+
+.quick-var-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.quick-var-key {
+  font-family: var(--font-family-mono, monospace);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-violet-soft, #c4b5fd);
+  background-color: var(--color-violet-15, rgba(139, 92, 246, 0.15));
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.quick-var-desc {
+  font-size: var(--font-size-xs);
+  color: var(--color-mute);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 170px;
+}
+
+.quick-var-input {
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-hair);
+  background-color: var(--color-raise);
+  color: var(--color-chalk);
+  font-size: var(--font-size-xs);
+  transition: border-color var(--transition-duration) var(--transition-easing),
+              outline var(--transition-duration) var(--transition-easing);
+}
+
+.quick-var-input:focus {
+  border-color: var(--color-violet);
+  outline: 2px solid var(--color-violet-15);
+}
+
+.vars-empty {
+  font-size: var(--font-size-xs);
+  color: var(--color-mute);
+  padding: var(--spacing-3) var(--spacing-1);
+  text-align: center;
+}
+
+.vars-view-footer {
+  padding: var(--spacing-2) var(--spacing-4) var(--spacing-4);
+  border-top: 1px solid var(--color-hair);
+  margin-top: auto;
+}
+
+#btn-open-variables-dash {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  width: 100%;
+  padding: var(--spacing-2) 0;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-hair);
+  background-color: var(--color-panel);
+  transition: background-color var(--transition-duration) var(--transition-easing),
+              border-color var(--transition-duration) var(--transition-easing);
+  cursor: pointer;
+}
+
+#btn-open-variables-dash:hover {
+  background-color: var(--color-raise);
+  border-color: var(--color-hair-hover);
+}
+
+#btn-open-variables-dash span {
+  font-size: var(--font-size-sm);
+  color: var(--color-chalk);
+}
+
+#btn-open-variables-dash svg {
+  color: var(--color-mute);
+  width: 12px;
+  height: 12px;
+}
+
+/* ── Mobile Ergonomics & Touch Targets (Gecko Android v142+) ──────────────── */
+@media (pointer: coarse), (max-width: 600px) {
+  .quick-action-btn {
+    min-height: 44px;
+    padding: 10px 14px;
+  }
+
+  #btn-open-dashboard,
+  #btn-open-variables-dash {
+    min-height: 44px;
+    padding: 10px 0;
+  }
+
+  .snippet-row {
+    min-height: 48px;
+    padding: 8px 12px;
+  }
+
+  .snippet-copy-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .vars-back-btn {
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+
+  .snooze-option {
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+
+  .icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .quick-var-input {
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+}
+

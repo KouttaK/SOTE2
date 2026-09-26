@@ -1,0 +1,66 @@
+src/background/index.ts:132: // Forms have their own key/broadcast, same reasoning as Variables:
+src/background/index.ts:134: // settings/flows re-fetch, but content scripts DO need fresh Forms for
+src/content/engine/ActionContentResolver.ts:11: * Flow expansion. Extracted here, unchanged, so Forms' per-field insertion
+src/content/engine/SearchTriggerDetector.test.ts:5: it('should match Forms with empty sites in domain scope (global fallback)', () => {
+src/content/engine/SearchTriggerDetector.test.ts:19: expect(result.results[0].kind).toBe('form');
+src/content/engine/SearchTriggerDetector.test.ts:24: it('should NOT match Forms if hostname is not in the sites list (restricted scope)', () => {
+src/content/engine/SearchTriggerDetector.ts:13: *   2. Given that scope + query, builds and ranks the matching Forms/Flows
+src/content/engine/SearchTriggerDetector.ts:191: // ---- Forms ----
+src/content/palette/CommandPalette.css:223: /* Forms/Flows type badge (spec §4.3/§7 — "Formulário" vs "Atalho") */
+src/content/palette/CommandPalette.ts:171: this.searchInput.placeholder = 'Search forms or flows by name, shortcut, or content...';
+src/content/palette/CommandPalette.ts:211: kind: 'form-field' as const,
+src/content/palette/CommandPalette.ts:235: label: 'No Forms for this site — search all sites',
+src/content/palette/CommandPalette.ts:261: No matching forms or flows found.
+src/content/palette/CommandPalette.ts:345: // form-field, matched by name (or browse mode)
+src/content/palette/CommandPalette.ts:418: if (item.kind === 'form') {
+src/content/search/SearchPopup.test.ts:37: expect(emptyState?.textContent).toContain('Este form ainda não tem campos.');
+src/content/search/SearchPopup.ts:118: kind: 'form-field' as const,
+src/content/search/SearchPopup.ts:150: emptyState.textContent = 'Este form ainda não tem campos.';
+src/content/search/SearchPopup.ts:175: typeBadge.className = 'sp-badge ' + (item.kind === 'flow' ? 'sp-badge-flow' : 'sp-badge-form');
+src/content/search/SearchPopup.ts:230: if (item.kind === 'form') {
+src/content/search/SearchPopup.ts:233: if (item.kind === 'form-field') {
+src/content/search/SearchPopup.ts:257: if (item.kind === 'form') {
+src/content/search/SearchPopup.ts:409: .sp-badge-form { color: #93c5fd; border-color: #1d4ed8; }
+src/content.ts:38: // Forms ("Formulários") — per-site fill-in profiles, consumed by the
+src/content.ts:110: *    doesn't see into form control values, so this has to be read
+src/content.ts:162: // see ActionContentResolver.ts (also used by Forms' field insertion).
+src/content.ts:332: forms,
+src/dashboard/components/tokens/modals/ChoiceModal.ts:127: input.className = 'form-input';
+src/dashboard/components/tokens/modals/RandomModal.ts:147: input.className = 'form-input';
+src/dashboard/pages/editor.css:883: FORM ELEMENTS (inside blocks)
+src/dashboard/pages/editor.ts:1395: // preventDefault/stopPropagation: este chip não é um form control,
+src/dashboard/pages/forms.css:6: * primitives (form-group/btn-secondary/modal-*) rather than a global
+src/dashboard/pages/forms.css:10: #page-forms {
+src/dashboard/pages/forms.css:225: .frm-form {
+src/dashboard/pages/forms.css:232: .frm-form-header {
+src/dashboard/pages/forms.css:236: .frm-form-header h2 { color: var(--color-white); margin: 0; font-size: 1.25rem; }
+src/dashboard/pages/forms.test.ts:34: it('validates form name requirement before saving (empty name)', async () => {
+src/dashboard/pages/forms.test.ts:64: it('creates and saves a valid form successfully', async () => {
+src/dashboard/pages/forms.test.ts:82: it('edits an existing form successfully', async () => {
+src/dashboard/pages/forms.ts:67: this.el.id = 'page-forms';
+src/dashboard/pages/forms.ts:100: // already swapped its placeholder to the forms copy before this page
+src/dashboard/pages/forms.ts:219: this.activeForm = form;
+src/dashboard/pages/forms.ts:285: container.querySelector('#btn-save-form')?.addEventListener('click', () => this.handleSave());
+src/dashboard/pages/forms.ts:286: container.querySelector('#btn-delete-form')?.addEventListener('click', () => {
+src/dashboard/pages/settings.css:117: /* Common form rows */
+src/dashboard/pages/tokens.css:409: /* ── Token modal form fields (Choice / Input / Date / Clipboard) ─────────
+src/dashboard/pages/tokens.css:413: default light-theme form styling — jarringly out of place against the
+src/dashboard/shell.ts:104: * reach the same 4 core sections; Formulários stays sidebar-only since
+src/shared/i18n/index.ts:425: // === FORMS ("Formulários") ===
+src/shared/i18n/index.ts:1224: // === FORMULÁRIOS ===
+src/shared/storage/defaults.ts:25: * Pre-installed Forms shown on first run (empty-state / onboarding), so the
+src/shared/storage/defaults.ts:26: * "Formulários" page never opens completely blank. Covers the two most
+src/shared/storage/defaults.ts:27: * likely usage patterns: a personal, high-frequency form ("Envio de
+src/shared/storage/defaults.ts:28: * Currículo") and a support/ticketing form ("Abertura de Protocolo").
+src/shared/storage/defaults.ts:38: id: 'example-form-envio-curriculo',
+src/shared/storage/defaults.ts:80: id: 'example-form-abertura-protocolo',
+src/shared/storage/helpers.ts:95: *   - `*google*`                      — free-form wildcard
+src/shared/storage/StorageService.ts:118: // `forms` storage key itself being entirely absent (never
+src/shared/storage/StorageService.ts:238: queue: 'flows' | 'variables' | 'folders' | 'forms',
+src/shared/storage/StorageService.ts:440: // Forms ("Formulários" — per-site fill-in profiles)
+src/shared/types/index.ts:227: /** Free-form label, e.g. "Assunto". */
+src/shared/types/index.ts:281: /** Whether Flows (not just Forms) are included in the search results. Default: true. */
+src/shared/types/index.ts:283: /** Prefix that restricts results to Forms valid for the current site + all Flows. Default: "//". */
+src/shared/utils/dom.ts:204: * greeting the field already contains. Reads `.value` for native form
+src/shared/utils/importValidator.ts:164: // Forms
+src/shared/utils/sanitizeHtml.ts:71: FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form'],

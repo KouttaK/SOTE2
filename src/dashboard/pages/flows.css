@@ -1,0 +1,464 @@
+/*
+ * src/dashboard/pages/flows.css — Flows Page Styles
+ * Extraído de ref_pages/dashboard.htm — paleta ink/chalk/violet
+ */
+
+/* ── Header / Title ──────────────────────────────────────────────────────── */
+
+.flows-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+  flex-wrap: wrap;
+}
+
+.flows-title {
+  color: var(--color-white);
+  font-size: var(--font-size-2xl);
+  font-weight: 600;
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.flows-subtitle {
+  color: var(--color-mute);
+  font-size: var(--font-size-sm);
+  margin-top: var(--spacing-1);
+}
+
+.flows-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.flows-header-actions .dash-header-btn svg { width: 0.75rem; height: 0.75rem; }
+.flows-header-actions .dash-header-btn:last-child svg:last-child { display: none; }
+
+#flows-refresh-btn.is-spinning svg { animation: flows-spin 0.6s linear; }
+@keyframes flows-spin { to { transform: rotate(360deg); } }
+
+/* ── Stats Row ──────────────────────────────────────────────────────────── */
+
+.flows-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-4);
+  margin-bottom: var(--spacing-4);
+}
+
+@media (min-width: 640px) {
+  .flows-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+.stat-card {
+  background-color: var(--color-panel);
+  border: 1px solid var(--color-hair);
+  border-radius: var(--radius-2xl);
+  padding: var(--spacing-5);
+}
+
+.stat-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-mute);
+}
+
+.stat-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-1-5);
+  margin-top: var(--spacing-1);
+}
+
+.stat-value {
+  font-size: var(--font-size-2xl);
+  font-weight: 600;
+  color: var(--color-white);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.stat-value-mono { font-family: var(--font-family-mono); font-size: var(--font-size-xl); }
+
+.stat-sub {
+  font-size: var(--font-size-xs);
+  color: var(--color-mute);
+  margin-top: var(--spacing-1);
+}
+
+/* ── Filters Dropdown ───────────────────────────────────────────────────── */
+
+.flows-filters-wrap {
+  position: relative;
+}
+
+.flows-filters-dropdown {
+  position: absolute;
+  top: calc(100% + var(--spacing-2));
+  right: 0;
+  z-index: 50;
+  min-width: 220px;
+  background-color: var(--color-panel);
+  border: 1px solid var(--color-hair);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  padding: var(--spacing-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.flows-filters-section-title {
+  font-size: var(--font-size-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wider);
+  color: var(--color-mute);
+  margin-bottom: var(--spacing-1);
+}
+
+.flows-filter-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-1-5) var(--spacing-2);
+  border-radius: var(--radius-md);
+  color: var(--color-chalk);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  transition: background-color var(--transition-fast);
+}
+
+.flows-filter-option:hover {
+  background-color: var(--color-raise);
+}
+
+.flows-filter-option.is-selected {
+  color: var(--color-white);
+  font-weight: 600;
+  background-color: color-mix(in srgb, var(--color-violet) 20%, transparent);
+}
+
+.flows-filter-divider {
+  height: 1px;
+  background-color: var(--color-hair);
+  margin: var(--spacing-1) 0;
+}
+
+/* ── Folders (Category Tabs) ────────────────────────────────────────────── */
+
+.flows-folders {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  overflow-x: auto;
+  padding-bottom: var(--spacing-1);
+}
+
+.folder-tab {
+  padding: var(--spacing-1-5) var(--spacing-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid transparent;
+  font-size: var(--font-size-sm);
+  color: var(--color-mute);
+  cursor: pointer;
+  transition: all var(--transition-duration) var(--transition-easing);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  background: transparent;
+}
+
+.folder-tab:hover { background-color: var(--color-raise); color: var(--color-chalk); }
+
+.folder-tab.is-active {
+  background-color: var(--color-raise);
+  border-color: var(--color-hair-hover);
+  color: var(--color-chalk);
+}
+
+.folder-count { margin-left: var(--spacing-1-5); font-size: var(--font-size-xs); color: var(--color-mute); }
+
+.folder-add-btn {
+  padding: var(--spacing-1-5) var(--spacing-3);
+  color: var(--color-mute);
+  cursor: pointer;
+  border-radius: var(--radius-lg);
+}
+.folder-add-btn:hover { color: var(--color-chalk); background-color: var(--color-raise); }
+.folder-add-btn svg { width: 0.875rem; height: 0.875rem; }
+
+/* ── Table ──────────────────────────────────────────────────────────────── */
+
+.flows-table-wrap {
+  background-color: var(--color-panel);
+  border: 1px solid var(--color-hair);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+}
+
+.flows-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  border: 1px solid var(--color-hair-hover);
+  border-radius: 4px;
+  background-color: var(--color-raise);
+  cursor: pointer;
+  display: inline-grid;
+  place-content: center;
+  margin: 0;
+  transition: all 0.15s;
+}
+.flows-checkbox:hover {
+  border-color: var(--color-violet);
+}
+.flows-checkbox:checked {
+  background-color: var(--color-violet);
+  border-color: var(--color-violet);
+}
+.flows-checkbox:checked::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background-color: white;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+.flows-checkbox:indeterminate {
+  background-color: var(--color-violet);
+  border-color: var(--color-violet);
+}
+.flows-checkbox:indeterminate::before {
+  content: "";
+  width: 8px;
+  height: 2px;
+  background-color: white;
+}
+
+.flows-th {
+  display: grid;
+  grid-template-columns: 2rem 3rem 8rem 8rem 1fr 8rem 11rem 5rem;
+  gap: var(--spacing-4);
+  padding: var(--spacing-3) var(--spacing-5);
+  border-bottom: 1px solid var(--color-hair);
+  background-color: var(--color-raise-50);
+}
+
+.th-col {
+  font-size: var(--font-size-2xs);
+  color: var(--color-mute);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-widest);
+  display: flex;
+  align-items: center;
+}
+
+.flows-row {
+  display: grid;
+  grid-template-columns: 2rem 3rem 8rem 8rem 1fr 8rem 11rem 5rem;
+  gap: var(--spacing-4);
+  padding: var(--spacing-4) var(--spacing-5);
+  border-bottom: 1px solid var(--color-hair);
+  align-items: center;
+  transition: background-color var(--transition-duration) var(--transition-easing);
+}
+
+.flows-row:last-child { border-bottom: none; }
+.flows-row:hover { background-color: var(--color-raise-50); }
+
+.row-created {
+  font-size: var(--font-size-sm);
+  color: var(--color-mute);
+  white-space: nowrap;
+}
+
+/* Toggle */
+.row-toggle {
+  position: relative;
+  width: 2.25rem;
+  height: 1.25rem;
+  background-color: var(--color-hair-hover);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background-color 200ms;
+}
+.row-toggle.is-on { background-color: var(--color-violet); }
+.row-toggle.is-on::after { left: 1.125rem; }
+.row-toggle::after {
+  content: '';
+  position: absolute;
+  top: 0.125rem;
+  left: 0.125rem;
+  width: 1rem;
+  height: 1rem;
+  background-color: var(--color-white);
+  border-radius: 50%;
+  transition: left 200ms;
+}
+
+/* Shortcut pill */
+.row-shortcut {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1-5);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  color: var(--color-chalk);
+}
+
+/* Category / Tags pill */
+.row-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1-5);
+  padding: 0.125rem var(--spacing-2-5);
+  border-radius: var(--radius-full);
+  background-color: var(--color-raise);
+  border: 1px solid var(--color-hair);
+  font-size: var(--font-size-xs);
+  color: var(--color-mute);
+}
+.row-tag svg { width: 0.55rem; height: 0.55rem; color: var(--color-mute); }
+
+/* Preview */
+.row-preview {
+  font-size: var(--font-size-sm);
+  color: var(--color-mute);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row-preview-highlight {
+  color: var(--color-chalk);
+  background-color: var(--color-violet-15);
+  padding: 0 0.125rem;
+  border-radius: 0.125rem;
+}
+
+.row-preview-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-1-5);
+  padding: 0.25rem var(--spacing-3);
+  border-radius: var(--radius-full);
+  background-color: var(--color-raise);
+  border: 1px solid var(--color-hair);
+  color: var(--color-chalk);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms ease;
+  line-height: 1;
+  white-space: nowrap;
+}
+.row-preview-btn:hover {
+  background-color: var(--color-hair-hover);
+  border-color: var(--color-violet);
+  color: var(--color-white);
+  box-shadow: 0 0 0 1px var(--color-violet-40);
+}
+.row-preview-btn svg {
+  width: 0.75rem;
+  height: 0.75rem;
+  color: var(--color-violet);
+  flex-shrink: 0;
+}
+
+/* Usage */
+.row-usage {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+.usage-track {
+  width: 3rem;
+  flex-shrink: 0;
+  background-color: var(--color-raise);
+  border-radius: var(--radius-full);
+  height: 0.3rem;
+  overflow: hidden;
+}
+.usage-fill { background-color: var(--color-violet); height: 100%; border-radius: var(--radius-full); }
+.usage-count {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-chalk);
+  flex-shrink: 0;
+}
+/* Localized "runs"/"usos" suffix, rendered in JS (flows.ts) via t()
+   since a CSS ::after `content:` can't be translated — this replaces a
+   hardcoded English " runs" pseudo-element that used to show up
+   regardless of the selected app language. */
+.usage-count-suffix { color: var(--color-mute); }
+.usage-time {
+  font-size: var(--font-size-2xs);
+  color: var(--color-mute);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* Actions */
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-1);
+  opacity: 0;
+  transition: opacity var(--transition-duration);
+}
+.flows-row:hover .row-actions { opacity: 1; }
+
+.action-btn {
+  width: 1.75rem;
+  height: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  color: var(--color-mute);
+}
+.action-btn:hover { background-color: var(--color-hair-hover); color: var(--color-chalk); }
+.action-btn svg { width: 0.8rem; height: 0.8rem; }
+
+/* ── Empty State ────────────────────────────────────────────────────────── */
+
+.flows-empty { padding: var(--spacing-10) var(--spacing-8); text-align: center; }
+.flows-empty svg { width: 3rem; height: 3rem; color: var(--color-hair-hover); margin: 0 auto var(--spacing-4); }
+.flows-empty h3 { color: var(--color-chalk); font-size: var(--font-size-lg); margin-bottom: var(--spacing-2); font-weight: 500; }
+.flows-empty p { color: var(--color-mute); font-size: var(--font-size-sm); }
+
+/* ── Popups (Filter/Sort) ───────────────────────────────────────────────── */
+.dash-popup-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: var(--spacing-2);
+  background-color: var(--color-panel);
+  border: 1px solid var(--color-hair);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-2);
+  min-width: 12rem;
+  z-index: 50;
+  box-shadow: var(--shadow-2xl);
+  display: none;
+}
+.dash-popup-menu.is-open { display: block; }
+.dash-popup-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-1-5) var(--spacing-2);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-mute);
+  cursor: pointer;
+  user-select: none;
+}
+.dash-popup-item:hover { background-color: var(--color-raise); color: var(--color-chalk); }
+.dash-popup-item.is-selected { color: var(--color-chalk); font-weight: 500; }
+.dash-popup-item input[type="checkbox"] { margin: 0; }

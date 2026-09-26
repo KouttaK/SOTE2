@@ -1,0 +1,203 @@
+/*
+ * variables.css — SOTE Design System Tokens
+ * Paleta unificada "ink/chalk/violet" extraída das ref_pages/*.htm
+ * Compatível com Shadow DOM: usar :host em vez de :root no content script.
+ */
+
+:host,
+:root {
+  /* Superfícies */
+  --color-ink:      #0b0b0f;
+  --color-panel:    #111116;
+  --color-panel-rgb: 17, 17, 22; /* mesmo tom de --color-panel acima, como
+    tripla r,g,b — necessário para compor opacidade (ex.: bg-panel/80) via
+    rgba(var(--color-panel-rgb), 0.8), já que não dá para extrair r,g,b de
+    dentro de uma var() em hexadecimal com CSS puro. */
+  --color-raise:    #18181f;
+  --color-raise-60: rgb(24 24 31 / 0.6);
+  --color-raise-50: rgb(24 24 31 / 0.5);
+
+  /* Bordas */
+  --color-hair:        #28282f;
+  --color-hair-hover:  #3a3a44;
+  --color-hair-70:     rgb(40 40 48 / 0.7);
+  --color-hair-60:     rgb(40 40 48 / 0.6);
+
+  /* Texto */
+  --color-chalk: #e9eaec;
+  --color-white: #ffffff;
+  --color-mute:  #7a7d86;
+  --color-ink-text: #0b0b0f;
+
+  /* Acentos */
+  --color-violet:      #8b5cf6;
+  --color-violet-hover: rgb(139 92 246 / 0.9);
+  --color-violet-15:   rgb(139 92 246 / 0.15);
+  --color-violet-soft: #c4b5fd;
+  --color-lime:        #bef264;
+  --color-coral:       #ef4444;
+  --color-amber:       #f59e0b;
+  --color-amber-15:    rgb(245 158 11 / 0.15);
+  --color-green:       var(--color-lime);
+  --color-yellow:      var(--color-amber);
+  --color-red:         var(--color-coral);
+
+  /* Cores Canônicas de Tokens (Fonte de verdade: src/shared/constants/tokenColors.ts) */
+  --token-counter:           #06b6d4;
+  --token-counter-border:    #0891b2;
+  --token-math:              #ec4899;
+  --token-math-border:       #db2777;
+  --token-date:              #f43f5e;
+  --token-date-border:       #e11d48;
+  --token-choice:            #2563eb;
+  --token-choice-border:     #1d4ed8;
+  --token-input:             #8b5cf6;
+  --token-input-border:      #7c3aed;
+  --token-clipboard:         #f97316;
+  --token-clipboard-border:  #ea580c;
+  --token-cursor:            #10b981;
+  --token-cursor-border:     #059669;
+  --token-random:            #d97706;
+  --token-random-border:     #b45309;
+  --token-url:               #0d9488;
+  --token-url-border:        #0f766e;
+  --token-title:             #eab308;
+  --token-title-border:      #ca8a04;
+  --token-flow_ref:          #d946ef;
+  --token-flow_ref-border:   #c026d3;
+  --token-variable:          #a855f7;
+  --token-variable-soft:     #c084fc;
+  --token-fallback:          #f59e0b;
+
+  /* Cores Canônicas de Blocos (Fonte de verdade: src/shared/constants/tokenColors.ts) */
+  --block-action:            #6366f1;
+  --block-action-dim:        rgba(99, 102, 241, 0.12);
+  --block-action-border:     rgba(99, 102, 241, 0.25);
+  --block-condition:         #14b8a6;
+  --block-condition-dim:     rgba(20, 184, 166, 0.12);
+  --block-condition-border:  rgba(20, 184, 166, 0.30);
+  --block-random:            #ea580c;
+  --block-random-dim:        rgba(234, 88, 12, 0.12);
+  --block-random-border:     rgba(234, 88, 12, 0.30);
+  --block-repeat:            #84cc16;
+  --block-repeat-dim:        rgba(132, 204, 22, 0.12);
+  --block-repeat-border:     rgba(132, 204, 22, 0.30);
+  --block-trigger:           #dc2626;
+  --block-trigger-dim:       rgba(220, 38, 38, 0.12);
+  --block-trigger-border:    rgba(220, 38, 38, 0.30);
+
+  /* Compat: aliases usados por CSS legado não migrado */
+  --color-bg-base:      var(--color-ink);
+  --color-bg-raised:    var(--color-panel);
+  --color-bg-elevated:  var(--color-raise);
+  --color-bg-overlay:   var(--color-hair-hover);
+  --color-bg-popup:         var(--color-panel);
+  --color-bg-popup-muted:   var(--color-raise);
+  --color-bg-popup-subtle:  var(--color-hair-hover);
+  --color-border-strong:  var(--color-hair-hover);
+  --color-border-default: var(--color-hair);
+  --color-border-subtle:  var(--color-hair);
+  --color-border-faint:   var(--color-panel);
+  --color-border-light-strong:  var(--color-hair-hover);
+  --color-border-light-default: var(--color-hair);
+  --color-border-light-subtle:  var(--color-hair);
+  --color-text-primary:   var(--color-chalk);
+  --color-text-secondary: var(--color-chalk);
+  --color-text-tertiary:  var(--color-mute);
+  --color-text-muted:     var(--color-mute);
+  --color-text-faint:     var(--color-mute);
+  --color-text-disabled:  var(--color-hair-hover);
+  --color-text-popup-primary:   var(--color-chalk);
+  --color-text-popup-secondary: var(--color-chalk);
+  --color-text-popup-tertiary:  var(--color-mute);
+  --color-text-popup-muted:     var(--color-mute);
+  --color-text-popup-faint:     var(--color-mute);
+  --color-cta-bg:      var(--color-violet);
+  --color-cta-bg-hover: var(--color-violet-hover);
+  --color-cta-text:    var(--color-white);
+  --color-cursor: var(--color-violet);
+
+  /* Tipografia — Inter (sans) + JetBrains Mono (mono) */
+  --font-family-base: "Inter", ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-family-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, "Liberation Mono", "Courier New", monospace;
+
+  --font-size-2xs:  0.625rem;
+  --font-size-xs:   0.75rem;
+  --font-size-sm:   0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg:   1.125rem;
+  --font-size-xl:   1.25rem;
+  --font-size-2xl:  1.5rem;
+  --font-size-3xl:  1.875rem;
+
+  --line-height-tight:   1.25;
+  --line-height-snug:    1.375;
+  --line-height-base:    1.5;
+  --line-height-relaxed: 1.625;
+
+  --letter-spacing-tight:   -0.025em;
+  --letter-spacing-widest:   0.1em;
+
+  /* Espaçamentos */
+  --spacing-0-5: 0.125rem;
+  --spacing-1:   0.25rem;
+  --spacing-1-5: 0.375rem;
+  --spacing-2:   0.5rem;
+  --spacing-2-5: 0.625rem;
+  --spacing-3:   0.75rem;
+  --spacing-3-5: 0.875rem;
+  --spacing-4:   1rem;
+  --spacing-5:   1.25rem;
+  --spacing-6:   1.5rem;
+  --spacing-7:   1.75rem;
+  --spacing-8:   2rem;
+  --spacing-9:   2.25rem;
+  --spacing-10:  2.5rem;
+
+  /* Border-radius */
+  --radius-sm:    0.25rem;
+  --radius-md:    0.375rem;
+  --radius-lg:    0.5rem;
+  --radius-xl:    0.75rem;
+  --radius-2xl:   1rem;
+  --radius-full:  9999px;
+
+  /* Sombras */
+  --shadow-sm:  0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md:  0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  --shadow-violet-glow: 0 0 18px rgba(139, 92, 246, .3);
+
+  /* Transições */
+  --transition-duration:        150ms;
+  --transition-easing:          cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-colors-props:    color, background-color, border-color,
+                                text-decoration-color, fill, stroke;
+  --transition-opacity-props:   opacity;
+
+  /* Dimensões fixas de layout */
+  --header-height:        4rem;
+  --sidebar-width:        240px;
+  --popup-width:          350px;
+  --palette-max-width:    32rem;
+  --palette-height:       420px;
+  --content-max-width:    1400px;
+
+  /* Icon sizes */
+  --icon-size-xs: 1rem;
+  --icon-size-sm: 1.25rem;
+  --icon-size-md: 1.75rem;
+  --icon-size-lg: 2rem;
+  --icon-size-xl: 2.25rem;
+
+  /* Toggle */
+  --toggle-width:  2.75rem;
+  --toggle-height: 1.5rem;
+  --toggle-knob:   1.25rem;
+
+  /* Z-index layers */
+  --z-header:  30;
+  --z-sidebar: 20;
+}
