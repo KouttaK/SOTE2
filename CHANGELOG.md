@@ -6,15 +6,21 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
-## [1.0.19] - 2026-09-28
+## [1.0.19] - Não publicado (em desenvolvimento acumulado)
 
 ### Adicionado
-- **Motor de Proteção em Campos Sensíveis (`SensitiveFieldGuard`):** Bloqueio rígido, seguro e não desativável contra gravação de buffer, expansão de snippets e injeção de texto em inputs confidenciais.
-- **Bloqueio Normativo e Heurística Estrita:** Detecção estrita de `type="password"`, `autocomplete` sensíveis (`current-password`, `new-password`, `one-time-code`, `cc-*`) e identificadores de cartão, código de segurança (`cvv`, `cvc`) e senhas/tokens via `name`, `id`, `aria-label` e `placeholder`, com regras estritas contra falsos positivos (ex: `cid`, `client_id`, `category-id` e `inputmode="numeric"` não são bloqueados).
-- **Persistência de Proteção via `WeakSet`:** O campo permanece protegido no ciclo de vida da página mesmo se o tipo for alternado de `password` para `text` pelo botão de "mostrar senha".
-- **Suporte a Shadow DOM Aberto:** Resolução precisa de elementos ativos e eventos mesmo encapsulados em Shadow Roots (`composedPath()`, `getDeepActiveElement()`).
-- **Defesa em Profundidade no Content Script:** Bloqueio da Paleta de Comandos, gatilho de busca inline, menus de contexto, Captura Rápida (`GET_SELECTION` rejeitado) e exclusão de eventos de copiar/recortar do histórico da área de transferência quando originados em campos sensíveis.
-- **Sinalização de Estado por Frame e Indicador no Popup:** Comunicação entre frames e background (`FRAME_PROTECTED_STATUS_CHANGED`) e exibição de alerta discreto no popup ("Campo protegido") notificando que a injeção está desativada por segurança no campo focado.
+- **Fase 1B — Limite de Palavra (Word Boundary):** Opção configurável por atalho (`wordBoundary`) no bloco de gatilho (`TriggerBlock`) e globalmente nas configurações (`wordBoundaryDefault`), impedindo que atalhos em modo exato expandam no meio de palavras e URLs (ex: digitar `site.com/ab` não dispara `/ab`, e `crab` não dispara `ab`).
+- **Fase 1B — Espera Inteligente de Prefixo (Prefix Wait Delay):** Quando um atalho digitado for prefixo estrito de outro atalho maior existente (ex: `/d` vs `/data`), o motor de expansão aguarda dinamicamente um tempo de segurança (`prefixWaitMs`, padrão 500ms) para permitir a continuidade da digitação sem expansão prematura.
+- **Fase 1B — Migração de Compatibilidade de Delay (`applyDelayToAllShortcuts`):** Nova configuração e rotina de migração em `StorageService` preservando o atraso em todos os atalhos para perfis que já utilizavam `exactMatchDelay > 0` antes da atualização.
+- **Fase 1B — Central de Conflitos de Atalhos:** Novo modal e botão de verificação rápida no Dashboard para detectar duplicatas (`error`), sobreposições de prefixo (`info`) e colisões com o Gatilho de Busca (`warning`), com ações para editar ou desativar os atalhos conflitantes em 1 clique.
+- **Fase 1B — Isolamento por Domínio na Análise de Conflitos:** Atalhos idênticos ou com prefixos sobrepostos associados a domínios disjuntos via `ConditionBlock` não geram falsos positivos de conflito, considerando padrões com curingas (`*.site.com`).
+- **Fase 1B — Aviso Educativo Único no Dashboard:** Banner informativo no topo da tela de fluxos apresentando as novidades do limite de palavra com persistência de confirmação (`seenWordBoundaryNotice`).
+- **Fase 1A — Motor de Proteção em Campos Sensíveis (`SensitiveFieldGuard`):** Bloqueio rígido, seguro e não desativável contra gravação de buffer, expansão de snippets e injeção de texto em inputs confidenciais.
+- **Fase 1A — Bloqueio Normativo e Heurística Estrita:** Detecção estrita de `type="password"`, `autocomplete` sensíveis (`current-password`, `new-password`, `one-time-code`, `cc-*`) e identificadores de cartão, código de segurança (`cvv`, `cvc`) e senhas/tokens via `name`, `id`, `aria-label` e `placeholder`, com regras estritas contra falsos positivos (ex: `cid`, `client_id`, `category-id` e `inputmode="numeric"` não são bloqueados).
+- **Fase 1A — Persistência de Proteção via `WeakSet`:** O campo permanece protegido no ciclo de vida da página mesmo se o tipo for alternado de `password` para `text` pelo botão de "mostrar senha".
+- **Fase 1A — Suporte a Shadow DOM Aberto:** Resolução precisa de elementos ativos e eventos mesmo encapsulados em Shadow Roots (`composedPath()`, `getDeepActiveElement()`).
+- **Fase 1A — Defesa em Profundidade no Content Script:** Bloqueio da Paleta de Comandos, gatilho de busca inline, menus de contexto, Captura Rápida (`GET_SELECTION` rejeitado) e exclusão de eventos de copiar/recortar do histórico da área de transferência quando originados em campos sensíveis.
+- **Fase 1A — Sinalização de Estado por Frame e Indicador no Popup:** Comunicação entre frames e background (`FRAME_PROTECTED_STATUS_CHANGED`) e exibição de alerta discreto no popup ("Campo protegido") notificando que a injeção está desativada por segurança no campo focado.
 
 ---
 

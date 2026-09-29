@@ -69,6 +69,8 @@ export interface TriggerBlock {
   shortcut: string;
   smartCase: boolean;
   forceCapitalize: boolean;
+  /** When true (or omitted if defaulting to true), prevents expansion inside words (e.g. typing "subdata" won't trigger "data"). */
+  wordBoundary?: boolean;
 }
 
 export interface ConditionBlock {
@@ -340,6 +342,14 @@ export interface Settings {
    * shortcut from selection"). Defaults to true; the background script
    * removes/recreates the menu whenever this changes. */
   contextMenuEnabled?: boolean;
+  /** Default behavior for word boundary when creating new flows (defaults to true). */
+  wordBoundaryDefault?: boolean;
+  /** Milliseconds to wait before expanding a shortcut when a longer shortcut with the same prefix exists (defaults to 500ms). */
+  prefixWaitMs?: number;
+  /** When true, exactMatchDelay applies to all shortcuts, not just shortcuts that have longer prefix matches. Default: false for new installs, migrated to true for existing configs with delay. */
+  applyDelayToAllShortcuts?: boolean;
+  /** Whether the one-time notice about word boundary default has been seen/dismissed. */
+  seenWordBoundaryNotice?: boolean;
 }
 
 export interface StorageSchema {

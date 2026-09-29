@@ -189,6 +189,7 @@ function validateTriggerBlock(data: any): TriggerBlock | null {
     shortcut: escapeHtml(data.shortcut.slice(0, 100)),
     smartCase: typeof data.smartCase === 'boolean' ? data.smartCase : true,
     forceCapitalize: typeof data.forceCapitalize === 'boolean' ? data.forceCapitalize : false,
+    wordBoundary: typeof data.wordBoundary === 'boolean' ? data.wordBoundary : true,
   };
   if (typeof data.mode === 'string') {
     res.mode = escapeHtml(data.mode.slice(0, 20));
@@ -387,6 +388,8 @@ export function validateImport(jsonText: string, forceNewIds = false): ImportVal
       };
     }
     if (typeof rawSet.contextMenuEnabled === 'boolean') safeSet.contextMenuEnabled = rawSet.contextMenuEnabled;
+    if (typeof rawSet.wordBoundaryDefault === 'boolean') safeSet.wordBoundaryDefault = rawSet.wordBoundaryDefault;
+    if (typeof rawSet.prefixWaitMs === 'number') safeSet.prefixWaitMs = rawSet.prefixWaitMs;
     
     // DELIBERATELY EXCLUDED: analytics and analyticsFailures are discarded upon import.
     // They are local telemetry data and should not be merged across installations.

@@ -113,6 +113,18 @@ class StorageService {
 
       if (!data[KEYS.settings]) {
         await area.set({ [KEYS.settings]: DEFAULT_SETTINGS });
+      } else {
+        // Migration check: If the user previously had exactMatchDelay > 0 configured
+        // before applyDelayToAllShortcuts existed, preserve legacy behaviour by setting it to true.
+        const existingSettings = data[KEYS.settings] as Partial<Settings>;
+        if (
+          existingSettings.applyDelayToAllShortcuts === undefined &&
+          typeof existingSettings.exactMatchDelay === 'number' &&
+          existingSettings.exactMatchDelay > 0
+        ) {
+          existingSettings.applyDelayToAllShortcuts = true;
+          await area.set({ [KEYS.settings]: existingSettings });
+        }
       }
 
       // First run only: seed onboarding example Forms. Keyed off the

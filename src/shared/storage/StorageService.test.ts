@@ -157,4 +157,54 @@ describe('StorageService', () => {
     await storage.incrementVariablesUsage(['NON_EXISTENT']);
     expect(browser.storage.local.set).not.toHaveBeenCalled();
   });
+
+  describe('Migration: applyDelayToAllShortcuts', () => {
+    it('migrates applyDelayToAllShortcuts to true when legacy settings had exactMatchDelay > 0', async () => {
+      const legacySettings = {
+        exactMatchDelay: 200,
+        triggerMode: 'exact_match',
+      };
+
+      (browser.storage.local.get as any).mockImplementation((keys: any) => {
+        if (Array.isArray(keys)) {
+          return Promise.resolve({
+            settings: legacySettings,
+            forms: [],
+          });
+        }
+        return Promise.resolve({});
+      });
+      (browser.storage.local.set as any).mockResolvedValue(undefined);
+
+      await storage.initialise();
+
+      expect(browser.storage.local.set).toHaveBeenCalledWith({
+        settings: expect.objectContaining({
+          exactMatchDelay: 200,
+          applyDelayToAllShortcuts: true,
+        }),
+      });
+    });
+
+    it('keeps applyDelayToAllShortcuts false for fresh installations without existing settings', async () => {
+      (browser.storage.local.get as any).mockImplementation((keys: any) => {
+        if (Array.isArray(keys)) {
+          return Promise.resolve({}); // empty storage
+        }
+        return Promise.resolve({});
+      });
+      (browser.storage.local.set as any).mockResolvedValue(undefined);
+
+      await storage.initialise();
+
+      expect(browser.storage.local.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          settings: expect.objectContaining({
+            applyDelayToAllShortcuts: false,
+          }),
+        })
+      );
+    });
+  });
 });
+

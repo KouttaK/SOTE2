@@ -68,6 +68,16 @@ export class TriggerDetector {
   }
 
   /**
+   * Checks whether the character preceding the shortcut match represents a word boundary.
+   */
+  private isAtWordBoundary(buffer: string, matchLength: number): boolean {
+    if (buffer.length <= matchLength) return true;
+    const charBefore = buffer[buffer.length - matchLength - 1];
+    // Word boundary: whitespace, non-breaking space, or punctuation / start of string
+    return /[\s\u00A0\p{P}\p{S}]/u.test(charBefore);
+  }
+
+  /**
    * Called on every printable character typed.
    * Checks for exact match shortcuts (exactMatchChar + shortcut).
    *
@@ -91,11 +101,17 @@ export class TriggerDetector {
       const trigger = this.getTriggerBlock(flow);
       if (!trigger || !trigger.shortcut) continue;
 
-      const prefix = this.settings.exactMatchChar;
+      const prefix = this.settings.exactMatchChar || '';
       const expected = prefix + trigger.shortcut;
 
       if (buffer.length < expected.length) continue;
       const tail = buffer.slice(-expected.length);
+
+      // Word boundary check: when trigger.wordBoundary is true (or undefined and default is true)
+      const requiresWordBoundary = trigger.wordBoundary !== false && (this.settings.wordBoundaryDefault !== false);
+      if (requiresWordBoundary && !this.isAtWordBoundary(buffer, expected.length)) {
+        continue;
+      }
 
       if (expected.length > bestLength && this.matchesShortcut(tail, expected, trigger.smartCase) && this.checkConditions(flow)) {
         best = { flow, shortcutTyped: tail, isExactMatch: true };

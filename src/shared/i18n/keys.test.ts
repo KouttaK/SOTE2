@@ -171,6 +171,47 @@ describe('i18n popup keys validation', () => {
       expect(pt[key]).not.toBe(key);
     }
   });
+
+  it('should validate Phase 1B keys: word boundary, prefix wait and conflict center', () => {
+    const phase1BKeys = [
+      'trigger.block.wordboundary_title',
+      'trigger.block.wordboundary_desc',
+      'conflicts.title',
+      'conflicts.subtitle',
+      'conflicts.empty_title',
+      'conflicts.empty_desc',
+      'conflicts.badge.error',
+      'conflicts.badge.warning',
+      'conflicts.badge.info',
+      'conflicts.type.duplicate',
+      'conflicts.type.prefix',
+      'conflicts.type.search_trigger',
+      'conflicts.action.edit_flow',
+      'conflicts.action.disable_flow',
+      'conflicts.tab_label',
+      'conflicts.button_label',
+      'settings.exact.prefix_wait_label',
+      'settings.exact.prefix_wait_hint',
+      'settings.exact.apply_all_label',
+      'settings.exact.apply_all_desc',
+      'settings.wordboundary.default_label',
+      'settings.wordboundary.default_desc',
+      'notice.wordboundary.title',
+      'notice.wordboundary.desc',
+      'notice.wordboundary.dismiss',
+      'notice.wordboundary.go_to_settings',
+    ];
+
+    const en = translations.en as Record<string, string>;
+    const pt = translations['pt-BR'] as Record<string, string>;
+
+    for (const key of phase1BKeys) {
+      expect(en[key], `Key ${key} missing in English`).toBeDefined();
+      expect(pt[key], `Key ${key} missing in Portuguese`).toBeDefined();
+      expect(en[key]).not.toBe(key);
+      expect(pt[key]).not.toBe(key);
+    }
+  });
 });
 
 

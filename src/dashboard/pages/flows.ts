@@ -8,9 +8,10 @@ import type { Flow, Folder, Variable } from '../../shared/types/index.js';
 import { router } from '../router.js';
 import { t, getLanguage } from '../../shared/i18n/index.js';
 import { escapeHtml, htmlToPreviewText } from '../../shared/utils/dom.js';
-import { resolveVariablesInText } from '../../shared/utils/variableResolver.js';
 import { extractFlowPreviewText, isComplexFlow } from '../../shared/utils/flowSummary.js';
 import { openFlowPreviewModal } from '../components/PreviewModal.js';
+import { ConflictsModal } from '../components/ConflictsModal.js';
+import { detectAllConflicts } from '../../shared/utils/conflictDetector.js';
 import { ConfirmModal } from '../components/ConfirmModal.js';
 import { PromptModal } from '../components/PromptModal.js';
 import { showToast } from '../../shared/components/Toast.js';
@@ -124,6 +125,9 @@ export default class FlowsPage implements Page {
           </div>
         </div>
 
+        <!-- One-time Notice Container -->
+        <div id="flows-notice-container"></div>
+
         <!-- Stats Row (Moved ABOVE header actions) -->
         <div class="flows-stats" id="flows-stats-container"><!-- Rendered dynamically --></div>
 
@@ -142,6 +146,10 @@ export default class FlowsPage implements Page {
             </button>
             <div class="flows-filters-dropdown" id="flows-filters-dropdown" style="display: none;"></div>
           </div>
+          <button class="dash-header-btn" id="flows-conflicts-btn" title="${t('conflicts.title')}">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor" style="width: 0.75rem; height: 0.75rem;"><path d="M256 32c14.2 0 27.3 7.5 34.5 19.8l216 368c7.3 12.4 7.3 27.7 .2 40.1S486.3 480 472 480H40c-14.3 0-27.6-7.7-34.7-20.1s-7-27.8 .2-40.1l216-368C228.7 39.5 241.8 32 256 32zm0 128c-13.3 0-24 10.7-24 24V296c0 13.3 10.7 24 24 24s24-10.7 24-24V184c0-13.3-10.7-24-24-24zm32 224a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z"/></svg>
+            <span id="flows-conflicts-label">${t('conflicts.button_label')}</span>
+          </button>
           <button class="dash-header-btn" id="flows-refresh-btn" title="${t('flows.header.refresh')}">
             ${EXTRA_ICONS.refresh} <span>${t('flows.header.refresh')}</span>
           </button>
@@ -198,6 +206,7 @@ export default class FlowsPage implements Page {
     }
 
     // 3. Render everything
+    await this.renderWordBoundaryNotice();
     this.renderStats();
     this.renderFolders();
     this.renderFiltersDropdown();
@@ -238,6 +247,7 @@ export default class FlowsPage implements Page {
         this.renderFolders();
         this.renderFiltersDropdown();
         this.renderList();
+        this.updateConflictsCount();
         showToast(t('flows.refresh_success'), 'success');
       } catch (err) {
         console.error('[FlowsPage] Refresh failed:', err);
@@ -245,6 +255,17 @@ export default class FlowsPage implements Page {
         setTimeout(() => btn?.classList.remove('is-spinning'), 400);
       }
     });
+
+    // 4b. Conflicts button
+    this.el.querySelector('#flows-conflicts-btn')?.addEventListener('click', async () => {
+      await ConflictsModal.show(async () => {
+        this.allFlows = await storage.getFlows();
+        this.renderStats();
+        this.renderList();
+        this.updateConflictsCount();
+      });
+    });
+    this.updateConflictsCount();
 
     // 5. Export button
     this.el.querySelector('#flows-export-btn')?.addEventListener('click', () => {
@@ -356,6 +377,46 @@ export default class FlowsPage implements Page {
   }
 
   // ── Renderers ────────────────────────────────────────────────────────────
+
+  private async renderWordBoundaryNotice() {
+    const container = this.el.querySelector('#flows-notice-container');
+    if (!container) return;
+
+    const settings = await storage.getSettings();
+    if (settings.seenWordBoundaryNotice === true) {
+      container.innerHTML = '';
+      return;
+    }
+
+    container.innerHTML = /* html */ `
+      <div class="flows-notice" id="word-boundary-notice">
+        <div class="flows-notice-icon">${EXTRA_ICONS.sparkle}</div>
+        <div class="flows-notice-content">
+          <p class="title">${t('notice.wordboundary.title')}</p>
+          <p class="desc">${t('notice.wordboundary.desc')}</p>
+        </div>
+        <div class="flows-notice-actions">
+          <button class="flows-notice-btn flows-notice-btn-secondary" id="btn-notice-settings">
+            ${t('notice.wordboundary.go_to_settings')}
+          </button>
+          <button class="flows-notice-btn flows-notice-btn-primary" id="btn-notice-dismiss">
+            ${t('notice.wordboundary.dismiss')}
+          </button>
+        </div>
+      </div>
+    `;
+
+    const dismissNotice = async () => {
+      container.innerHTML = '';
+      await storage.saveSettings({ seenWordBoundaryNotice: true });
+    };
+
+    container.querySelector('#btn-notice-dismiss')?.addEventListener('click', dismissNotice);
+    container.querySelector('#btn-notice-settings')?.addEventListener('click', async () => {
+      await dismissNotice();
+      router.navigate('/settings');
+    });
+  }
 
   private renderStats() {
     const container = this.el.querySelector('#flows-stats-container')!;
@@ -612,6 +673,22 @@ export default class FlowsPage implements Page {
     const someSelected = filtered.some(f => this.selectedFlowIds.has(f.id));
     selectAll.checked = allSelected;
     selectAll.indeterminate = !allSelected && someSelected;
+  }
+
+  private async updateConflictsCount() {
+    const settings = await storage.getSettings();
+    const conflicts = detectAllConflicts(this.allFlows, settings);
+    const labelEl = this.el.querySelector('#flows-conflicts-label');
+    const btnEl = this.el.querySelector<HTMLElement>('#flows-conflicts-btn');
+    if (labelEl) {
+      if (conflicts.length > 0) {
+        labelEl.textContent = t('conflicts.tab_label', { count: conflicts.length });
+        btnEl?.classList.add('has-conflicts');
+      } else {
+        labelEl.textContent = t('conflicts.button_label');
+        btnEl?.classList.remove('has-conflicts');
+      }
+    }
   }
 
   private updateExportBtnLabel() {

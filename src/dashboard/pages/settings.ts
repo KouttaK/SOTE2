@@ -133,7 +133,37 @@ export default class SettingsPage implements Page {
                       </div>
                       <p class="exp-cfg-hint">${t('settings.exact.delay_hint')}</p>
                     </div>
+                    <div class="settings-input-group" style="width:180px;">
+                      <label class="settings-label">${t('settings.exact.prefix_wait_label')}</label>
+                      <div style="display:flex; align-items:center; gap:.5rem;">
+                        <input type="number" id="prefix-wait-input" class="settings-input"
+                          min="0" max="3000" step="50"
+                          style="width:80px;" />
+                        <span style="color:#737373; font-size:.8125rem;">ms</span>
+                      </div>
+                      <p class="exp-cfg-hint">${t('settings.exact.prefix_wait_hint')}</p>
+                    </div>
                   </div>
+                  <div class="settings-item" style="margin-top: 0.75rem; border-top: 1px solid #262626; padding-top: 0.75rem;">
+                    <div class="settings-item-info">
+                      <p class="settings-item-title" style="font-size: 0.8125rem;">${t('settings.exact.apply_all_label')}</p>
+                      <p class="settings-item-desc">${t('settings.exact.apply_all_desc')}</p>
+                    </div>
+                    <div class="toggle-switch" id="toggle-apply-delay-all">
+                      <div class="toggle-track"><div class="toggle-thumb"></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ── Word Boundary Default Toggle ────────────────────────────── -->
+              <div class="settings-item" style="margin-top: 1rem;">
+                <div class="settings-item-info">
+                  <p class="settings-item-title">${t('settings.wordboundary.default_label')}</p>
+                  <p class="settings-item-desc">${t('settings.wordboundary.default_desc')}</p>
+                </div>
+                <div class="toggle-switch" id="toggle-wordboundary-default">
+                  <div class="toggle-track"><div class="toggle-thumb"></div></div>
                 </div>
               </div>
 
@@ -979,6 +1009,43 @@ export default class SettingsPage implements Page {
       (e.target as HTMLInputElement).value = String(val);
       this.updateSetting('exactMatchDelay', val);
     });
+
+    // ── Prefix Wait Delay ──────────────────────────────────────────────────────
+    const prefixWaitInp = this.el.querySelector<HTMLInputElement>('#prefix-wait-input');
+    if (prefixWaitInp) {
+      prefixWaitInp.value = String(this.settings.prefixWaitMs ?? 500);
+      prefixWaitInp.addEventListener('change', (e) => {
+        const val = Math.max(0, Math.min(3000, parseInt((e.target as HTMLInputElement).value, 10) || 0));
+        (e.target as HTMLInputElement).value = String(val);
+        this.updateSetting('prefixWaitMs', val);
+      });
+    }
+
+    // ── Apply Delay To All Shortcuts Toggle ────────────────────────────────────
+    const toggleApplyDelayAll = this.el.querySelector<HTMLElement>('#toggle-apply-delay-all');
+    if (toggleApplyDelayAll) {
+      const isApplyAllOn = this.settings.applyDelayToAllShortcuts === true;
+      toggleApplyDelayAll.classList.toggle('active', isApplyAllOn);
+      toggleApplyDelayAll.addEventListener('click', () => {
+        const next = !(this.settings.applyDelayToAllShortcuts === true);
+        this.settings.applyDelayToAllShortcuts = next;
+        toggleApplyDelayAll.classList.toggle('active', next);
+        this.updateSetting('applyDelayToAllShortcuts', next);
+      });
+    }
+
+    // ── Word Boundary Default Toggle ──────────────────────────────────────────
+    const toggleWordBoundary = this.el.querySelector<HTMLElement>('#toggle-wordboundary-default');
+    if (toggleWordBoundary) {
+      const isWordBoundaryOn = this.settings.wordBoundaryDefault !== false;
+      toggleWordBoundary.classList.toggle('active', isWordBoundaryOn);
+      toggleWordBoundary.addEventListener('click', () => {
+        const next = !(this.settings.wordBoundaryDefault !== false);
+        this.settings.wordBoundaryDefault = next;
+        toggleWordBoundary.classList.toggle('active', next);
+        this.updateSetting('wordBoundaryDefault', next);
+      });
+    }
   }
 
   /**

@@ -13,6 +13,10 @@ export const DEFAULT_SETTINGS: Settings = {
   analyticsFailures: {},
   clipboardHistoryMax: 10,
   contextMenuEnabled: true,
+  wordBoundaryDefault: true,
+  prefixWaitMs: 500,
+  applyDelayToAllShortcuts: false,
+  seenWordBoundaryNotice: false,
   searchTrigger: {
     enabled: true,
     includeFlows: true,

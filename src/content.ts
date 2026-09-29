@@ -18,6 +18,7 @@ import { onContextInvalidated } from './shared/utils/serviceWorkerSafety.js';
 import { domainMatchesAny, isSnoozeActive, isExtensionActive } from './shared/storage/helpers.js';
 import { DEFAULT_SETTINGS } from './shared/storage/defaults.js';
 import { findVariableKeysInText } from './shared/utils/flowVariableScanner.js';
+import { findLongerPrefixFlows } from './shared/utils/conflictDetector.js';
 import { isProtected, getDeepActiveElement, getTargetFromEvent } from './content/engine/SensitiveFieldGuard.js';
 import type { ActionBlock, Token, Flow, Form, Block, Settings, ClipboardEntry, Variable } from './shared/types/index.js';
 
@@ -416,8 +417,15 @@ export default defineContentScript({
 
         const match = detector.detectExactMatchMode(buffer);
         if (match) {
-          const delay = settings.exactMatchDelay || 0;
-          if (delay > 0) {
+          const longerPrefixFlows = findLongerPrefixFlows(match.flow.id, match.shortcutTyped, flows);
+          const hasLongerPrefix = longerPrefixFlows.length > 0;
+          const prefixWait = settings.prefixWaitMs ?? 500;
+          const configuredDelay = settings.exactMatchDelay || 0;
+          const applyToAll = settings.applyDelayToAllShortcuts === true;
+          const baseDelay = applyToAll ? configuredDelay : 0;
+          const effectiveDelay = hasLongerPrefix ? Math.max(configuredDelay, prefixWait) : baseDelay;
+
+          if (effectiveDelay > 0) {
             exactMatchTimeout = setTimeout(() => {
               exactMatchTimeout = null;
               if (document.activeElement !== element) return;
@@ -429,7 +437,7 @@ export default defineContentScript({
                   console.debug('[SOTE] Exact match execution failed gracefully:', err);
                 });
               }
-            }, delay);
+            }, effectiveDelay);
           } else {
             handleTrigger(match.flow, match.shortcutTyped, element).catch((err) => {
               console.debug('[SOTE] Exact match execution failed gracefully:', err);

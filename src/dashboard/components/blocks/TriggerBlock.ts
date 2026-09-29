@@ -23,7 +23,11 @@ export class TriggerBlock {
       shortcut: '',
       smartCase: true,
       forceCapitalize: false,
+      wordBoundary: settings?.wordBoundaryDefault !== false,
     };
+    if (this.data.wordBoundary === undefined) {
+      this.data.wordBoundary = settings?.wordBoundaryDefault !== false;
+    }
     this.settings = settings;
     this.onChange = onChange;
     this.el = document.createElement('div');
@@ -85,6 +89,15 @@ export class TriggerBlock {
           </div>
         </div>
         <p class="trigger-node-hint">${ICONS.info} ${t('trigger.block.capitalize_desc')}</p>
+
+        <div class="trigger-toggle-row">
+          <span class="trigger-toggle-label">${t('trigger.block.wordboundary_title')}</span>
+          <div class="trigger-toggle-right">
+            <span class="trigger-toggle-state ${this.data.wordBoundary !== false ? 'is-on' : ''}" id="trigger-wordboundary-state">${this.data.wordBoundary !== false ? t('editor.status.active') : t('editor.status.inactive')}</span>
+            <div class="switch ${this.data.wordBoundary !== false ? 'is-on' : ''}" id="trigger-wordboundary"></div>
+          </div>
+        </div>
+        <p class="trigger-node-hint">${ICONS.info} ${t('trigger.block.wordboundary_desc')}</p>
       </div>
     `;
 
@@ -117,6 +130,16 @@ export class TriggerBlock {
       forceCap.classList.toggle('is-on', this.data.forceCapitalize);
       forceCapState.classList.toggle('is-on', this.data.forceCapitalize);
       forceCapState.textContent = this.data.forceCapitalize ? t('editor.status.active') : t('editor.status.inactive');
+      this.onChange();
+    });
+
+    const wordBoundaryState = this.el.querySelector<HTMLElement>('#trigger-wordboundary-state')!;
+    const wordBoundarySwitch = this.el.querySelector<HTMLElement>('#trigger-wordboundary')!;
+    wordBoundarySwitch.addEventListener('click', () => {
+      this.data.wordBoundary = !(this.data.wordBoundary !== false);
+      wordBoundarySwitch.classList.toggle('is-on', this.data.wordBoundary);
+      wordBoundaryState.classList.toggle('is-on', this.data.wordBoundary);
+      wordBoundaryState.textContent = this.data.wordBoundary ? t('editor.status.active') : t('editor.status.inactive');
       this.onChange();
     });
   }
