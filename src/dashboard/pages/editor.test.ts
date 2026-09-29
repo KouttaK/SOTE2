@@ -144,6 +144,10 @@ describe('FlowEditorPage Pan Cursor Feedback (Bug 1)', () => {
       leafAnchor.className = 'branch-leaf-anchor';
       container.appendChild(leafAnchor);
 
+      const connectorDot = document.createElement('div');
+      connectorDot.className = 'connector-dot';
+      container.appendChild(connectorDot);
+
       // 1. Click on grip without Ctrl
       const gripEvent = new MouseEvent('mousedown', { button: 0, bubbles: true, cancelable: true });
       grip.dispatchEvent(gripEvent);
@@ -162,7 +166,13 @@ describe('FlowEditorPage Pan Cursor Feedback (Bug 1)', () => {
       expect(canvas.classList.contains('is-panning')).toBe(false);
       expect(anchorEvent.defaultPrevented).toBe(false);
 
-      // 4. Click directly on canvas background without Ctrl -> pans canvas
+      // 4. Click on conector entre blocos sem Ctrl (Bug 2 regresso)
+      const dotEvent = new MouseEvent('mousedown', { button: 0, bubbles: true, cancelable: true });
+      connectorDot.dispatchEvent(dotEvent);
+      expect(canvas.classList.contains('is-panning')).toBe(false);
+      expect(dotEvent.defaultPrevented).toBe(false);
+
+      // 5. Click directly on canvas background without Ctrl -> pans canvas
       const bgEvent = new MouseEvent('mousedown', { button: 0, bubbles: true, cancelable: true });
       canvas.dispatchEvent(bgEvent);
       expect(canvas.classList.contains('is-panning')).toBe(true);
@@ -170,5 +180,115 @@ describe('FlowEditorPage Pan Cursor Feedback (Bug 1)', () => {
       // Cleanup
       window.dispatchEvent(new MouseEvent('mouseup', { button: 0, bubbles: true }));
     });
+  });
+});
+describe('Auto-scroll during drag', () => {
+  let editor: any;
+  let container: HTMLElement;
+  let canvas: HTMLElement;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    let perfNow = 0;
+    vi.spyOn(performance, 'now').mockImplementation(() => perfNow);
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+      return setTimeout(() => {
+        perfNow += 16;
+        cb(perfNow);
+      }, 16) as any;
+    });
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(clearTimeout as any);
+    
+    document.body.innerHTML = '<div id="app"></div>';
+    // Import FlowEditorPage has already happened in the file
+    editor = new (FlowEditorPage as any)();
+    document.getElementById('app')!.appendChild(editor.render());
+    editor.mount();
+    
+    container = document.querySelector('#editor-canvas-bg') as HTMLElement;
+    canvas = document.querySelector('#canvas-viewport') as HTMLElement;
+    
+    vi.spyOn(container, 'getBoundingClientRect').mockReturnValue({
+      left: 100,
+      right: 900,
+      top: 100,
+      bottom: 700,
+      width: 800,
+      height: 600,
+    } as any);
+  });
+
+  afterEach(() => {
+    editor.unmount();
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it('scrolls canvas correctly at all 4 edges and stops in center or when drag ends', () => {
+    const triggerDragAt = (x: number, y: number) => {
+      const e = new Event('dragover', { bubbles: true }) as any;
+      e.dataTransfer = {};
+      e.clientX = x;
+      e.clientY = y;
+      window.dispatchEvent(e);
+    };
+
+    // No drag active -> no scroll
+    editor.canvasPanX = 0;
+    editor.canvasPanY = 0;
+    // so let's simulate just mousemove first to test "no scroll without active drag"
+    const moveEvent = new MouseEvent('mousemove', { bubbles: true });
+    Object.defineProperty(moveEvent, 'clientX', { value: 110 });
+    Object.defineProperty(moveEvent, 'clientY', { value: 400 });
+    window.dispatchEvent(moveEvent);
+    vi.advanceTimersByTime(50);
+    expect(editor.canvasPanX).toBe(0); // Did not scroll
+
+    // Now start drag at left edge
+    triggerDragAt(110, 400); // 10px from left edge
+    vi.advanceTimersByTime(50);
+    expect(editor.canvasPanX).toBeGreaterThan(0);
+    
+    // Top edge
+    editor.canvasPanX = 0; editor.canvasPanY = 0;
+    triggerDragAt(500, 110); // 10px from top edge
+    vi.advanceTimersByTime(50);
+    expect(editor.canvasPanY).toBeGreaterThan(0);
+
+    // Right edge
+    editor.canvasPanX = 0; editor.canvasPanY = 0;
+    triggerDragAt(890, 400); // 10px from right edge
+    vi.advanceTimersByTime(50);
+    expect(editor.canvasPanX).toBeLessThan(0);
+
+    // Bottom edge
+    editor.canvasPanX = 0; editor.canvasPanY = 0;
+    triggerDragAt(500, 690); // 10px from bottom edge
+    vi.advanceTimersByTime(50);
+    expect(editor.canvasPanY).toBeLessThan(0);
+
+    // Diagonal (Top-Left)
+    editor.canvasPanX = 0; editor.canvasPanY = 0;
+    triggerDragAt(110, 110); 
+    vi.advanceTimersByTime(50);
+    expect(editor.canvasPanX).toBeGreaterThan(0);
+    expect(editor.canvasPanY).toBeGreaterThan(0);
+
+    // Center -> stops scrolling
+    editor.canvasPanX = 0; editor.canvasPanY = 0;
+    triggerDragAt(500, 400); 
+    vi.advanceTimersByTime(50);
+    expect(editor.canvasPanX).toBe(0);
+    expect(editor.canvasPanY).toBe(0);
+
+    // Drop -> ends drag -> stops scrolling
+    triggerDragAt(110, 400); // back to left edge, should scroll
+    vi.advanceTimersByTime(50);
+    expect(editor.canvasPanX).toBeGreaterThan(0);
+    
+    editor.canvasPanX = 0;
+    window.dispatchEvent(new Event('drop', { bubbles: true })); // drag ends
+    vi.advanceTimersByTime(50);
+    expect(editor.canvasPanX).toBe(0); // no further scrolling
   });
 });

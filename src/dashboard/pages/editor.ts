@@ -148,6 +148,15 @@ export default class FlowEditorPage implements Page {
   private handleCanvasMouseMove!: (e: MouseEvent) => void;
   private handleCanvasMouseUp!: (e: MouseEvent) => void;
 
+  // Auto-scroll state
+  private autoScrollRAF: number | null = null;
+  private lastDragClientX = 0;
+  private lastDragClientY = 0;
+  private isAnyDragActive = false;
+  private activeFloatingNodePanAdjust: ((dx: number, dy: number) => void) | null = null;
+  private handleDragOver!: (e: DragEvent) => void;
+  private handleDragEnd!: () => void;
+
   render(): HTMLElement {
     this.el = document.createElement('div');
     this.el.className = 'editor-canvas-wrap';
@@ -329,6 +338,12 @@ export default class FlowEditorPage implements Page {
     if (this.handleCanvasMouseMove) window.removeEventListener('mousemove', this.handleCanvasMouseMove);
     if (this.handleCanvasMouseUp) window.removeEventListener('mouseup', this.handleCanvasMouseUp);
     if (this.handleDocumentClick) document.removeEventListener('click', this.handleDocumentClick);
+    if (this.handleDragOver) window.removeEventListener('dragover', this.handleDragOver);
+    if (this.handleDragEnd) {
+      window.removeEventListener('dragend', this.handleDragEnd);
+      window.removeEventListener('drop', this.handleDragEnd);
+    }
+    this.stopAutoScrollLoop();
     this.canvasPanZoomInited = false;
   }
 
@@ -1640,6 +1655,8 @@ export default class FlowEditorPage implements Page {
 
     const onMove = (e: MouseEvent) => {
       if (!dragging) return;
+      this.lastDragClientX = e.clientX;
+      this.lastDragClientY = e.clientY;
       const zoom = this.canvasZoom || 1;
       const dx = (e.clientX - startClientX) / zoom;
       const dy = (e.clientY - startClientY) / zoom;
@@ -1651,6 +1668,9 @@ export default class FlowEditorPage implements Page {
     const onUp = () => {
       if (!dragging) return;
       dragging = false;
+      this.isAnyDragActive = false;
+      this.activeFloatingNodePanAdjust = null;
+      this.stopAutoScrollLoop();
       node.classList.remove('is-dragging-node');
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
@@ -1661,6 +1681,15 @@ export default class FlowEditorPage implements Page {
       e.preventDefault();
       e.stopPropagation(); // don't also start a canvas pan
       dragging = true;
+      this.isAnyDragActive = true;
+      this.lastDragClientX = e.clientX;
+      this.lastDragClientY = e.clientY;
+      this.startAutoScrollLoop();
+      this.activeFloatingNodePanAdjust = (panDx, panDy) => {
+        startClientX += panDx;
+        startClientY += panDy;
+        onMove({ clientX: this.lastDragClientX, clientY: this.lastDragClientY } as MouseEvent);
+      };
       startClientX = e.clientX;
       startClientY = e.clientY;
       startPos = { ...pos };
@@ -1740,6 +1769,76 @@ export default class FlowEditorPage implements Page {
   // Canvas Pan & Zoom
   // ---------------------------------------------------------------------------
 
+  private startAutoScrollLoop() {
+    if (this.autoScrollRAF) return;
+    let lastTime = performance.now();
+    
+    const loop = (time: number) => {
+      this.autoScrollRAF = requestAnimationFrame(loop);
+      const dt = time - lastTime;
+      lastTime = time;
+      
+      if (!this.isAnyDragActive) return;
+      
+      const bg = this.el.querySelector<HTMLElement>('#editor-canvas-bg');
+      if (!bg) return;
+      const rect = bg.getBoundingClientRect();
+      
+      const margin = 50;
+      const maxSpeed = 1.0; // pixels per ms
+      
+      let panDx = 0;
+      let panDy = 0;
+      
+      const x = this.lastDragClientX;
+      const y = this.lastDragClientY;
+      
+      // Stop auto-scroll if mouse returns to center
+      if (x >= rect.left + margin && x <= rect.right - margin && y >= rect.top + margin && y <= rect.bottom - margin) {
+        return;
+      }
+      
+      if (x < rect.left + margin) {
+        const dist = Math.max(0, x - rect.left);
+        const factor = 1 - (dist / margin);
+        panDx = factor * maxSpeed * dt;
+      } else if (x > rect.right - margin) {
+        const dist = Math.max(0, rect.right - x);
+        const factor = 1 - (dist / margin);
+        panDx = -factor * maxSpeed * dt;
+      }
+      
+      if (y < rect.top + margin) {
+        const dist = Math.max(0, y - rect.top);
+        const factor = 1 - (dist / margin);
+        panDy = factor * maxSpeed * dt;
+      } else if (y > rect.bottom - margin) {
+        const dist = Math.max(0, rect.bottom - y);
+        const factor = 1 - (dist / margin);
+        panDy = -factor * maxSpeed * dt;
+      }
+      
+      if (panDx !== 0 || panDy !== 0) {
+        this.canvasPanX += panDx;
+        this.canvasPanY += panDy;
+        this.applyCanvasTransform();
+        this.redrawConnections();
+        
+        if (this.activeFloatingNodePanAdjust) {
+          this.activeFloatingNodePanAdjust(panDx, panDy);
+        }
+      }
+    };
+    this.autoScrollRAF = requestAnimationFrame(loop);
+  }
+
+  private stopAutoScrollLoop() {
+    if (this.autoScrollRAF) {
+      cancelAnimationFrame(this.autoScrollRAF);
+      this.autoScrollRAF = null;
+    }
+  }
+
   /**
    * Wires up dragging (pan) and mouse-wheel / button zoom on the flow
    * canvas, so flows with many conditions/branches can be fully explored
@@ -1753,22 +1852,32 @@ export default class FlowEditorPage implements Page {
     const viewport = this.el.querySelector('#canvas-viewport') as HTMLElement;
     if (!canvas || !viewport) return;
 
-    // Tarefa 1: o canvas é 100% posicionado via `transform` em
-    // `#canvas-viewport` (canvasPanX/canvasPanY/canvasZoom) — ele nunca
-    // deveria ter um scroll nativo próprio. Se algo (uma extensão do
-    // navegador, um `:focus` automático do próprio browser em um input
-    // fora da área visível, etc.) ainda assim setar `scrollLeft`/
-    // `scrollTop` neste elemento, isso arrastaria consigo tudo que está
-    // posicionado como `absolute` dentro dele — `.block-dock` e
-    // `.canvas-controls` inclusive — para fora da área visível. Zerar
-    // sempre que um scroll nativo for detectado neutraliza esse efeito
-    // sem custar nada nos casos (a maioria) em que isso nunca acontece.
+    // Tarefa 1: o canvas é 100% posicionado via `transform` em...
     canvas.addEventListener('scroll', () => {
       if (canvas.scrollLeft !== 0 || canvas.scrollTop !== 0) {
         canvas.scrollLeft = 0;
         canvas.scrollTop = 0;
       }
     });
+
+    // --- HTML5 Drag Auto-scroll hooks ---
+    this.handleDragOver = (e: DragEvent) => {
+      // Must be dragging a chip or branch-tag to auto-scroll
+      if (!e.dataTransfer) return;
+      this.lastDragClientX = e.clientX;
+      this.lastDragClientY = e.clientY;
+      if (!this.isAnyDragActive) {
+        this.isAnyDragActive = true;
+        this.startAutoScrollLoop();
+      }
+    };
+    this.handleDragEnd = () => {
+      this.isAnyDragActive = false;
+      this.stopAutoScrollLoop();
+    };
+    window.addEventListener('dragover', this.handleDragOver);
+    window.addEventListener('dragend', this.handleDragEnd);
+    window.addEventListener('drop', this.handleDragEnd);
 
     const zoomInBtn = this.el.querySelector('#canvas-zoom-in') as HTMLElement;
     const zoomOutBtn = this.el.querySelector('#canvas-zoom-out') as HTMLElement;
@@ -1786,7 +1895,7 @@ export default class FlowEditorPage implements Page {
       const target = e.target as HTMLElement;
 
       if (!isCtrlPan) {
-        if (target.closest('.block-card, .floating-node, button, select, input, textarea, .block-menu, .branch-tag, [draggable="true"], .branch-drag-handle, .branch-leaf-anchor, .block-dock')) return;
+        if (target.closest('.block-card, .floating-node, button, select, input, textarea, .block-menu, .branch-tag, [draggable="true"], .branch-drag-handle, .branch-leaf-anchor, .block-dock, .connector, .connector-dot')) return;
       } else {
         e.preventDefault();
         e.stopPropagation();
