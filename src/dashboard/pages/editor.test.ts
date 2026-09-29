@@ -117,4 +117,58 @@ describe('FlowEditorPage Pan Cursor Feedback (Bug 1)', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Control', ctrlKey: true }));
     expect(canvas.classList.contains('is-ctrl-held')).toBe(false);
   });
+
+  describe('Bug 2 - Canvas pan interception on ConditionBlock output and floating nodes', () => {
+    it('does not pan or preventDefault on mousedown without Ctrl over floating nodes and handles', () => {
+      const canvas = document.querySelector<HTMLElement>('#editor-canvas-bg')!;
+      const container = document.querySelector<HTMLElement>('#node-flow-container')!;
+
+      // Create a mock floating node with header and grip (as produced by ConditionBlock detached branches)
+      const floatingNode = document.createElement('div');
+      floatingNode.className = 'floating-node';
+      const header = document.createElement('div');
+      header.className = 'floating-node-header';
+      const grip = document.createElement('span');
+      grip.className = 'floating-node-grip';
+      header.appendChild(grip);
+      floatingNode.appendChild(header);
+      container.appendChild(floatingNode);
+
+      // Create a mock branch-tag and branch-leaf-anchor
+      const branchTag = document.createElement('div');
+      branchTag.className = 'branch-tag is-draggable';
+      branchTag.setAttribute('draggable', 'true');
+      container.appendChild(branchTag);
+
+      const leafAnchor = document.createElement('div');
+      leafAnchor.className = 'branch-leaf-anchor';
+      container.appendChild(leafAnchor);
+
+      // 1. Click on grip without Ctrl
+      const gripEvent = new MouseEvent('mousedown', { button: 0, bubbles: true, cancelable: true });
+      grip.dispatchEvent(gripEvent);
+      expect(canvas.classList.contains('is-panning')).toBe(false);
+      expect(gripEvent.defaultPrevented).toBe(false);
+
+      // 2. Click on branch tag without Ctrl
+      const tagEvent = new MouseEvent('mousedown', { button: 0, bubbles: true, cancelable: true });
+      branchTag.dispatchEvent(tagEvent);
+      expect(canvas.classList.contains('is-panning')).toBe(false);
+      expect(tagEvent.defaultPrevented).toBe(false);
+
+      // 3. Click on leaf anchor without Ctrl
+      const anchorEvent = new MouseEvent('mousedown', { button: 0, bubbles: true, cancelable: true });
+      leafAnchor.dispatchEvent(anchorEvent);
+      expect(canvas.classList.contains('is-panning')).toBe(false);
+      expect(anchorEvent.defaultPrevented).toBe(false);
+
+      // 4. Click directly on canvas background without Ctrl -> pans canvas
+      const bgEvent = new MouseEvent('mousedown', { button: 0, bubbles: true, cancelable: true });
+      canvas.dispatchEvent(bgEvent);
+      expect(canvas.classList.contains('is-panning')).toBe(true);
+
+      // Cleanup
+      window.dispatchEvent(new MouseEvent('mouseup', { button: 0, bubbles: true }));
+    });
+  });
 });

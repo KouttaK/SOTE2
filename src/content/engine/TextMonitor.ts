@@ -108,9 +108,21 @@ export class TextMonitor {
     const target = getTargetFromEvent(event) as HTMLElement;
     if (target === this.activeElement) {
       this.clearBuffer();
-      this.isFieldProtected = false;
       this.activeElement = null;
-      this.updateProtectionStatus(false);
+
+      // When the user clicks the extension action icon in the browser toolbar or
+      // when the window blurs, event.relatedTarget is null. In this case, preserve
+      // the protection status for the active tab so the popup query accurately
+      // displays the "Campo protegido" banner.
+      // Only switch protection status to false if focus moved to an explicit unprotected element.
+      const related = event.relatedTarget as Element | null;
+      if (related && !isProtected(related)) {
+        this.isFieldProtected = false;
+        this.updateProtectionStatus(false);
+      } else if (related && isProtected(related)) {
+        this.isFieldProtected = true;
+        this.updateProtectionStatus(true);
+      }
     }
   }
 

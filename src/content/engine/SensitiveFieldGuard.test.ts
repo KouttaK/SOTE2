@@ -304,4 +304,44 @@ describe('SensitiveFieldGuard', () => {
       expect(getDeepActiveElement()).toBe(innerInput);
     });
   });
+
+  describe('Zero UI Injection em Campos Sensíveis (Bug 3)', () => {
+    it('ChoicePopup recusa renderização e não anexa nós ao DOM sobre campos protegidos', async () => {
+      const { ChoicePopup } = await import('./ChoicePopup.js');
+      const popup = new ChoicePopup();
+
+      const passwordInput = document.createElement('input');
+      passwordInput.type = 'password';
+      document.body.appendChild(passwordInput);
+
+      const token = {
+        id: 'tok-1',
+        type: 'choice' as const,
+        value: 'opt',
+        config: { options: ['A', 'B'] },
+      };
+
+      const result = await popup.showForToken(token, passwordInput);
+      expect(result).toBeNull();
+
+      // Confirma que nenhum host ou overlay do popup foi anexado ao body
+      const injectedHosts = document.querySelectorAll('.sote-choice-popup-host');
+      expect(injectedHosts.length).toBe(0);
+    });
+
+    it('SearchPopup recusa abertura e não anexa nós ao DOM sobre campos protegidos', async () => {
+      const { SearchPopup } = await import('../search/SearchPopup.js');
+      const searchPopup = new SearchPopup();
+
+      const passwordInput = document.createElement('input');
+      passwordInput.type = 'password';
+      document.body.appendChild(passwordInput);
+
+      searchPopup.open(passwordInput);
+      expect(searchPopup.isOpen()).toBe(false);
+
+      const injectedHosts = document.querySelectorAll('.sote-search-popup-host');
+      expect(injectedHosts.length).toBe(0);
+    });
+  });
 });

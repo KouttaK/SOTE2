@@ -807,7 +807,7 @@ export default class FlowEditorPage implements Page {
         </div>
       </div>
       <div class="condition-body">
-        <div class="condition-evaluation-hint" style="font-size: 0.75rem; color: var(--text-tertiary); padding: 0.5rem 1rem 0; font-style: italic;">
+        <div class="condition-evaluation-hint">
           ${t('condition.evaluation_hint', { defaultValue: 'A primeira regra verdadeira (de cima para baixo) será executada.' })}
         </div>
         <div class="condition-branches"></div>
@@ -1786,7 +1786,7 @@ export default class FlowEditorPage implements Page {
       const target = e.target as HTMLElement;
 
       if (!isCtrlPan) {
-        if (target.closest('.block-card, button, select, input, textarea, .block-menu, .branch-drag-handle, .block-dock')) return;
+        if (target.closest('.block-card, .floating-node, button, select, input, textarea, .block-menu, .branch-tag, [draggable="true"], .branch-drag-handle, .branch-leaf-anchor, .block-dock')) return;
       } else {
         e.preventDefault();
         e.stopPropagation();

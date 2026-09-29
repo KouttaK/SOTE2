@@ -5,7 +5,7 @@
 import type { Flow, Settings, TriggerBlock, ActionBlock } from '../../shared/types/index.js';
 import { domainMatchesAny } from '../../shared/storage/helpers.js';
 import type { ConditionResolverContext } from './ConditionResolver.js';
-import { resolveFlowActionBlock } from './ConditionResolver.js';
+import { resolveFlowActionBlock, getFlowConditionMatchScore } from './ConditionResolver.js';
 
 export interface TriggerMatch {
   flow: Flow;
@@ -25,8 +25,9 @@ export class TriggerDetector {
   /**
    * Called when a trigger key (Space/Tab/Enter) is pressed.
    * Extracts the last word from the buffer and checks trigger mode shortcuts.
+   * Ranks candidates by condition specificity and recency.
    */
-  public detectTriggerMode(buffer: string): TriggerMatch | null {
+  public detectTriggerMode(buffer: string, element?: HTMLElement | null): TriggerMatch | null {
     if (!this.canTrigger()) return null;
     if (this.settings.triggerMode !== 'trigger') return null;
 
@@ -37,18 +38,48 @@ export class TriggerDetector {
     if (!match) return null;
     const word = match[1];
 
+    interface CandidateMatch {
+      flow: Flow;
+      shortcutTyped: string;
+      score: number;
+      updatedAt: number;
+    }
+
+    const candidates: CandidateMatch[] = [];
+
     for (const flow of this.flows) {
       if (!flow.enabled) continue;
       
       const trigger = this.getTriggerBlock(flow);
       if (!trigger || !trigger.shortcut) continue;
 
-      if (this.matchesShortcut(word, trigger.shortcut, trigger.smartCase) && this.checkConditions(flow)) {
-        return { flow, shortcutTyped: word, isExactMatch: false };
+      if (this.matchesShortcut(word, trigger.shortcut, trigger.smartCase)) {
+        const score = getFlowConditionMatchScore(flow, element, word);
+        if (score !== null) {
+          candidates.push({
+            flow,
+            shortcutTyped: word,
+            score,
+            updatedAt: flow.updatedAt || flow.createdAt || 0,
+          });
+        }
       }
     }
 
-    return null;
+    if (candidates.length === 0) return null;
+
+    // Highest condition specificity score wins; break ties with most recently updated flow
+    candidates.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return b.updatedAt - a.updatedAt;
+    });
+
+    const best = candidates[0];
+    return {
+      flow: best.flow,
+      shortcutTyped: best.shortcutTyped,
+      isExactMatch: false,
+    };
   }
 
   /**
@@ -81,19 +112,25 @@ export class TriggerDetector {
    * Called on every printable character typed.
    * Checks for exact match shortcuts (exactMatchChar + shortcut).
    *
-   * Picks the LONGEST matching shortcut among all candidates, not just the
-   * first one found — matching only checks the tail of the buffer, so a
-   * shorter shortcut that happens to be a suffix of a longer one (e.g.
-   * "f1" is a suffix of "pf1") would otherwise "match" too and could win
-   * purely by being earlier in `this.flows`, even though the longer,
-   * more specific shortcut is what was actually typed.
+   * Evaluates all matching candidate flows, filtering out flows whose
+   * conditions fail in the current context. Candidates are ranked:
+   * 1. Longest typed shortcut (more specific prefix typed by user).
+   * 2. Highest condition specificity (matching domain condition > other condition > else > unrestricted).
+   * 3. Most recently updated flow (recency tie-breaker).
    */
-  public detectExactMatchMode(buffer: string): TriggerMatch | null {
+  public detectExactMatchMode(buffer: string, element?: HTMLElement | null): TriggerMatch | null {
     if (!this.canTrigger()) return null;
     if (this.settings.triggerMode !== 'exact_match') return null;
 
-    let best: TriggerMatch | null = null;
-    let bestLength = -1;
+    interface CandidateMatch {
+      flow: Flow;
+      shortcutTyped: string;
+      length: number;
+      score: number;
+      updatedAt: number;
+    }
+
+    const candidates: CandidateMatch[] = [];
 
     for (const flow of this.flows) {
       if (!flow.enabled) continue;
@@ -113,13 +150,34 @@ export class TriggerDetector {
         continue;
       }
 
-      if (expected.length > bestLength && this.matchesShortcut(tail, expected, trigger.smartCase) && this.checkConditions(flow)) {
-        best = { flow, shortcutTyped: tail, isExactMatch: true };
-        bestLength = expected.length;
+      if (this.matchesShortcut(tail, expected, trigger.smartCase)) {
+        const score = getFlowConditionMatchScore(flow, element, tail);
+        if (score !== null) {
+          candidates.push({
+            flow,
+            shortcutTyped: tail,
+            length: expected.length,
+            score,
+            updatedAt: flow.updatedAt || flow.createdAt || 0,
+          });
+        }
       }
     }
 
-    return best;
+    if (candidates.length === 0) return null;
+
+    candidates.sort((a, b) => {
+      if (b.length !== a.length) return b.length - a.length;
+      if (b.score !== a.score) return b.score - a.score;
+      return b.updatedAt - a.updatedAt;
+    });
+
+    const best = candidates[0];
+    return {
+      flow: best.flow,
+      shortcutTyped: best.shortcutTyped,
+      isExactMatch: true,
+    };
   }
 
   private canTrigger(): boolean {
@@ -144,18 +202,8 @@ export class TriggerDetector {
     return block ? (block.data as TriggerBlock) : null;
   }
 
-  private checkConditions(flow: Flow): boolean {
-    const conditionBlock = flow.blocks.find(b => b.type === 'condition');
-    if (!conditionBlock) return true; // No conditions = always valid
-
-    // Note: To perfectly evaluate condition rules, we would need to check all rules.
-    // If we only have Action logic in rules, the conditions dictate WHICH action to run.
-    // Wait, the data structure stores the ActionBlock INSIDE the ConditionRule!
-    // So the TriggerDetector just confirms if AT LEAST ONE rule passes (or elseBranch exists).
-    
-    // In our simplified logic: we will just evaluate the first rule that passes and 
-    // we'll return the flow. The orchestrator will find the correct ActionBlock.
-    return true; 
+  private checkConditions(flow: Flow, element?: HTMLElement | null): boolean {
+    return getFlowConditionMatchScore(flow, element) !== null;
   }
 
   /**

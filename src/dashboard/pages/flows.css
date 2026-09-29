@@ -251,7 +251,7 @@
 
 .flows-th {
   display: grid;
-  grid-template-columns: 2rem 3rem 8rem 8rem 1fr 8rem 11rem 5rem;
+  grid-template-columns: 2rem 3rem 8rem 8rem minmax(0, 1fr) 8rem 11rem 5rem;
   gap: var(--spacing-4);
   padding: var(--spacing-3) var(--spacing-5);
   border-bottom: 1px solid var(--color-hair);
@@ -269,12 +269,17 @@
 
 .flows-row {
   display: grid;
-  grid-template-columns: 2rem 3rem 8rem 8rem 1fr 8rem 11rem 5rem;
+  grid-template-columns: 2rem 3rem 8rem 8rem minmax(0, 1fr) 8rem 11rem 5rem;
   gap: var(--spacing-4);
   padding: var(--spacing-4) var(--spacing-5);
   border-bottom: 1px solid var(--color-hair);
   align-items: center;
   transition: background-color var(--transition-duration) var(--transition-easing);
+}
+
+.flows-row > div:nth-child(5) {
+  min-width: 0;
+  overflow: hidden;
 }
 
 .flows-row:last-child { border-bottom: none; }
@@ -336,6 +341,7 @@
 
 /* Preview */
 .row-preview {
+  min-width: 0;
   font-size: var(--font-size-sm);
   color: var(--color-mute);
   white-space: nowrap;

@@ -71,6 +71,69 @@ export function resolveFlowActionBlock(
 }
 
 /**
+ * Calculates a condition match score for a Flow:
+ * - null: The flow has condition rules, but none matched in this context and there is no elseBranch (flow cannot run).
+ * - 20: An explicit rule with a domain condition matched (highest specificity).
+ * - 10: An explicit rule with other criteria (time, date, weekday, field_type, etc.) matched.
+ * - 1: No rules matched, but the flow's fallback elseBranch matched.
+ * - 0: Unrestricted flow (has no condition block, runs everywhere).
+ */
+export function getFlowConditionMatchScore(
+  flow: Flow,
+  element?: HTMLElement | null,
+  shortcutTyped?: string,
+  context?: ConditionResolverContext | Variable[],
+  variables?: Variable[]
+): number | null {
+  const ctx: ConditionResolverContext = Array.isArray(context)
+    ? { variables: context, flow }
+    : { ...context, flow: context?.flow ?? flow, variables: context?.variables ?? variables };
+
+  let condData: { rules: ConditionRule[]; elseBranch?: BranchTarget } | null = null;
+  const conditionBlock = flow.blocks.find(b => b.type === 'condition');
+  if (conditionBlock) {
+    condData = conditionBlock.data as any;
+  } else {
+    const actionEntry = flow.blocks.find(b => b.type === 'action');
+    if (actionEntry && isConditionBlock(actionEntry.data)) {
+      condData = actionEntry.data as any;
+    }
+  }
+
+  // If there are no conditions gating this flow, it is unrestricted (score 0).
+  if (!condData) {
+    return 0;
+  }
+
+  const rules = (condData.rules || []) as ConditionRule[];
+  const hostname = typeof window !== 'undefined' && window.location ? window.location.hostname : '';
+  const now = new Date();
+
+  for (const rule of rules) {
+    let passed = evaluateCriterion(rule, hostname, now, element, shortcutTyped, ctx);
+    if (rule.criteria && rule.criteria.length > 0) {
+      const combinator = rule.combinator || 'AND';
+      for (const criterion of rule.criteria) {
+        const criterionPassed = evaluateCriterion(criterion, hostname, now, element, shortcutTyped, ctx);
+        passed = combinator === 'OR' ? (passed || criterionPassed) : (passed && criterionPassed);
+      }
+    }
+
+    if (passed && rule.action) {
+      const hasDomainCriterion = rule.type === 'domain' || (rule.criteria && rule.criteria.some(c => c.type === 'domain'));
+      return hasDomainCriterion ? 20 : 10;
+    }
+  }
+
+  // If no rule passed, check if there is an elseBranch
+  if (condData.elseBranch) {
+    return 1;
+  }
+
+  return null;
+}
+
+/**
  * Resolves a ConditionBlock down to the single leaf ActionBlock that
  * matches (or null if nothing matches and there's no elseBranch).
  */

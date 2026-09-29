@@ -65,38 +65,78 @@ export class ConflictsModal {
         item.className = `conflict-card conflict-card--${conflict.severity}`;
 
         const badgeLabel = t(`conflicts.badge.${conflict.severity}`);
+        const cleanA = conflict.shortcutA.startsWith('/') ? conflict.shortcutA : `/${conflict.shortcutA}`;
+        const cleanB = conflict.shortcutB
+          ? (conflict.shortcutB.startsWith('/') ? conflict.shortcutB : `/${conflict.shortcutB}`)
+          : '';
+
         const params: Record<string, any> = {
           ...(conflict.descriptionParams || {}),
+          scA: cleanA,
+          scB: cleanB,
+          short: cleanA,
+          long: cleanB,
           ms: prefixWaitMs,
         };
         const descText = t(conflict.descriptionKey, params);
+
+        const simCardHtml = conflict.type === 'prefix' ? /* html */ `
+          <div class="conflict-sim-card">
+            <div class="conflict-sim-title">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor" class="conflict-sim-icon"><path d="M256 0a256 256 0 1 1 0 512A256 256 0 1 1 256 0zM232 120V256c0 8 4 15.5 10.7 20l96 64c11 7.4 25.9 4.4 33.3-6.7s4.4-25.9-6.7-33.3L280 243.2V120c0-13.3-10.7-24-24-24s-24 10.7-24 24z"/></svg>
+              <span>${t('conflicts.sim.title')}</span>
+            </div>
+            <ol class="conflict-sim-steps">
+              <li>${t('conflicts.sim.step_type_short', { short: escapeHtml(cleanA), ms: prefixWaitMs })}</li>
+              <li>${t('conflicts.sim.step_type_long', { long: escapeHtml(cleanB) })}</li>
+              <li>${t('conflicts.sim.step_pause')}</li>
+            </ol>
+          </div>
+        ` : '';
 
         item.innerHTML = /* html */ `
           <div class="conflict-card-header">
             <span class="conflict-badge conflict-badge--${conflict.severity}">${badgeLabel}</span>
             <span class="conflict-shortcuts">
-              <span class="conflict-sc-pill">/${escapeHtml(conflict.shortcutA)}</span>
-              ${conflict.shortcutB ? `<span class="conflict-vs">vs</span><span class="conflict-sc-pill">/${escapeHtml(conflict.shortcutB)}</span>` : ''}
+              <span class="conflict-sc-pill">${escapeHtml(cleanA)}</span>
+              ${cleanB ? `<span class="conflict-vs">vs</span><span class="conflict-sc-pill">${escapeHtml(cleanB)}</span>` : ''}
             </span>
           </div>
           <p class="conflict-desc">${descText}</p>
-          <div class="conflict-actions">
-            <button type="button" class="btn-secondary btn-sm conflict-edit-a" data-id="${conflict.flowA.id}">
-              ${t('conflicts.action.edit_flow')} (/${escapeHtml(conflict.shortcutA)})
-            </button>
-            <button type="button" class="btn-secondary btn-sm conflict-disable-a" data-id="${conflict.flowA.id}">
-              ${t('conflicts.action.disable_flow')}
-            </button>
+          ${simCardHtml}
+          <div class="conflict-flows-list">
+            <div class="conflict-flow-row">
+              <div class="conflict-flow-meta">
+                <span class="conflict-flow-name" title="${escapeHtml(conflict.flowA.name)}">${escapeHtml(conflict.flowA.name)}</span>
+                <span class="conflict-sc-pill">${escapeHtml(cleanA)}</span>
+              </div>
+              <div class="conflict-flow-actions">
+                <button type="button" class="btn-secondary btn-sm conflict-edit-a" data-id="${conflict.flowA.id}">
+                  ${t('conflicts.action.edit_flow')}
+                </button>
+                <button type="button" class="btn-secondary btn-sm conflict-disable-a" data-id="${conflict.flowA.id}">
+                  ${t('conflicts.action.disable_flow')}
+                </button>
+              </div>
+            </div>
             ${
               conflict.flowB
                 ? /* html */ `
+              <div class="conflict-flow-row">
+                <div class="conflict-flow-meta">
+                  <span class="conflict-flow-name" title="${escapeHtml(conflict.flowB.name)}">${escapeHtml(conflict.flowB.name)}</span>
+                  <span class="conflict-sc-pill">${escapeHtml(cleanB)}</span>
+                </div>
+                <div class="conflict-flow-actions">
                   <button type="button" class="btn-secondary btn-sm conflict-edit-b" data-id="${conflict.flowB.id}">
-                    ${t('conflicts.action.edit_flow')} (/${escapeHtml(conflict.shortcutB || '')})
+                    ${t('conflicts.action.edit_flow')}
                   </button>
                   <button type="button" class="btn-secondary btn-sm conflict-disable-b" data-id="${conflict.flowB.id}">
                     ${t('conflicts.action.disable_flow')}
                   </button>
-                `
+                </div>
+              </div>
+              `
                 : ''
             }
           </div>

@@ -677,3 +677,21 @@ input#exact-char-input::placeholder,
   padding: 0.375rem 0.875rem;
   white-space: nowrap;
 }
+
+.settings-item-highlight {
+  animation: settings-highlight-flash 2s ease-out forwards;
+}
+
+@keyframes settings-highlight-flash {
+  0% {
+    background-color: rgba(99, 102, 241, 0.25);
+    outline: 2px solid var(--color-violet, #6366f1);
+    outline-offset: 4px;
+    border-radius: 0.5rem;
+  }
+  100% {
+    background-color: transparent;
+    outline: 2px solid transparent;
+    outline-offset: 4px;
+  }
+}

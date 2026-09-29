@@ -1796,6 +1796,14 @@ body.is-dragging-block-chip .leaf-drop-target {
   overflow: hidden;
 }
 
+.condition-evaluation-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding: 0.5rem 0.5rem 0.35rem;
+  font-style: italic;
+  line-height: 1.4;
+}
+
 .condition-branches {
   display: flex;
   flex-direction: column;

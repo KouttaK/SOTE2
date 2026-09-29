@@ -139,5 +139,28 @@ describe('TextMonitor (Blocklist & Sensitive Fields Integration)', () => {
       chatTextarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Space', code: 'Space', bubbles: true }));
       expect(onTriggerKeyPressed).toHaveBeenCalled();
     });
+
+    it('Bug 3: preserva status de proteção quando o foco sai da janela (relatedTarget null, ex: clique no ícone da extensão)', () => {
+      const passwordInput = document.createElement('input');
+      passwordInput.type = 'password';
+      document.body.appendChild(passwordInput);
+
+      // Usuário foca no campo de senha
+      passwordInput.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      expect(onProtectionStatusChange).toHaveBeenCalledWith(true);
+      onProtectionStatusChange.mockClear();
+
+      // Usuário clica no ícone da extensão na barra de ferramentas: focusout com relatedTarget = null
+      passwordInput.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
+
+      // NÃO deve disparar false, preservando o status de proteção para a consulta do popup
+      expect(onProtectionStatusChange).not.toHaveBeenCalledWith(false);
+
+      // Posteriormente, usuário clica em um input comum: agora sim emite false
+      const normalInput = document.createElement('input');
+      document.body.appendChild(normalInput);
+      normalInput.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      expect(onProtectionStatusChange).toHaveBeenCalledWith(false);
+    });
   });
 });

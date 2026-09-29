@@ -149,21 +149,21 @@ export default class SettingsPage implements Page {
                       <p class="settings-item-title" style="font-size: 0.8125rem;">${t('settings.exact.apply_all_label')}</p>
                       <p class="settings-item-desc">${t('settings.exact.apply_all_desc')}</p>
                     </div>
-                    <div class="toggle-switch" id="toggle-apply-delay-all">
-                      <div class="toggle-track"><div class="toggle-thumb"></div></div>
+                    <div class="settings-toggle" id="toggle-apply-delay-all">
+                      <div class="settings-toggle-knob"></div>
                     </div>
                   </div>
                 </div>
               </div>
 
               <!-- ── Word Boundary Default Toggle ────────────────────────────── -->
-              <div class="settings-item" style="margin-top: 1rem;">
+              <div class="settings-item" id="settings-wordboundary-group" style="margin-top: 1rem;">
                 <div class="settings-item-info">
                   <p class="settings-item-title">${t('settings.wordboundary.default_label')}</p>
                   <p class="settings-item-desc">${t('settings.wordboundary.default_desc')}</p>
                 </div>
-                <div class="toggle-switch" id="toggle-wordboundary-default">
-                  <div class="toggle-track"><div class="toggle-thumb"></div></div>
+                <div class="settings-toggle" id="toggle-wordboundary-default">
+                  <div class="settings-toggle-knob"></div>
                 </div>
               </div>
 
@@ -495,6 +495,21 @@ export default class SettingsPage implements Page {
       }
     };
     browser.storage.onChanged.addListener(this.storageListener);
+
+    const highlightId = sessionStorage.getItem('sote_highlight_setting');
+    if (highlightId) {
+      sessionStorage.removeItem('sote_highlight_setting');
+      setTimeout(() => {
+        const target = this.el.querySelector<HTMLElement>(`#${highlightId}`);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          target.classList.add('settings-item-highlight');
+          setTimeout(() => {
+            target.classList.remove('settings-item-highlight');
+          }, 2000);
+        }
+      }, 50);
+    }
   }
 
   unmount() {

@@ -4,6 +4,7 @@
 
 import type { Token, Variable } from '../../shared/types/index.js';
 import { resolveVariablesInText } from '../../shared/utils/variableResolver.js';
+import { isProtected } from './SensitiveFieldGuard.js';
 
 export class ChoicePopup {
   private host!: HTMLDivElement;
@@ -124,6 +125,9 @@ export class ChoicePopup {
   }
 
   public showForToken(token: Token, targetElement: HTMLElement, variables: Variable[] = []): Promise<string | null> {
+    if (targetElement && isProtected(targetElement)) {
+      return Promise.resolve(null);
+    }
     return new Promise((resolve) => {
       document.body.appendChild(this.host);
 

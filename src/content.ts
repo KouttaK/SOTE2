@@ -415,7 +415,7 @@ export default defineContentScript({
 
         runSearchTrigger(detectSearchTrigger(buffer, settings, window.location.hostname), element);
 
-        const match = detector.detectExactMatchMode(buffer);
+        const match = detector.detectExactMatchMode(buffer, element);
         if (match) {
           const longerPrefixFlows = findLongerPrefixFlows(match.flow.id, match.shortcutTyped, flows);
           const hasLongerPrefix = longerPrefixFlows.length > 0;
@@ -431,7 +431,7 @@ export default defineContentScript({
               if (document.activeElement !== element) return;
               
               const currentBuffer = monitor?.getBuffer() || '';
-              const reMatch = detector.detectExactMatchMode(currentBuffer);
+              const reMatch = detector.detectExactMatchMode(currentBuffer, element);
               if (reMatch && reMatch.shortcutTyped === match.shortcutTyped && reMatch.flow.id === match.flow.id) {
                 handleTrigger(reMatch.flow, reMatch.shortcutTyped, element).catch((err) => {
                   console.debug('[SOTE] Exact match execution failed gracefully:', err);
@@ -456,7 +456,7 @@ export default defineContentScript({
           return;
         }
 
-        const match = detector.detectTriggerMode(buffer);
+        const match = detector.detectTriggerMode(buffer, element);
         if (match) {
           e.preventDefault();
           handleTrigger(match.flow, match.shortcutTyped, element).catch((err) => {

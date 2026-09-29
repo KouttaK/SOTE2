@@ -13,6 +13,7 @@
  */
 import type { Form, FormField, Flow } from '../../shared/types/index.js';
 import type { SearchResultItem } from '../engine/SearchTriggerDetector.js';
+import { isProtected } from '../engine/SensitiveFieldGuard.js';
 
 export type FinalSelection =
   | { kind: 'form-field'; form: Form; field: FormField }
@@ -68,6 +69,7 @@ export class SearchPopup {
 
   public open(anchor: HTMLElement): void {
     if (this.open_) return;
+    if (anchor && isProtected(anchor)) return;
     this.open_ = true;
     this.anchor_ = anchor;
     this.mode = 'results';
