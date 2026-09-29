@@ -208,6 +208,12 @@ svg { display: block; }
   color: var(--color-coral, #ef4444);
 }
 
+#status-banner.status-banner--protected {
+  background-color: rgba(99, 102, 241, 0.10);
+  border-bottom-color: rgba(99, 102, 241, 0.20);
+  color: var(--color-indigo, #6366f1);
+}
+
 #status-banner .banner-text {
   flex: 1;
   min-width: 0;

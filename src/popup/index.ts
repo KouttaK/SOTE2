@@ -79,6 +79,7 @@ let currentSettings: Settings;
 let currentDomain: string | null = null;
 let allFlows: Flow[] = [];
 let allVariables: Variable[] = [];
+let isCurrentFieldProtected = false;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -179,6 +180,23 @@ function renderBanner(): void {
     const textEl = document.createElement('span');
     textEl.className = 'banner-text';
     textEl.textContent = t('popup.page.banner_blocked', { domain: currentDomain }) || `Blocked on ${currentDomain}`;
+
+    banner.appendChild(textEl);
+    if (!viewVariables.hidden) banner.hidden = true;
+    popupCard.insertBefore(banner, popupBody);
+    return;
+  }
+
+  if (isCurrentFieldProtected) {
+    // ── Protected field banner ─────────────────────────────
+    const banner = document.createElement('div');
+    banner.id = 'status-banner';
+    banner.className = 'status-banner--protected';
+
+    const textEl = document.createElement('span');
+    textEl.className = 'banner-text';
+    textEl.textContent = t('popup.page.banner_protected') || 'Campo protegido';
+    textEl.title = t('popup.page.banner_protected_desc') || 'A expansão e o monitoramento de texto estão desativados em campos de senha e pagamento.';
 
     banner.appendChild(textEl);
     if (!viewVariables.hidden) banner.hidden = true;
@@ -736,17 +754,21 @@ async function init(): Promise<void> {
   optSnooze8h.textContent         = t('popup.page.snooze_8h');
 
   // Parallelise all async reads for fast startup (<100ms target).
-  const [settings, flows, variables, domain] = await Promise.all([
+  const [settings, flows, variables, domain, protectionStatus] = await Promise.all([
     storage.getSettings(),
     storage.getFlows(),
     storage.getVariables(),
     getCurrentDomain(),
+    Promise.resolve(
+      sendMessage<{ isProtected: boolean }>({ type: 'GET_ACTIVE_TAB_PROTECTION_STATUS' })
+    ).catch(() => ({ isProtected: false })),
   ]);
 
   currentSettings = settings;
   allFlows        = flows;
   allVariables    = variables;
   currentDomain   = domain;
+  isCurrentFieldProtected = Boolean(protectionStatus?.isProtected);
 
   // Apply initial render.
   renderToggle(settings.globalEnabled);

@@ -6,6 +6,18 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
+## [1.0.19] - 2026-09-28
+
+### Adicionado
+- **Motor de Proteção em Campos Sensíveis (`SensitiveFieldGuard`):** Bloqueio rígido, seguro e não desativável contra gravação de buffer, expansão de snippets e injeção de texto em inputs confidenciais.
+- **Bloqueio Normativo e Heurística Estrita:** Detecção estrita de `type="password"`, `autocomplete` sensíveis (`current-password`, `new-password`, `one-time-code`, `cc-*`) e identificadores de cartão, código de segurança (`cvv`, `cvc`) e senhas/tokens via `name`, `id`, `aria-label` e `placeholder`, com regras estritas contra falsos positivos (ex: `cid`, `client_id`, `category-id` e `inputmode="numeric"` não são bloqueados).
+- **Persistência de Proteção via `WeakSet`:** O campo permanece protegido no ciclo de vida da página mesmo se o tipo for alternado de `password` para `text` pelo botão de "mostrar senha".
+- **Suporte a Shadow DOM Aberto:** Resolução precisa de elementos ativos e eventos mesmo encapsulados em Shadow Roots (`composedPath()`, `getDeepActiveElement()`).
+- **Defesa em Profundidade no Content Script:** Bloqueio da Paleta de Comandos, gatilho de busca inline, menus de contexto, Captura Rápida (`GET_SELECTION` rejeitado) e exclusão de eventos de copiar/recortar do histórico da área de transferência quando originados em campos sensíveis.
+- **Sinalização de Estado por Frame e Indicador no Popup:** Comunicação entre frames e background (`FRAME_PROTECTED_STATUS_CHANGED`) e exibição de alerta discreto no popup ("Campo protegido") notificando que a injeção está desativada por segurança no campo focado.
+
+---
+
 ## [1.0.18] - 2026-09-26
 
 ### Adicionado

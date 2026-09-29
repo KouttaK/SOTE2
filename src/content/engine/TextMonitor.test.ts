@@ -3,11 +3,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { TextMonitor } from './TextMonitor.js';
 import type { Settings } from '../../shared/types/index.js';
 
-describe('TextMonitor (Blocklist Integration)', () => {
+describe('TextMonitor (Blocklist & Sensitive Fields Integration)', () => {
   let monitor: TextMonitor;
   let settings: Settings;
   let onCharTyped: any;
   let onTriggerKeyPressed: any;
+  let onProtectionStatusChange: any;
 
   beforeEach(() => {
     settings = {
@@ -18,23 +19,27 @@ describe('TextMonitor (Blocklist Integration)', () => {
 
     onCharTyped = vi.fn();
     onTriggerKeyPressed = vi.fn();
+    onProtectionStatusChange = vi.fn();
 
     // Mock window.location.hostname
     Object.defineProperty(window, 'location', {
       value: { hostname: 'allowed-site.com' },
-      writable: true
+      writable: true,
+      configurable: true,
     });
 
     monitor = new TextMonitor(
       () => settings,
       onCharTyped,
-      onTriggerKeyPressed
+      onTriggerKeyPressed,
+      onProtectionStatusChange
     );
     monitor.start();
   });
 
   afterEach(() => {
     monitor.stop();
+    document.body.innerHTML = '';
     vi.restoreAllMocks();
   });
 
@@ -46,8 +51,10 @@ describe('TextMonitor (Blocklist Integration)', () => {
     input.focus();
     
     // Simulate typing
+    input.value = 'hello';
     input.dispatchEvent(new Event('input', { bubbles: true }));
     expect(onCharTyped).toHaveBeenCalled();
+    expect(monitor.getBuffer()).toBe('hello');
 
     // Simulate trigger key
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Space', code: 'Space', bubbles: true }));
@@ -64,15 +71,73 @@ describe('TextMonitor (Blocklist Integration)', () => {
     input.focus();
     
     // Simulate typing
+    input.value = 'hello';
     input.dispatchEvent(new Event('input', { bubbles: true }));
-    // Deve ignorar (early return)
     expect(onCharTyped).not.toHaveBeenCalled();
 
     // Simulate trigger key
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Space', code: 'Space', bubbles: true }));
-    // Deve ignorar (early return)
     expect(onTriggerKeyPressed).not.toHaveBeenCalled();
 
     document.body.removeChild(input);
+  });
+
+  describe('Proteção de Campos Sensíveis', () => {
+    it('bloqueia gravação no buffer, chamada de atalhos e notifica proteção ao focar/digitar em campo de senha', () => {
+      const passwordInput = document.createElement('input');
+      passwordInput.type = 'password';
+      document.body.appendChild(passwordInput);
+
+      passwordInput.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      expect(onProtectionStatusChange).toHaveBeenCalledWith(true);
+
+      passwordInput.value = 'MinhaSenhaSecreta';
+      passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+      // O buffer NUNCA deve gravar texto de senha
+      expect(monitor.getBuffer()).toBe('');
+      expect(onCharTyped).not.toHaveBeenCalled();
+
+      // Trigger keys também são ignoradas
+      passwordInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Space', code: 'Space', bubbles: true }));
+      expect(onTriggerKeyPressed).not.toHaveBeenCalled();
+    });
+
+    it('mantém bloqueio de gravação no buffer mesmo se o type mudar de password para text (show password toggle)', () => {
+      const passwordInput = document.createElement('input');
+      passwordInput.type = 'password';
+      document.body.appendChild(passwordInput);
+
+      passwordInput.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      expect(onProtectionStatusChange).toHaveBeenCalledWith(true);
+
+      // Usuário clica no "olhinho" do campo de senha
+      passwordInput.type = 'text';
+
+      passwordInput.value = 'MinhaSenhaExibida';
+      passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+      // Deve continuar estritamente protegido pelo WeakSet
+      expect(monitor.getBuffer()).toBe('');
+      expect(onCharTyped).not.toHaveBeenCalled();
+    });
+
+    it('permite expansão normal em input comum e textarea de chat (ex: Tarelo)', () => {
+      const chatTextarea = document.createElement('textarea');
+      chatTextarea.placeholder = 'Digite uma mensagem...';
+      document.body.appendChild(chatTextarea);
+
+      chatTextarea.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      expect(onProtectionStatusChange).toHaveBeenCalledWith(false);
+
+      chatTextarea.value = '/oi';
+      chatTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+      expect(monitor.getBuffer()).toBe('/oi');
+      expect(onCharTyped).toHaveBeenCalled();
+
+      chatTextarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Space', code: 'Space', bubbles: true }));
+      expect(onTriggerKeyPressed).toHaveBeenCalled();
+    });
   });
 });

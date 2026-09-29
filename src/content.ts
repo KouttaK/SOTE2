@@ -18,6 +18,7 @@ import { onContextInvalidated } from './shared/utils/serviceWorkerSafety.js';
 import { domainMatchesAny, isSnoozeActive, isExtensionActive } from './shared/storage/helpers.js';
 import { DEFAULT_SETTINGS } from './shared/storage/defaults.js';
 import { findVariableKeysInText } from './shared/utils/flowVariableScanner.js';
+import { isProtected, getDeepActiveElement, getTargetFromEvent } from './content/engine/SensitiveFieldGuard.js';
 import type { ActionBlock, Token, Flow, Form, Block, Settings, ClipboardEntry, Variable } from './shared/types/index.js';
 
 export default defineContentScript({
@@ -149,7 +150,11 @@ export default defineContentScript({
     // selfDestruct() can remove it on context invalidation.
     const getSelectionListener = (msg: any, _sender: any, sendResponse: (v: any) => void) => {
       if (msg && msg.type === 'GET_SELECTION') {
-        const active = document.activeElement as HTMLElement | null;
+        const active = (getDeepActiveElement() as HTMLElement | null) || (document.activeElement as HTMLElement | null);
+        if (active && isProtected(active)) {
+          sendResponse('');
+          return false;
+        }
         let text = '';
         if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
           const field = active as HTMLInputElement | HTMLTextAreaElement;
@@ -179,6 +184,7 @@ export default defineContentScript({
     // 3. Orchestrator Logic
     // match parameter allows full match context, or just pass the Flow directly for palette
     const handleTrigger = async (flow: Flow, shortcutTyped: string, element: HTMLElement) => {
+      if (element && isProtected(element)) return;
       monitor.pause(); // Stop monitoring while expanding
 
       try {
@@ -289,6 +295,7 @@ export default defineContentScript({
      * resolved content, the same way a Flow shortcut is.
      */
     const handleFormFieldInsert = async (form: Form, field: Form['fields'][number], searchTyped: string, element: HTMLElement) => {
+      if (element && isProtected(element)) return;
       monitor.pause();
       try {
         const context: ExpansionContext = {
@@ -337,7 +344,7 @@ export default defineContentScript({
       const session = searchSession;
       searchSession = null;
       scopeOverride = null;
-      if (!session) return;
+      if (!session || (session.element && isProtected(session.element))) return;
       try {
         if (sel.kind === 'flow') {
           await handleTrigger(sel.flow, session.typed, session.element);
@@ -355,7 +362,7 @@ export default defineContentScript({
     });
 
     const runSearchTrigger = (state: ReturnType<typeof detectSearchTrigger>, element: HTMLElement) => {
-      if (!state) {
+      if (!state || (element && isProtected(element))) {
         if (searchPopup.isOpen()) {
           searchPopup.close();
           searchSession = null;
@@ -443,11 +450,14 @@ export default defineContentScript({
 
         const match = detector.detectTriggerMode(buffer);
         if (match) {
-          e.preventDefault(); 
+          e.preventDefault();
           handleTrigger(match.flow, match.shortcutTyped, element).catch((err) => {
             console.debug('[SOTE] Trigger mode execution failed gracefully:', err);
           });
         }
+      },
+      (isProtectedStatus: boolean) => {
+        sendMessage({ type: 'FRAME_PROTECTED_STATUS_CHANGED', payload: { isProtected: isProtectedStatus } }).catch(() => {});
       }
     );
     monitor.triggerKeys = settings.triggerKeys;
@@ -485,6 +495,12 @@ export default defineContentScript({
 
     const handleClipboardEvent = (e: ClipboardEvent) => {
       try {
+        const target = getTargetFromEvent(e);
+        const deepActive = getDeepActiveElement();
+        if ((target && isProtected(target)) || (deepActive && isProtected(deepActive))) {
+          // NUNCA grava texto copiado ou recortado de campos sensíveis no histórico
+          return;
+        }
         const text = getCopiedText(e);
         if (text) {
           addToLocalClipboardHistory(text);
@@ -526,18 +542,24 @@ export default defineContentScript({
       const altMatches = requiresAlt ? e.altKey : !e.altKey;
 
       if (keyMatches && ctrlMatches && shiftMatches && altMatches) {
+        const deepActive = (getDeepActiveElement() as HTMLElement | null) || (document.activeElement as HTMLElement | null);
+        if (deepActive && isProtected(deepActive)) {
+          // Bloqueia abertura e inserção da paleta em campos protegidos
+          return;
+        }
         e.preventDefault();
         
         commandPalette.open(
           settings,
           (sel) => {
-            const active = document.activeElement as HTMLElement;
+            const active = (getDeepActiveElement() as HTMLElement | null) || (document.activeElement as HTMLElement | null);
+            if (active && isProtected(active)) return;
             if (sel.kind === 'flow') {
-              handleTrigger(sel.flow, '', active).catch((err) => {
+              handleTrigger(sel.flow, '', active as HTMLElement).catch((err) => {
                 console.debug('[SOTE] Palette flow trigger failed gracefully:', err);
               });
             } else {
-              handleFormFieldInsert(sel.form, sel.field, '', active).catch((err) => {
+              handleFormFieldInsert(sel.form, sel.field, '', active as HTMLElement).catch((err) => {
                 console.debug('[SOTE] Palette form insert failed gracefully:', err);
               });
             }

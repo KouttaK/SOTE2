@@ -19,8 +19,15 @@ import { safeContextCall } from '../shared/utils/serviceWorkerSafety.js';
 
 const CONTEXT_MENU_ID = 'sote-create-flow-from-selection';
 
+// Tracks protection status of focused fields per tab and frame
+const tabFrameProtection = new Map<number, Map<number, boolean>>();
+
 export default defineBackground(() => {
   console.log('[SOTE] Background script initialized');
+
+  browser.tabs.onRemoved.addListener((tabId) => {
+    tabFrameProtection.delete(tabId);
+  });
 
   // 0. Restore sync preference and seed defaults on first run.
   // 0. Restore sync preference and seed defaults on first run.
@@ -82,6 +89,7 @@ export default defineBackground(() => {
       });
     });
   });
+
 
   // 4. Listen to Storage Changes to Broadcast
   browser.storage.onChanged.addListener((changes, areaName) => {
@@ -222,6 +230,33 @@ async function handleMessage(message: Message, sender: any): Promise<any> {
     case 'FORM_USED':
       await storage.incrementFormStats(message.payload.formId);
       return { success: true };
+
+    case 'FRAME_PROTECTED_STATUS_CHANGED': {
+      const tabId = sender.tab?.id;
+      const frameId = sender.frameId ?? 0;
+      if (tabId !== undefined) {
+        if (!tabFrameProtection.has(tabId)) {
+          tabFrameProtection.set(tabId, new Map());
+        }
+        tabFrameProtection.get(tabId)!.set(frameId, message.payload.isProtected);
+      }
+      return { success: true };
+    }
+
+    case 'GET_ACTIVE_TAB_PROTECTION_STATUS': {
+      const activeTabs = await browser.tabs.query({ active: true, currentWindow: true });
+      const tabId = activeTabs[0]?.id;
+      let isProtected = false;
+      if (tabId !== undefined && tabFrameProtection.has(tabId)) {
+        for (const status of tabFrameProtection.get(tabId)!.values()) {
+          if (status) {
+            isProtected = true;
+            break;
+          }
+        }
+      }
+      return { isProtected };
+    }
 
     default:
       console.warn('[SOTE] Unknown message type:', message);

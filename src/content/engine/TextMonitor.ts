@@ -2,21 +2,9 @@
  * src/content/engine/TextMonitor.ts
  */
 
-/**
- * CSS selector matching the host element of any of SOTE's own floating
- * overlays (Command Palette, the Input/Choice token popup, the Gatilho de
- * Busca results popup). Their inputs/buttons live inside a Shadow DOM
- * attached directly to `document.body`, so keydown/input events dispatched
- * inside them still bubble up to these document-level listeners — we must
- * explicitly ignore them or the (possibly stale) trigger-detection buffer
- * ends up reacting to keystrokes the user typed *into our own UI*, not into
- * a page field (see the Space/Tab/Enter "steals focus back" bug: without
- * this exclusion a trigger-key keydown typed inside the token popup gets
- * preventDefault()'d and can re-fire a Flow, popping open a *second* popup
- * that steals focus from the one being typed into).
- */
 import { isExtensionActive } from '../../shared/storage/helpers.js';
 import type { Settings } from '../../shared/types/index.js';
+import { isProtected, getTargetFromEvent } from './SensitiveFieldGuard.js';
 
 const SOTE_OWN_UI_SELECTOR = '.sote-palette-host, .sote-choice-popup-host, .sote-search-popup-host';
 
@@ -26,36 +14,52 @@ export class TextMonitor {
   private activeElement: HTMLElement | null = null;
   private onCharTyped: (e: KeyboardEvent, buffer: string, element: HTMLElement) => void;
   private onTriggerKeyPressed: (e: KeyboardEvent, keyName: string, buffer: string, element: HTMLElement) => void;
+  private onProtectionStatusChange?: (isProtected: boolean) => void;
   private getSettings: () => Settings;
   
   public triggerKeys: string[] = ['Space', 'Tab', 'Enter'];
   
   private keydownListener: (e: KeyboardEvent) => void;
   private inputListener: (e: Event) => void;
+  private focusinListener: (e: FocusEvent) => void;
+  private focusoutListener: (e: FocusEvent) => void;
+
+  private isFieldProtected: boolean = false;
+  private lastReportedProtectionStatus: boolean | null = null;
 
   constructor(
     getSettings: () => Settings,
     onCharTyped: (e: KeyboardEvent, buffer: string, element: HTMLElement) => void,
-    onTriggerKeyPressed: (e: KeyboardEvent, keyName: string, buffer: string, element: HTMLElement) => void
+    onTriggerKeyPressed: (e: KeyboardEvent, keyName: string, buffer: string, element: HTMLElement) => void,
+    onProtectionStatusChange?: (isProtected: boolean) => void
   ) {
     this.getSettings = getSettings;
     this.onCharTyped = onCharTyped;
     this.onTriggerKeyPressed = onTriggerKeyPressed;
+    this.onProtectionStatusChange = onProtectionStatusChange;
 
     this.keydownListener = this.handleKeydown.bind(this);
     this.inputListener = this.handleInputEvent.bind(this);
+    this.focusinListener = this.handleFocusIn.bind(this);
+    this.focusoutListener = this.handleFocusOut.bind(this);
   }
 
   public start() {
     document.addEventListener('keydown', this.keydownListener, true);
     document.addEventListener('input', this.inputListener, true);
+    document.addEventListener('focusin', this.focusinListener, true);
+    document.addEventListener('focusout', this.focusoutListener, true);
   }
 
   public stop() {
     document.removeEventListener('keydown', this.keydownListener, true);
     document.removeEventListener('input', this.inputListener, true);
+    document.removeEventListener('focusin', this.focusinListener, true);
+    document.removeEventListener('focusout', this.focusoutListener, true);
     this.activeElement = null;
     this.buffer = '';
+    this.isFieldProtected = false;
+    this.updateProtectionStatus(false);
   }
 
   public pause() {
@@ -76,31 +80,66 @@ export class TextMonitor {
     this.buffer = '';
   }
 
+  private updateProtectionStatus(status: boolean) {
+    if (this.lastReportedProtectionStatus !== status) {
+      this.lastReportedProtectionStatus = status;
+      this.onProtectionStatusChange?.(status);
+    }
+  }
+
+  private handleFocusIn(event: FocusEvent): void {
+    const target = getTargetFromEvent(event) as HTMLElement;
+    if (!(target instanceof Element)) return;
+    if (target.closest(SOTE_OWN_UI_SELECTOR)) return;
+
+    if (isProtected(target)) {
+      this.clearBuffer();
+      this.isFieldProtected = true;
+      this.activeElement = target;
+      this.updateProtectionStatus(true);
+    } else {
+      this.isFieldProtected = false;
+      this.activeElement = target;
+      this.updateProtectionStatus(false);
+    }
+  }
+
+  private handleFocusOut(event: FocusEvent): void {
+    const target = getTargetFromEvent(event) as HTMLElement;
+    if (target === this.activeElement) {
+      this.clearBuffer();
+      this.isFieldProtected = false;
+      this.activeElement = null;
+      this.updateProtectionStatus(false);
+    }
+  }
+
   private handleInputEvent(event: Event): void {
     if (!isExtensionActive(this.getSettings(), window.location.hostname)) return;
 
-    // event.target can be a Text node in some editors (e.g. inside Shadow DOM)
-    // that dispatch events on raw text nodes. Text nodes don't have .closest(),
-    // so we must verify target is an Element before any Element-only calls.
-    if (!(event.target instanceof Element)) return;
-    const target = event.target as HTMLElement;
+    // Use getTargetFromEvent to support open Shadow DOM
+    const target = getTargetFromEvent(event) as HTMLElement;
+    if (!(target instanceof Element)) return;
 
-    // Ignorar campos de senha
-    if (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'password') return;
-
-    // Ignorar os próprios overlays da extensão (Command Palette, popup de
-    // token Input/Choice, popup do Gatilho de Busca)
+    // Ignorar os próprios overlays da extensão
     if (target.closest(SOTE_OWN_UI_SELECTOR)) return;
+
+    // Reavaliar proteção rigorosamente a cada evento input
+    if (isProtected(target)) {
+      this.clearBuffer();
+      this.isFieldProtected = true;
+      this.activeElement = target;
+      this.updateProtectionStatus(true);
+      return; // NUNCA grava nada no buffer em campos protegidos
+    }
+
+    if (this.isFieldProtected) {
+      this.isFieldProtected = false;
+      this.updateProtectionStatus(false);
+    }
 
     let textBeforeCursor = '';
     if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
-      // Per the HTML spec, only "text-based" <input> types (text, search,
-      // url, tel, password, email — and textarea) support selectionStart/
-      // selectionEnd. Reading either on a type like "number", "range",
-      // "color", "date" etc. *throws* a DOMException (InvalidStateError),
-      // not just returns null — which was silently aborting this whole
-      // handler (and thus all shortcut detection) on every keystroke in
-      // those fields, with nothing ever logged to explain why.
       let pos: number;
       try {
         pos = target.selectionStart ?? target.value.length;
@@ -120,23 +159,28 @@ export class TextMonitor {
       return;
     }
 
-    this.activeElement = target as HTMLElement;
+    this.activeElement = target;
     this.buffer = textBeforeCursor.slice(-this.MAX_BUFFER_SIZE);
     
     // Dispara a verificação de exact match no final do input
-    // Passamos um KeyboardEvent fake apenas para manter a assinatura.
     this.onCharTyped({} as KeyboardEvent, this.buffer, this.activeElement);
   }
 
   private handleKeydown(e: KeyboardEvent) {
     if (!isExtensionActive(this.getSettings(), window.location.hostname)) return;
 
-    // Same text-node guard as handleInputEvent.
-    if (!(e.target instanceof Element)) return;
-    const target = e.target as HTMLElement;
+    const target = getTargetFromEvent(e) as HTMLElement;
+    if (!(target instanceof Element)) return;
 
-    if (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'password') return;
     if (target.closest(SOTE_OWN_UI_SELECTOR)) return;
+
+    // Se o campo for protegido, nunca processa atalhos de gatilho
+    if (this.isFieldProtected || isProtected(target)) {
+      this.clearBuffer();
+      this.isFieldProtected = true;
+      this.updateProtectionStatus(true);
+      return;
+    }
 
     const codeName = e.code;
     
@@ -146,4 +190,3 @@ export class TextMonitor {
     }
   }
 }
-

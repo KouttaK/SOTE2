@@ -25,4 +25,6 @@ export type Message =
   | { type: 'DELETE_FORM'; payload: { id: string } }
   | { type: 'FORM_USED'; payload: { formId: string } }
   | { type: 'FORMS_UPDATED'; payload: Form[] }
-  | { type: 'GET_SELECTION' };
+  | { type: 'GET_SELECTION' }
+  | { type: 'FRAME_PROTECTED_STATUS_CHANGED'; payload: { isProtected: boolean } }
+  | { type: 'GET_ACTIVE_TAB_PROTECTION_STATUS' };

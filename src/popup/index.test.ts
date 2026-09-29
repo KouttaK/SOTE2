@@ -249,6 +249,28 @@ describe('Popup Component — Variação B (Real popup.html DOM)', () => {
     expect(banner?.querySelector('.banner-text')?.textContent).toContain('github.com');
   });
 
+  it('renders status-banner--protected when active tab has a protected field focused', async () => {
+    vi.mocked(storage.getSettings).mockResolvedValue({ globalEnabled: true, blocklist: [] } as any);
+    vi.mocked(helpers.isSnoozeActive).mockReturnValue(false);
+    vi.mocked(helpers.domainMatchesAny).mockReturnValue(false);
+    vi.mocked(storage.getFlows).mockResolvedValue([]);
+    vi.mocked(storage.getVariables).mockResolvedValue({});
+    vi.mocked(sendMessage).mockImplementation(async (msg: any) => {
+      if (msg?.type === 'GET_ACTIVE_TAB_PROTECTION_STATUS') {
+        return { isProtected: true };
+      }
+      return null;
+    });
+
+    await import('./index.js?protected_field_banner_test');
+    await new Promise((r) => setTimeout(r, 60));
+
+    const banner = document.getElementById('status-banner');
+    expect(banner).not.toBeNull();
+    expect(banner?.classList.contains('status-banner--protected')).toBe(true);
+    expect(banner?.querySelector('.banner-text')?.textContent).toBe('popup.page.banner_protected');
+  });
+
   // ── Globally Disabled state ────────────────────────────────────────────────
 
   it('Globally Disabled: toggle off, no banner, status dot paused', async () => {
