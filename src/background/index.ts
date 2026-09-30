@@ -16,6 +16,8 @@ import type { Message } from '../shared/messaging/types.js';
 import type { Settings } from '../shared/types/index.js';
 import { t, initI18n } from '../shared/i18n/index.js';
 import { safeContextCall } from '../shared/utils/serviceWorkerSafety.js';
+import { CounterService } from './CounterService.js';
+import { sessionService } from './SessionService.js';
 
 const CONTEXT_MENU_ID = 'sote-create-flow-from-selection';
 
@@ -27,6 +29,7 @@ export default defineBackground(() => {
 
   browser.tabs.onRemoved.addListener((tabId) => {
     tabFrameProtection.delete(tabId);
+    sessionService.handleTabRemoved(tabId);
   });
 
   // 0. Restore sync preference and seed defaults on first run.
@@ -256,6 +259,58 @@ async function handleMessage(message: Message, sender: any): Promise<any> {
         }
       }
       return { isProtected };
+    }
+
+    case 'RESERVE_COUNTER': {
+      const counterService = CounterService.getInstance();
+      return await counterService.reserveCounter(
+        message.payload.counterId,
+        message.payload.incrementMode,
+        message.payload.displayMode,
+        message.payload.isSimulation
+      );
+    }
+
+    case 'CONFIRM_COUNTERS': {
+      const counterService = CounterService.getInstance();
+      await counterService.confirmCounters(message.payload.reservations);
+      return { success: true };
+    }
+
+    case 'RELEASE_COUNTERS': {
+      const counterService = CounterService.getInstance();
+      await counterService.releaseCounters(message.payload.reservations);
+      return { success: true };
+    }
+
+    case 'GET_SESSION_DATA': {
+      const tabId = message.payload?.tabId ?? sender.tab?.id;
+      if (tabId === undefined) return {};
+      return sessionService.getSession(tabId);
+    }
+
+    case 'SET_SESSION_DATA': {
+      const tabId = message.payload.tabId ?? sender.tab?.id;
+      if (tabId !== undefined) {
+        sessionService.setSessionValue(tabId, message.payload.key, message.payload.value);
+      }
+      return { success: true };
+    }
+
+    case 'REMOVE_SESSION_DATA': {
+      const tabId = message.payload.tabId ?? sender.tab?.id;
+      if (tabId !== undefined) {
+        sessionService.removeSessionValue(tabId, message.payload.key);
+      }
+      return { success: true };
+    }
+
+    case 'CLEAR_SESSION_DATA': {
+      const tabId = message.payload?.tabId ?? sender.tab?.id;
+      if (tabId !== undefined) {
+        sessionService.clearSession(tabId);
+      }
+      return { success: true };
     }
 
     default:

@@ -366,6 +366,8 @@ export interface Counter {
   lastUsedAt?: number;
 }
 
+export type SessionData = Record<string, unknown>;
+
 export interface StorageSchema {
   schemaVersion?: number;
   flows: Flow[];

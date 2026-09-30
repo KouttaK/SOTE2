@@ -28,7 +28,11 @@ export type Message =
   | { type: 'GET_SELECTION' }
   | { type: 'FRAME_PROTECTED_STATUS_CHANGED'; payload: { isProtected: boolean } }
   | { type: 'GET_ACTIVE_TAB_PROTECTION_STATUS' }
-  | { type: 'RESERVE_COUNTER'; payload: { counterId: string; incrementMode: 'always' | 'visible_only'; displayMode: 'visible' | 'silent' } }
+  | { type: 'RESERVE_COUNTER'; payload: { counterId: string; incrementMode: 'always' | 'visible_only'; displayMode: 'visible' | 'silent'; isSimulation?: boolean } }
   | { type: 'CONFIRM_COUNTERS'; payload: { reservations: Array<{ counterId: string; reservedValue: number }> } }
-  | { type: 'RELEASE_COUNTERS'; payload: { reservations: Array<{ counterId: string; reservedValue: number }> } };
+  | { type: 'RELEASE_COUNTERS'; payload: { reservations: Array<{ counterId: string; reservedValue: number }> } }
+  | { type: 'GET_SESSION_DATA'; payload?: { tabId?: number } }
+  | { type: 'SET_SESSION_DATA'; payload: { key: string; value: unknown; tabId?: number } }
+  | { type: 'REMOVE_SESSION_DATA'; payload: { key: string; tabId?: number } }
+  | { type: 'CLEAR_SESSION_DATA'; payload?: { tabId?: number } };
 

@@ -20,6 +20,7 @@ import { DEFAULT_SETTINGS } from './shared/storage/defaults.js';
 import { findVariableKeysInText } from './shared/utils/flowVariableScanner.js';
 import { findLongerPrefixFlows } from './shared/utils/conflictDetector.js';
 import { isProtected, getDeepActiveElement, getTargetFromEvent } from './content/engine/SensitiveFieldGuard.js';
+import { sessionStore } from './content/engine/SessionStore.js';
 import type { ActionBlock, Token, Flow, Form, Block, Settings, ClipboardEntry, Variable } from './shared/types/index.js';
 
 export default defineContentScript({
@@ -56,6 +57,9 @@ export default defineContentScript({
     // Global Variables ({{KEY}} -> value), used to resolve variable tokens
     // typed directly into action text at expansion time (see resolveVariablesInText below).
     let variables: Variable[] = (await sendMessage<Variable[]>({ type: 'GET_VARIABLES' })) || [];
+
+    // Hydrate tab ephemeral session data from background
+    await sessionStore.hydrate();
 
     if (!isExtensionActive(settings, window.location.hostname)) {
       console.log('[SOTE] Disabled on this site by blocklist, global settings, or snooze.');
