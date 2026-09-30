@@ -270,6 +270,41 @@ describe('SettingsPage', () => {
       expect(settingsContainer).not.toBeNull();
       expect(pageInner!.contains(settingsContainer)).toBe(true);
     });
+
+    it('renders undo expansion controls and updates settings on change', async () => {
+      vi.mocked(storage.getSettings).mockResolvedValueOnce({
+        blocklist: [],
+        undoEnabled: true,
+        undoWindowSeconds: 5,
+        undoTrigger: 'both',
+      } as any);
+
+      await page.mount();
+
+      const toggleUndo = container.querySelector<HTMLElement>('#toggle-undo-enabled')!;
+      const inputWindow = container.querySelector<HTMLInputElement>('#undo-window-input')!;
+      const selectTrigger = container.querySelector<HTMLSelectElement>('#undo-trigger-select')!;
+
+      expect(toggleUndo).not.toBeNull();
+      expect(toggleUndo.classList.contains('active')).toBe(true);
+      expect(inputWindow.value).toBe('5');
+      expect(selectTrigger.value).toBe('both');
+
+      // Toggle off
+      toggleUndo.click();
+      expect(toggleUndo.classList.contains('active')).toBe(false);
+      expect(storage.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ undoEnabled: false }));
+
+      // Change window duration
+      inputWindow.value = '8';
+      inputWindow.dispatchEvent(new Event('change'));
+      expect(storage.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ undoWindowSeconds: 8 }));
+
+      // Change trigger key
+      selectTrigger.value = 'ctrl_z';
+      selectTrigger.dispatchEvent(new Event('change'));
+      expect(storage.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ undoTrigger: 'ctrl_z' }));
+    });
   });
 });
 

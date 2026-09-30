@@ -96,19 +96,40 @@ export class TextInjector {
     expansionHtml: string,
     isRichText: boolean,
     cursorOffset: number | null = null
-  ) {
+  ): { shortcutStart: number; injectedLength: number } | null {
     if (this.isInputOrTextarea(element)) {
-      this.injectIntoInput(element as HTMLInputElement | HTMLTextAreaElement, shortcutTyped, expansionHtml, cursorOffset);
+      return this.injectIntoInput(element as HTMLInputElement | HTMLTextAreaElement, shortcutTyped, expansionHtml, cursorOffset);
     } else if (element.isContentEditable) {
-      this.injectIntoContentEditable(element, shortcutTyped, expansionHtml, isRichText, cursorOffset);
+      return this.injectIntoContentEditable(element, shortcutTyped, expansionHtml, isRichText, cursorOffset);
     }
+    return null;
+  }
+
+  public static undo(
+    element: HTMLElement,
+    shortcutTyped: string,
+    expansionHtml: string,
+    isRichText: boolean,
+    shortcutStartPos?: number
+  ): boolean {
+    if (this.isInputOrTextarea(element)) {
+      return this.undoInput(element as HTMLInputElement | HTMLTextAreaElement, shortcutTyped, expansionHtml, shortcutStartPos);
+    } else if (element.isContentEditable) {
+      return this.undoContentEditable(element, shortcutTyped, expansionHtml, isRichText);
+    }
+    return false;
   }
 
   private static isInputOrTextarea(el: HTMLElement): boolean {
     return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA';
   }
 
-  private static injectIntoInput(el: HTMLInputElement | HTMLTextAreaElement, shortcut: string, text: string, cursorOffset: number | null) {
+  private static injectIntoInput(
+    el: HTMLInputElement | HTMLTextAreaElement,
+    shortcut: string,
+    text: string,
+    cursorOffset: number | null
+  ): { shortcutStart: number; injectedLength: number } | null {
     // Strip HTML if we are injecting into plain text field
     const plainText = this.stripHtml(text);
 
@@ -133,7 +154,7 @@ export class TextInjector {
     
     // Calculate where the shortcut starts
     const shortcutStart = start - shortcut.length;
-    if (shortcutStart < 0) return; // Something is wrong
+    if (shortcutStart < 0) return null; // Something is wrong
 
     const newValue = currentValue.substring(0, shortcutStart) + plainText + currentValue.substring(end);
     
@@ -157,6 +178,79 @@ export class TextInjector {
     } catch {
       // Field type doesn't support a text caret (number/range/color/...) — nothing to do.
     }
+
+    return { shortcutStart, injectedLength: plainText.length };
+  }
+
+  private static undoInput(
+    el: HTMLInputElement | HTMLTextAreaElement,
+    shortcut: string,
+    expansionText: string,
+    shortcutStart?: number
+  ): boolean {
+    const plainText = this.stripHtml(expansionText);
+    const currentValue = el.value;
+
+    let pos = typeof shortcutStart === 'number' ? shortcutStart : -1;
+    if (pos === -1 || currentValue.substring(pos, pos + plainText.length) !== plainText) {
+      pos = currentValue.lastIndexOf(plainText);
+    }
+
+    if (pos === -1) {
+      return false;
+    }
+
+    const newValue = currentValue.substring(0, pos) + shortcut + currentValue.substring(pos + plainText.length);
+    this.setNativeValue(el, newValue);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+
+    const newCursor = pos + shortcut.length;
+    try {
+      el.setSelectionRange(newCursor, newCursor);
+    } catch {}
+
+    return true;
+  }
+
+  private static undoContentEditable(
+    el: HTMLElement,
+    shortcut: string,
+    expandedText: string,
+    isRichText: boolean
+  ): boolean {
+    el.focus();
+    const plainText = this.stripHtml(expandedText);
+
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let node: Text | null;
+    let found = false;
+
+    while ((node = walker.nextNode() as Text | null)) {
+      const idx = node.data.lastIndexOf(plainText);
+      if (idx !== -1) {
+        const range = document.createRange();
+        range.setStart(node, idx);
+        range.setEnd(node, idx + plainText.length);
+        const sel = window.getSelection();
+        if (sel) {
+          sel.removeAllRanges();
+          sel.addRange(range);
+          document.execCommand('insertText', false, shortcut);
+          found = true;
+          break;
+        }
+      }
+    }
+
+    if (!found) {
+      try {
+        return document.execCommand('undo', false);
+      } catch {
+        return false;
+      }
+    }
+    return true;
   }
 
   private static injectIntoContentEditable(el: HTMLElement, shortcut: string, html: string, isRichText: boolean, cursorOffset: number | null) {

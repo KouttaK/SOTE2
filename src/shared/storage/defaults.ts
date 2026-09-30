@@ -23,6 +23,9 @@ export const DEFAULT_SETTINGS: Settings = {
     domainPrefix: '//',
     globalPrefix: '///',
   },
+  undoEnabled: true,
+  undoWindowSeconds: 5,
+  undoTrigger: 'both',
 };
 
 /**

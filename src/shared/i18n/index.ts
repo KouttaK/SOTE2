@@ -682,6 +682,18 @@ export const translations = {
     'settings.searchTrigger.conflict_many': '{count} shortcuts conflict with the Search Trigger: {list} — rename them to continue using both.',
     'settings.blocklist.no_active_site': 'No valid website found in the active tab.',
 
+    'settings.undo.title': 'Undo Expansion',
+    'settings.undo.desc': 'Allows undoing a text expansion with Backspace or Ctrl+Z to restore the typed shortcut.',
+    'settings.undo.enable_label': 'Enable Undo',
+    'settings.undo.enable_desc': 'Enable or disable the undo window after text expansions.',
+    'settings.undo.window_label': 'Undo Window',
+    'settings.undo.window_hint': 'Duration in seconds (0 to 10) to allow undoing after expansion.',
+    'settings.undo.trigger_label': 'Undo Key',
+    'settings.undo.trigger_hint': 'Which key triggers the undo action.',
+    'settings.undo.trigger_both': 'Backspace or Ctrl+Z',
+    'settings.undo.trigger_backspace': 'Backspace only',
+    'settings.undo.trigger_ctrl_z': 'Ctrl+Z only',
+
     'settings.section.general_triggers': 'General & Triggers',
     'settings.section.general_triggers_desc': 'Configure how and when your snippets expand',
 
@@ -1668,6 +1680,18 @@ export const translations = {
     'settings.searchTrigger.conflict_one': '1 atalho conflita com o Gatilho de Busca: {shortcut} — renomeie pra continuar usando os dois.',
     'settings.searchTrigger.conflict_many': '{count} atalhos conflitam com o Gatilho de Busca: {list} — renomeie-os pra continuar usando os dois.',
     'settings.blocklist.no_active_site': 'Nenhum site válido encontrado na aba ativa.',
+
+    'settings.undo.title': 'Desfazer Expansão',
+    'settings.undo.desc': 'Permite desfazer uma expansão de texto com Backspace ou Ctrl+Z para restaurar o atalho digitado.',
+    'settings.undo.enable_label': 'Ativar Desfazer',
+    'settings.undo.enable_desc': 'Liga ou desliga a janela de cancelamento após expansões de texto.',
+    'settings.undo.window_label': 'Janela de Tempo',
+    'settings.undo.window_hint': 'Duração em segundos (0 a 10) para permitir o cancelamento após expandir.',
+    'settings.undo.trigger_label': 'Tecla de Ação',
+    'settings.undo.trigger_hint': 'Qual tecla aciona o cancelamento da expansão.',
+    'settings.undo.trigger_both': 'Backspace ou Ctrl+Z',
+    'settings.undo.trigger_backspace': 'Apenas Backspace',
+    'settings.undo.trigger_ctrl_z': 'Apenas Ctrl+Z',
 
     'settings.section.general_triggers': 'Geral & Disparos',
     'settings.section.general_triggers_desc': 'Configure como e quando seus atalhos são expandidos',

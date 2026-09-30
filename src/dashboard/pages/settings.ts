@@ -343,6 +343,51 @@ export default class SettingsPage implements Page {
             </div>
           </section>
 
+          <!-- Undo Expansion Section -->
+          <section class="settings-section">
+            <div class="settings-section-header">
+              <div class="settings-section-icon">${ICONS.pointer}</div>
+              <div>
+                <h2 class="settings-section-title">${t('settings.undo.title')}</h2>
+                <p class="settings-section-desc">${t('settings.undo.desc')}</p>
+              </div>
+            </div>
+            <div class="settings-section-content">
+              <div class="settings-row">
+                <div>
+                  <p class="settings-row-title">${t('settings.undo.enable_label')}</p>
+                  <p class="settings-row-desc">${t('settings.undo.enable_desc')}</p>
+                </div>
+                <div class="settings-toggle" id="toggle-undo-enabled">
+                  <div class="settings-toggle-knob"></div>
+                </div>
+              </div>
+
+              <div class="divider"></div>
+
+              <div style="display:flex; gap:1.5rem; flex-wrap:wrap;">
+                <div class="settings-input-group" style="width:160px;">
+                  <label class="settings-label">${t('settings.undo.window_label')}</label>
+                  <div style="display:flex; align-items:center; gap:.5rem;">
+                    <input type="number" id="undo-window-input" class="settings-input" min="0" max="10" step="1" style="width:80px;" />
+                    <span style="color:#737373; font-size:.8125rem;">s</span>
+                  </div>
+                  <p class="settings-row-desc">${t('settings.undo.window_hint')}</p>
+                </div>
+
+                <div class="settings-input-group" style="width:200px;">
+                  <label class="settings-label">${t('settings.undo.trigger_label')}</label>
+                  <select id="undo-trigger-select" class="settings-select" style="width:100%; height:36px; background:#171717; border:1px solid #262626; color:#fafafa; border-radius:6px; padding:0 8px;">
+                    <option value="both">${t('settings.undo.trigger_both')}</option>
+                    <option value="backspace">${t('settings.undo.trigger_backspace')}</option>
+                    <option value="ctrl_z">${t('settings.undo.trigger_ctrl_z')}</option>
+                  </select>
+                  <p class="settings-row-desc">${t('settings.undo.trigger_hint')}</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
           <!-- Backup & Sync Section -->
           <section class="settings-section">
             <div class="settings-section-header">
@@ -473,6 +518,7 @@ export default class SettingsPage implements Page {
     this.bindInputs();
     this.bindExpansionMode();
     this.bindSearchTrigger();
+    this.bindUndoSettings();
     this.renderBlocklist();
 
     this.allFolders = await storage.getFolders();
@@ -1147,6 +1193,42 @@ export default class SettingsPage implements Page {
 
     // Initial scan on page load too, in case Flows changed elsewhere since the feature was last active.
     scanForConflicts(cfg);
+  }
+
+  private bindUndoSettings(): void {
+    const toggleEnabled = this.el.querySelector<HTMLElement>('#toggle-undo-enabled');
+    const windowInput = this.el.querySelector<HTMLInputElement>('#undo-window-input');
+    const triggerSelect = this.el.querySelector<HTMLSelectElement>('#undo-trigger-select');
+
+    if (toggleEnabled) {
+      const isEnabled = this.settings.undoEnabled !== false;
+      toggleEnabled.classList.toggle('active', isEnabled);
+      toggleEnabled.addEventListener('click', () => {
+        const next = !(this.settings.undoEnabled !== false);
+        this.settings.undoEnabled = next;
+        toggleEnabled.classList.toggle('active', next);
+        this.updateSetting('undoEnabled', next);
+      });
+    }
+
+    if (windowInput) {
+      windowInput.value = String(this.settings.undoWindowSeconds ?? 5);
+      windowInput.addEventListener('change', (e) => {
+        const val = Math.max(0, Math.min(10, parseInt((e.target as HTMLInputElement).value, 10) || 0));
+        (e.target as HTMLInputElement).value = String(val);
+        this.settings.undoWindowSeconds = val;
+        this.updateSetting('undoWindowSeconds', val);
+      });
+    }
+
+    if (triggerSelect) {
+      triggerSelect.value = this.settings.undoTrigger || 'both';
+      triggerSelect.addEventListener('change', (e) => {
+        const val = (e.target as HTMLSelectElement).value as 'backspace' | 'ctrl_z' | 'both';
+        this.settings.undoTrigger = val;
+        this.updateSetting('undoTrigger', val);
+      });
+    }
   }
 
   private applyModeUI(

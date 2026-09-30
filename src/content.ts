@@ -21,6 +21,7 @@ import { findVariableKeysInText } from './shared/utils/flowVariableScanner.js';
 import { findLongerPrefixFlows } from './shared/utils/conflictDetector.js';
 import { isProtected, getDeepActiveElement, getTargetFromEvent } from './content/engine/SensitiveFieldGuard.js';
 import { sessionStore } from './content/engine/SessionStore.js';
+import { UndoManager } from './content/engine/UndoManager.js';
 import type { ActionBlock, Token, Flow, Form, Block, Settings, ClipboardEntry, Variable } from './shared/types/index.js';
 
 export default defineContentScript({
@@ -34,6 +35,7 @@ export default defineContentScript({
     const detector = new TriggerDetector();
     const choicePopup = new ChoicePopup();
     const commandPalette = new CommandPalette();
+    const undoManager = new UndoManager(() => settings);
 
     const isBlocked = domainMatchesAny;
 
@@ -209,6 +211,7 @@ export default defineContentScript({
           tabUrl: window.location.href,
           tabTitle: document.title,
           clipboardHistory,
+          counterReservations: [],
         };
 
         // Resolve tokens + variables + cursor position — shared pipeline,
@@ -227,6 +230,9 @@ export default defineContentScript({
 
         if (resolved === null) {
           // User cancelled a choice/input token popup (Esc / click outside).
+          if (context.counterReservations && context.counterReservations.length > 0) {
+            sendMessage({ type: 'RELEASE_COUNTERS', payload: { reservations: context.counterReservations } }).catch(() => {});
+          }
           monitor.resume();
           return;
         }
@@ -255,7 +261,7 @@ export default defineContentScript({
         }
 
         // Inject
-        TextInjector.inject(element, shortcutTyped, expandedContent, isRichText, cursorOffset);
+        const injectMeta = TextInjector.inject(element, shortcutTyped, expandedContent, isRichText, cursorOffset);
 
         // The 'input'/'change' events dispatched by TextInjector fire while
         // the monitor is still paused (its listeners were removed above),
@@ -272,15 +278,28 @@ export default defineContentScript({
         // Track stats
         const plainTextLength = isRichText ? expandedContent.replace(/<[^>]+>/g, '').length : expandedContent.length;
         const keysSaved = Math.max(0, plainTextLength - shortcutTyped.length);
-        sendMessage({ type: 'FLOW_USED', payload: { flowId: flow.id, keysSaved } }).catch(() => {});
 
         // Track variable usage
         const usedVarKeys = resolved.usedVariables?.length
           ? resolved.usedVariables
           : findVariableKeysInText(actionBlock.content).filter((k) => variables.some((v) => v.key === k));
-        if (usedVarKeys.length > 0) {
-          sendMessage({ type: 'VARIABLES_USED', payload: { keys: usedVarKeys } }).catch(() => {});
-        }
+
+        // Hand over to UndoManager: handles the undo window, counter confirmation / release,
+        // and deferred usage stats flush
+        undoManager.recordExpansion({
+          element,
+          shortcutTyped,
+          expandedContent,
+          isRichText,
+          cursorOffset,
+          shortcutStartPos: injectMeta?.shortcutStart,
+          counterReservations: context.counterReservations,
+          stats: {
+            flowId: flow.id,
+            keysSaved,
+            usedVarKeys,
+          },
+        });
         
       } catch (e) {
         console.error('[SOTE] Expansion Error:', e);
@@ -585,6 +604,25 @@ export default defineContentScript({
     
     document.addEventListener('keydown', handleCommandPaletteKeydown, true);
 
+    const handleUndoKeydown = (e: KeyboardEvent) => {
+      if (undoManager.hasPending()) {
+        undoManager.handleKeyDown(e);
+      }
+    };
+    document.addEventListener('keydown', handleUndoKeydown, true);
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        undoManager.flush();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const handlePageHide = () => {
+      undoManager.flush();
+    };
+    window.addEventListener('pagehide', handlePageHide);
+
     // M-15: Clean up listeners and shut down completely if content script is
     // hot-reloaded or the extension context is invalidated.
     let isDestroyed = false;
@@ -592,6 +630,8 @@ export default defineContentScript({
       if (isDestroyed) return;
       isDestroyed = true;
       console.debug('[SOTE] Content script self-destructed due to extension reload/update on', window.location.href);
+
+      undoManager.flush();
 
       if (exactMatchTimeout) {
         clearTimeout(exactMatchTimeout);
@@ -601,6 +641,9 @@ export default defineContentScript({
       document.removeEventListener('copy', handleClipboardEvent, true);
       document.removeEventListener('cut', handleClipboardEvent, true);
       document.removeEventListener('keydown', handleCommandPaletteKeydown, true);
+      document.removeEventListener('keydown', handleUndoKeydown, true);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', handlePageHide);
 
       removeMsgListener();
       try { browser.runtime.onMessage.removeListener(getSelectionListener); } catch {}

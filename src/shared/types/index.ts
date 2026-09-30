@@ -350,6 +350,12 @@ export interface Settings {
   applyDelayToAllShortcuts?: boolean;
   /** Whether the one-time notice about word boundary default has been seen/dismissed. */
   seenWordBoundaryNotice?: boolean;
+  /** Whether undo expansion (desfazer expansão) is enabled. Defaults to true. */
+  undoEnabled?: boolean;
+  /** Duration of the undo window in seconds (0 to 10). Defaults to 5. */
+  undoWindowSeconds?: number;
+  /** Trigger key to undo expansion: 'backspace', 'ctrl_z', or 'both'. Defaults to 'both'. */
+  undoTrigger?: 'backspace' | 'ctrl_z' | 'both';
 }
 
 export interface Counter {
