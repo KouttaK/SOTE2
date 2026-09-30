@@ -9,6 +9,28 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 ## [1.0.19] - Não publicado (em desenvolvimento acumulado)
 
 ### Adicionado
+- **Fase 2.4 — Desfazer Expansão (Undo) e Envio Diferido de Estatísticas:**
+  - Desfazer expansão inteligente acionado via tecla `Backspace` ou atalho `Ctrl+Z` dentro de uma janela temporizada configurável (padrão de 5s, ajustável de 0 a 10s).
+  - Restauração precisa do atalho original digitado no elemento focado (`input`, `textarea` e `contenteditable`), removendo o texto injetado.
+  - Devolução condicional de reservas de contadores ao `CounterService` caso nenhum número posterior tenha sido emitido (preservando lacuna se o contador já avançou).
+  - Envio diferido de estatísticas de uso (`FLOW_USED`, `VARIABLES_USED`): cancelamento do envio caso o usuário desfaça a expansão, e disparo automático imediato ao expirar a janela ou nos eventos de ciclo de vida `visibilitychange` e `pagehide`.
+  - Restauração graciosa do atalho em fluxos que pausaram por inputs ou escolhas interativas quando cancelados pelo usuário.
+  - Novo card de configuração dedicado no Dashboard ("Desfazer Expansão") com controle de ativação, duração da janela e seleção de tecla de gatilho (`Backspace`, `Ctrl+Z` ou ambos) totalmente internacionalizado (pt-BR e en).
+- **Fase 2.3 — Armazenamento Efêmero de Sessão por Aba (`SessionStore`):**
+  - Armazenamento em memória no Content Script (`SessionStore`) para variáveis dinâmicas de sessão com escopo "lembrar nesta aba", com isolamento por aba e limpeza automática ao fechar a guia.
+  - Fallback defensivo e tolerante a falhas no Background Script (`SessionService`) para preservação de estado da sessão em recargas de frames ou ciclo de vida de abas.
+- **Fase 2.2 — Contadores Persistentes e Nomeados:**
+  - Centralização no Background Script com fila e Mutex baseado em Promises para alocação sequencial estrita e livre de condições de corrida entre múltiplas abas (`ALLOCATE_COUNTER`).
+  - Modelo transacional de dois estágios: reserva temporária (`RESERVE_COUNTER`) na resolução do snippet e confirmação pós-injeção (`CONFIRM_COUNTER`) ou liberação (`RELEASE_COUNTER`).
+  - Política de lacuna permanente (permanent gap) preservada caso reservas sejam canceladas após novos números subsequentes terem sido emitidos.
+  - Página completa de gerenciamento de Contadores no Dashboard com criação, edição de valor inicial, passo e formatação com preenchimento de zeros (padding).
+  - Modal informativo de contadores ausentes (`MissingCounterModal`) acionado durante a importação de fluxos legados ou de terceiros.
+  - Modo simulação seguro em `PreviewModal` e no editor para visualização prévia sem afetar os valores reais persistidos no storage.
+- **Fase 2.1 — Migração de Schema v1 para v2 e Entidade Counter:**
+  - Migração atômica de dados via `MigrationService` com versionamento de schema (`schemaVersion: 2`).
+  - Rotina com verificação preventiva de cota de armazenamento e criação de backup pré-migração (`backup_schema_v1`).
+  - Extração de contadores inline existentes nos fluxos para entidades independentes de primeiro nível (`Counter`) com deduplicação semântica baseada em escopo e parâmetros.
+  - Procedimento testado e documentado de reversão (`rollbackToV1()`), limpeza de chaves órfãs e documentação técnica completa em `docs/migrations.md`.
 - **Auto-Scroll no Canvas do Editor durante Arraste:** Deslocamento automático e suave do canvas (auto-pan / edge scrolling) nas 4 direções e diagonais quando o cursor se aproxima das bordas visíveis durante o arraste ativo de blocos, chips do dock ou nós flutuantes (`.floating-node`), com velocidade proporcional à proximidade da borda, parada imediata ao soltar ou retornar ao centro e compensação geométrica em tempo real para manter nós flutuantes alinhados ao cursor.
 - **Fase 1B — Limite de Palavra (Word Boundary):** Opção configurável por atalho (`wordBoundary`) no bloco de gatilho (`TriggerBlock`) e globalmente nas configurações (`wordBoundaryDefault`), impedindo que atalhos em modo exato expandam no meio de palavras e URLs (ex: digitar `site.com/ab` não dispara `/ab`, e `crab` não dispara `ab`).
 - **Fase 1B — Espera Inteligente de Prefixo (Prefix Wait Delay):** Quando um atalho digitado for prefixo estrito de outro atalho maior existente (ex: `/d` vs `/data`), o motor de expansão aguarda dinamicamente um tempo de segurança (`prefixWaitMs`, padrão 500ms) para permitir a continuidade da digitação sem expansão prematura.
