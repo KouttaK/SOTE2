@@ -176,6 +176,7 @@ export async function simulateBranchContent(
       tabUrl: typeof window !== 'undefined' ? window.location?.href || 'https://example.com' : 'https://example.com',
       tabTitle: typeof document !== 'undefined' ? document.title || 'Page Title' : 'Page Title',
       clipboardHistory: ['Exemplo Clipboard'],
+      isSimulation: true,
     },
     flows,
   });
@@ -606,6 +607,7 @@ export class PreviewModal {
       tabUrl: typeof window !== 'undefined' ? window.location?.href || 'https://example.com' : 'https://example.com',
       tabTitle: typeof document !== 'undefined' ? document.title || 'Page Title' : 'Page Title',
       clipboardHistory: ['Exemplo Clipboard'],
+      isSimulation: true,
     };
 
     // Replace token pills with styled preview pills
@@ -960,4 +962,6 @@ export async function openFlowPreviewModal(flow: Flow, settings?: Settings): Pro
   modal.open();
   return modal;
 }
+
+
 

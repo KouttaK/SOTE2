@@ -352,8 +352,24 @@ export interface Settings {
   seenWordBoundaryNotice?: boolean;
 }
 
+export interface Counter {
+  id: string;
+  name: string;
+  format: string;
+  resetRule: 'never' | 'day' | 'month' | 'year';
+  startValue: number;
+  currentValue: number;
+  scope: 'global' | 'site';
+  history?: number[];
+  step: number;
+  padLength: number;
+  lastUsedAt?: number;
+}
+
 export interface StorageSchema {
+  schemaVersion?: number;
   flows: Flow[];
+  counters: Counter[];
   variables: Variable[];
   folders: Folder[];
   forms: Form[];

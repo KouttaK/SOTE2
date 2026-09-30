@@ -84,6 +84,18 @@ function chunkString(str: string, maxBytes: number): string[] {
 
 class StorageService {
   private syncEnabled = false;
+  private _migrationPending = false;
+
+  get isMigrationPending(): boolean {
+    return this._migrationPending;
+  }
+
+  async forceMigrate(): Promise<void> {
+    const allData = await browser.storage.local.get(null);
+    const { MigrationService } = await import('./MigrationService.js');
+    await MigrationService.forceMigrate(allData as Partial<StorageSchema>);
+    this._migrationPending = false;
+  }
 
   // -------------------------------------------------------------------------
   // Boot-strap: called lazily on first access
@@ -102,6 +114,26 @@ class StorageService {
    */
   async initialise(): Promise<void> {
     await safeContextCall(async () => {
+      // Run migration check before everything
+      const allData = await browser.storage.local.get(null);
+      
+      // We must await dynamic import because MigrationService relies on StorageService types
+      // or we can just import it at the top of StorageService.ts. Let's import at top.
+      const { MigrationService } = await import('./MigrationService.js');
+      this._migrationPending = await MigrationService.checkAndMigrate(allData as Partial<StorageSchema>);
+
+      // Expose emergency rollback to window for dev purposes only
+      if (typeof window !== 'undefined' && import.meta.env.DEV) {
+        (window as any).SOTE_ROLLBACK = async () => {
+          const success = await MigrationService.rollbackToV1();
+          if (success) {
+            console.log('[SOTE] Rollback to V1 complete. Please refresh.');
+          } else {
+            console.log('[SOTE] Rollback failed. No backup found.');
+          }
+        };
+      }
+
       // Restore sync preference from local storage.
       const localRaw = await browser.storage.local.get(SYNC_ENABLED_KEY);
       if (localRaw[SYNC_ENABLED_KEY] === true) {

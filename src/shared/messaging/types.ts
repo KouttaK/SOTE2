@@ -27,4 +27,8 @@ export type Message =
   | { type: 'FORMS_UPDATED'; payload: Form[] }
   | { type: 'GET_SELECTION' }
   | { type: 'FRAME_PROTECTED_STATUS_CHANGED'; payload: { isProtected: boolean } }
-  | { type: 'GET_ACTIVE_TAB_PROTECTION_STATUS' };
+  | { type: 'GET_ACTIVE_TAB_PROTECTION_STATUS' }
+  | { type: 'RESERVE_COUNTER'; payload: { counterId: string; incrementMode: 'always' | 'visible_only'; displayMode: 'visible' | 'silent' } }
+  | { type: 'CONFIRM_COUNTERS'; payload: { reservations: Array<{ counterId: string; reservedValue: number }> } }
+  | { type: 'RELEASE_COUNTERS'; payload: { reservations: Array<{ counterId: string; reservedValue: number }> } };
+

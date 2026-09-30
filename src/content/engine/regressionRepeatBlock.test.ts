@@ -1,3 +1,4 @@
+import { browser } from 'wxt/browser';
 /**
  * @vitest-environment jsdom
  *
@@ -31,10 +32,25 @@ import { resetCounterState } from './tokenExpander.js';
 import { TokenPill } from '../../dashboard/components/tokens/TokenPill.js';
 import type { Flow, Token, RepeatBlock } from '../../shared/types/index.js';
 
+vi.mock('wxt/browser', () => ({
+  browser: {
+    runtime: {
+      sendMessage: vi.fn()
+    },
+    storage: {
+      local: { get: vi.fn(), set: vi.fn() }
+    }
+  }
+}));
 describe('Regressão RepeatBlock: Bugs A e B', () => {
   beforeEach(() => {
     resetCounterState();
-    vi.clearAllMocks();
+    vi.mocked(browser.runtime.sendMessage).mockImplementation(async (msg: any) => {
+      if (msg.type === 'RESERVE_COUNTER') {
+        return { reservedValue: 1, counter: { format: '{contador}', padLength: 0 } };
+      }
+      return null;
+    });
   });
 
   const dummyChoicePopup: any = {
@@ -45,7 +61,7 @@ describe('Regressão RepeatBlock: Bugs A e B', () => {
     const counterToken: Token = {
       id: 'tok-counter-rep',
       type: 'counter',
-      config: { start: 1, step: 1 },
+      config: { counterId: 'c1' },
     };
 
     const mathToken: Token = {
@@ -97,7 +113,7 @@ describe('Regressão RepeatBlock: Bugs A e B', () => {
     const result = await resolveActionBlockContent(resolvedActionBlock!, targetElement, {
       choicePopup: dummyChoicePopup,
       variables: [],
-      context: { tabUrl: 'https://example.com', tabTitle: 'Example' },
+      context: { tabUrl: 'https://example.com', tabTitle: 'Example', isSimulation: true },
       flows: [flow],
       shortcutTyped: 'rep',
     });
@@ -121,7 +137,7 @@ describe('Regressão RepeatBlock: Bugs A e B', () => {
     const counterToken: Token = {
       id: 'tok-counter-leak-node',
       type: 'counter',
-      config: { start: 1, step: 1 },
+      config: { counterId: 'c1' },
     };
 
     const mathToken: Token = {
@@ -172,7 +188,7 @@ describe('Regressão RepeatBlock: Bugs A e B', () => {
     const result = await resolveActionBlockContent(resolvedActionBlock!, targetElement, {
       choicePopup: dummyChoicePopup,
       variables: [],
-      context: { tabUrl: 'https://example.com', tabTitle: 'Example' },
+      context: { tabUrl: 'https://example.com', tabTitle: 'Example', isSimulation: true },
       flows: [flow],
       shortcutTyped: 'rep',
     });
@@ -222,7 +238,7 @@ describe('Regressão RepeatBlock: Bugs A e B', () => {
     const result = await resolveActionBlockContent(resolvedActionBlock!, targetElement, {
       choicePopup: dummyChoicePopup,
       variables: [],
-      context: { tabUrl: 'https://example.com', tabTitle: 'Example' },
+      context: { tabUrl: 'https://example.com', tabTitle: 'Example', isSimulation: true },
       flows: [flow],
       shortcutTyped: 'rep',
     });
@@ -237,7 +253,7 @@ describe('Regressão RepeatBlock: Bugs A e B', () => {
     const counterToken: Token = {
       id: 'tok-counter-exact',
       type: 'counter',
-      config: { start: 1, step: 1 },
+      config: { counterId: 'c1' },
     };
 
     const mathToken: Token = {
@@ -287,7 +303,7 @@ describe('Regressão RepeatBlock: Bugs A e B', () => {
     const result = await resolveActionBlockContent(resolvedActionBlock!, targetElement, {
       choicePopup: dummyChoicePopup,
       variables: [],
-      context: { tabUrl: 'https://example.com', tabTitle: 'Example' },
+      context: { tabUrl: 'https://example.com', tabTitle: 'Example', isSimulation: true },
       flows: [flow],
       shortcutTyped: 'rep',
     });
@@ -298,3 +314,12 @@ describe('Regressão RepeatBlock: Bugs A e B', () => {
     expect(result?.content).not.toContain('blocos');
   });
 });
+
+
+
+
+
+
+
+
+

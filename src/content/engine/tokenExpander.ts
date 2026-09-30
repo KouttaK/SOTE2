@@ -1,3 +1,4 @@
+import { browser } from 'wxt/browser';
 /**
  * src/content/engine/tokenExpander.ts
  */
@@ -18,6 +19,7 @@ export interface ExpansionContext {
    * that don't care about clipboard tokens don't need to pass it.
    */
   clipboardHistory?: string[];
+  isSimulation?: boolean;
 }
 
 // In-memory counter state per token ID to persist sequence across expansions
@@ -95,69 +97,44 @@ export async function expandToken(token: Token, context: ExpansionContext): Prom
     }
 
     case 'counter': {
-      const cfg = (token.config || {}) as {
-        start?: number;
-        step?: number;
-        padLength?: number;
-        current?: number;
-        counterGroupId?: string;
-        displayMode?: 'visible' | 'silent';
-        incrementMode?: 'always' | 'visible_only';
-        scope?: 'global' | 'site';
-      };
-      const start = typeof cfg.start === 'number' ? cfg.start : 1;
-      const step = typeof cfg.step === 'number' ? cfg.step : 1;
+      const cfg = (token.config || {}) as any;
       const displayMode = cfg.displayMode ?? 'visible';
       const incrementMode = cfg.incrementMode ?? 'always';
-      const scope = cfg.scope ?? 'global';
+      const counterId = cfg.counterId;
 
-      let siteDomain = '';
-      if (scope === 'site') {
-        if (context?.tabUrl) {
-          try {
-            siteDomain = new URL(context.tabUrl).hostname;
-          } catch {
-            siteDomain = context.tabUrl;
-          }
-        } else if (typeof window !== 'undefined' && window.location?.hostname) {
-          siteDomain = window.location.hostname;
-        }
-      }
-
-      const rawCounterKey = (token as any).sourceTokenId || (token.config as any)?.counterGroupId || token.id;
-      const counterKey = (scope === 'site' && siteDomain) ? `${siteDomain}:${rawCounterKey}` : rawCounterKey;
-
-      let val: number;
-      if (counterKey && counterState.has(counterKey)) {
-        val = counterState.get(counterKey)!;
-      } else if (scope === 'global' && typeof cfg.current === 'number') {
-        val = cfg.current;
-      } else {
-        val = start;
-      }
-
-      const shouldIncrement = incrementMode === 'always' || displayMode === 'visible';
-      if (shouldIncrement) {
-        const nextVal = val + step;
-        if (scope === 'global') {
-          cfg.current = nextVal;
-        }
-        if (counterKey) {
-          counterState.set(counterKey, nextVal);
-        }
-      }
-
-      if (displayMode === 'silent') {
+      if (!counterId) {
         return '';
       }
 
-      let res = String(val);
-      if (cfg.padLength && cfg.padLength > 0) {
-        const isNegative = val < 0;
-        const absStr = String(Math.abs(val)).padStart(cfg.padLength, '0');
-        res = isNegative ? `-${absStr}` : absStr;
+      const res = await browser.runtime.sendMessage({
+        type: 'RESERVE_COUNTER',
+        payload: { counterId, incrementMode, displayMode, isSimulation: context.isSimulation }
+      });
+
+      if (!res || res.reservedValue === null || !res.counter) {
+        throw new Error('MISSING_COUNTER:' + counterId);
       }
-      return res;
+
+      let { reservedValue, counter } = res;
+
+      // Se for simula�uo (ex: PreviewModal), o background retorna o valor atual (sem incrementar no DB).
+      // Entuo simulamos o incremento progressivo localmente usando a memria!
+      if (context.isSimulation) {
+        const simulatedVal = counterState.get(counterId) ?? reservedValue;
+        reservedValue = simulatedVal;
+        if (incrementMode === 'always' || (incrementMode === 'visible_only' && displayMode !== 'silent')) {
+          counterState.set(counterId, simulatedVal + (counter.step || 1));
+        }
+      }
+
+      if (context.counterReservations) {
+        context.counterReservations.push({ counterId, reservedValue });
+      }
+
+      if (displayMode === 'silent') return '';
+
+      const { formatCounter } = await import('../../shared/utils/counterFormat.js');
+      return formatCounter(counter.format, reservedValue, counter.padLength);
     }
 
     case 'math': {
@@ -182,3 +159,9 @@ export async function expandToken(token: Token, context: ExpansionContext): Prom
       return '';
   }
 }
+
+
+
+
+
+

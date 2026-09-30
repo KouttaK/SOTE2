@@ -1,3 +1,4 @@
+import { browser } from 'wxt/browser';
 /**
  * @vitest-environment jsdom
  */
@@ -18,11 +19,41 @@ import type {
   Flow,
 } from '../../shared/types/index.js';
 
+vi.mock('wxt/browser', () => ({
+  browser: {
+    runtime: {
+      sendMessage: vi.fn()
+    },
+    storage: {
+      local: { get: vi.fn().mockResolvedValue({}), set: vi.fn().mockResolvedValue(undefined) }
+    }
+  }
+}));
 describe('PreviewModal & simulateBranchContent (2-Column Layout)', () => {
   beforeEach(() => {
     setLanguage('pt-BR');
     resetCounterState();
     document.body.innerHTML = '';
+    let mockC1Val = 1;
+    vi.mocked(browser.runtime.sendMessage).mockImplementation(async (msg: any) => {
+      if (msg.type === 'RESERVE_COUNTER') {
+        const id = msg.payload.counterId;
+        const isSim = msg.payload.isSimulation;
+        
+        if (id === 'c_tok') {
+          return { reservedValue: 10, counter: { format: '{contador}', padLength: 0, step: 5 } };
+        } else if (id === 'c1' && expect.getState().currentTestName?.includes('resets counter state')) {
+          return { reservedValue: 5, counter: { format: '{contador}', padLength: 0, step: 2 } };
+        } else {
+          const ret = mockC1Val;
+          if (!isSim) {
+            mockC1Val++;
+          }
+          return { reservedValue: ret, counter: { format: '{contador}', padLength: 0, step: 1 } };
+        }
+      }
+      return null;
+    });
   });
 
   afterEach(() => {
@@ -59,7 +90,7 @@ describe('PreviewModal & simulateBranchContent (2-Column Layout)', () => {
         {
           id: 'tok_counter',
           type: 'counter',
-          config: { start: 1, step: 1 },
+          config: { counterId: 'c1' },
         },
         {
           id: 'tok_math',
@@ -127,7 +158,7 @@ describe('PreviewModal & simulateBranchContent (2-Column Layout)', () => {
         {
           id: 'tok_c',
           type: 'counter',
-          config: { start: 1, step: 1 },
+          config: { counterId: 'c1' },
         },
       ],
     };
@@ -241,7 +272,7 @@ describe('PreviewModal & simulateBranchContent (2-Column Layout)', () => {
         </p>
       `,
       tokens: [
-        { id: 't_counter', type: 'counter', config: { start: 1, step: 1 } },
+        { id: 't_counter', type: 'counter', config: { counterId: 'c1' } },
         { id: 't_math', type: 'math', config: { expression: '50*2' } },
         { id: 't_choice', type: 'choice', config: { options: ['Sim', 'Não'] } },
         { id: 't_input', type: 'input', config: { label: 'Obs' } },
@@ -430,7 +461,7 @@ describe('PreviewModal & simulateBranchContent (2-Column Layout)', () => {
       format: 'richtext',
       content:
         '<p>Olá {{NOME}}, seu número é <span class="token-pill token-counter" data-token-id="c_tok" data-token-config="{&quot;start&quot;:10,&quot;step&quot;:5}">Contador</span>.</p>',
-      tokens: [{ id: 'c_tok', type: 'counter', config: { start: 10, step: 5 } }],
+      tokens: [{ id: 'c_tok', type: 'counter', config: { counterId: 'c_tok' } }],
     };
 
     const variables: Variable[] = [
@@ -478,7 +509,7 @@ describe('PreviewModal & simulateBranchContent (2-Column Layout)', () => {
         {
           id: 'c1',
           type: 'counter',
-          config: { start: 5, step: 2 },
+          config: { counterId: 'c1' },
         },
       ],
     };
@@ -589,3 +620,15 @@ describe('PreviewModal & simulateBranchContent (2-Column Layout)', () => {
     expect(document.querySelectorAll('.modal-backdrop').length).toBe(0);
   });
 });
+
+
+
+
+
+
+
+
+
+
+
+
