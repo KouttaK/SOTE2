@@ -3,9 +3,11 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { UndoManager } from './UndoManager.js';
+import { TextInjector } from './TextInjector.js';
 import { sessionStore } from './SessionStore.js';
 import { CounterService } from '../../background/CounterService.js';
 import { browser } from 'wxt/browser';
+import { sendMessage } from '../../shared/messaging/client.js';
 import type { Settings, Counter } from '../../shared/types/index.js';
 
 // Top-level mock for wxt/browser
@@ -350,5 +352,99 @@ describe('UndoManager (Desfazer Expansão - Etapa 2.4)', () => {
 
     // SessionStore retains the active customer context
     expect(sessionStore.get('clienteAtivo')).toBe('Hospital Central');
+  });
+
+  it('9. Regressão Bug E: RepeatBlock(3) com separador \\n em <input type="text"> e <input type="search"> restaura atalho e libera as 3 reservas de contador', () => {
+    vi.mocked(sendMessage).mockClear();
+
+    // Cenário 1: <input type="text">
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = '/rep';
+    input.setSelectionRange(4, 4);
+    document.body.appendChild(input);
+
+    const shortcutTyped = '/rep';
+    // O conteúdo expandido por um RepeatBlock(3) com separador \n contém tags e \n
+    const expandedContent = '<p>1</p>\n<p>2</p>\n<p>3</p>';
+    const counterReservations = [
+      { counterId: 'cnt_rep_1', reservedValue: 1 },
+      { counterId: 'cnt_rep_1', reservedValue: 2 },
+      { counterId: 'cnt_rep_1', reservedValue: 3 },
+    ];
+
+    // TextInjector injeta no input: o setter do navegador sanitiza e remove \n -> DOM value fica "123"
+    const injectMeta = TextInjector.inject(input, shortcutTyped, expandedContent, true, null);
+    expect(input.value).toBe('123');
+
+    undoManager.recordExpansion({
+      element: input,
+      shortcutTyped,
+      expandedContent,
+      isRichText: true,
+      cursorOffset: null,
+      shortcutStartPos: injectMeta?.shortcutStart,
+      counterReservations,
+    });
+
+    expect(undoManager.hasPending()).toBe(true);
+
+    // Usuário pressiona Ctrl+Z
+    const ctrlZEvent = new KeyboardEvent('keydown', { key: 'z', code: 'KeyZ', ctrlKey: true, bubbles: true, cancelable: true });
+    const handled = undoManager.handleKeyDown(ctrlZEvent);
+
+    // Deve desfazer com sucesso, restabelecendo o atalho no DOM
+    expect(handled).toBe(true);
+    expect(ctrlZEvent.defaultPrevented).toBe(true);
+    expect(input.value).toBe('/rep');
+    expect(undoManager.hasPending()).toBe(false);
+
+    // Deve liberar rigorosamente TODAS as 3 reservas de contadores emitidas
+    expect(sendMessage).toHaveBeenCalledWith({
+      type: 'RELEASE_COUNTERS',
+      payload: {
+        reservations: [
+          { counterId: 'cnt_rep_1', reservedValue: 1 },
+          { counterId: 'cnt_rep_1', reservedValue: 2 },
+          { counterId: 'cnt_rep_1', reservedValue: 3 },
+        ],
+      },
+    });
+
+    input.remove();
+
+    // Cenário 2: <input type="search"> (outro tipo comum de linha única)
+    vi.mocked(sendMessage).mockClear();
+    const searchInput = document.createElement('input');
+    searchInput.type = 'search';
+    searchInput.value = '/rep';
+    searchInput.setSelectionRange(4, 4);
+    document.body.appendChild(searchInput);
+
+    const searchInjectMeta = TextInjector.inject(searchInput, shortcutTyped, expandedContent, true, null);
+    expect(searchInput.value).toBe('123');
+
+    undoManager.recordExpansion({
+      element: searchInput,
+      shortcutTyped,
+      expandedContent,
+      isRichText: true,
+      cursorOffset: null,
+      shortcutStartPos: searchInjectMeta?.shortcutStart,
+      counterReservations,
+    });
+
+    const searchCtrlZ = new KeyboardEvent('keydown', { key: 'z', code: 'KeyZ', ctrlKey: true, bubbles: true, cancelable: true });
+    const searchHandled = undoManager.handleKeyDown(searchCtrlZ);
+
+    expect(searchHandled).toBe(true);
+    expect(searchCtrlZ.defaultPrevented).toBe(true);
+    expect(searchInput.value).toBe('/rep');
+    expect(sendMessage).toHaveBeenCalledWith({
+      type: 'RELEASE_COUNTERS',
+      payload: { reservations: counterReservations },
+    });
+
+    searchInput.remove();
   });
 });

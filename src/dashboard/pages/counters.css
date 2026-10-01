@@ -234,6 +234,7 @@
   height: 0.875rem;
   display: block;
   fill: currentColor;
+  pointer-events: none;
 }
 
 .btn-icon-action:hover {
@@ -327,4 +328,64 @@
   font-family: var(--font-family-mono);
   font-size: var(--font-size-base);
   color: var(--color-cyan, #06b6d4);
+}
+
+/* Modal Overlay & Card for Counters */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(11, 11, 15, 0.8);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  padding: var(--spacing-8);
+  box-sizing: border-box;
+}
+
+.modal-card {
+  background-color: var(--color-panel);
+  border: 1px solid var(--color-hair, var(--color-border));
+  border-radius: var(--radius-2xl, 1rem);
+  width: 100%;
+  max-width: 520px;
+  max-height: calc(100vh - 4rem);
+  overflow-y: auto;
+  box-shadow: var(--shadow-2xl);
+  margin: auto 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  color: var(--color-mute);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-md);
+  transition: color var(--transition-duration) var(--transition-easing);
+}
+
+.modal-close:hover {
+  color: var(--color-text);
+  background-color: var(--color-panel-hover);
 }

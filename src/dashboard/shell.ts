@@ -498,7 +498,7 @@ export class Shell {
    *    that page instead of a duplicated local header.
    */
   private _updateHeaderControls(route: ResolvedRoute): void {
-    const hideSortOn = ['/editor/:id', '/settings', '/variables', '/formularios'];
+    const hideSortOn = ['/editor/:id', '/settings', '/variables', '/formularios', '/counters'];
     const shouldHideSort = hideSortOn.includes(route.pattern);
 
     const sortBtn = document.getElementById('dash-sort-btn');
@@ -506,6 +506,7 @@ export class Shell {
 
     const isVariables = route.pattern === '/variables';
     const isForms = route.pattern === '/formularios';
+    const isCounters = route.pattern === '/counters';
 
     const createLabel = document.querySelector('#dash-create-btn .dash-cta-label');
     if (createLabel) {
@@ -513,6 +514,8 @@ export class Shell {
         ? t('modal.createVariable')
         : isForms
         ? t('forms.new')
+        : isCounters
+        ? t('counters.btn_new')
         : t('header.create_flow');
     }
 
@@ -522,6 +525,8 @@ export class Shell {
         ? t('variables.search_placeholder')
         : isForms
         ? t('forms.search_placeholder')
+        : isCounters
+        ? t('counters.search_placeholder')
         : t('search.placeholder');
     }
   }

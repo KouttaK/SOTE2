@@ -124,6 +124,10 @@ export class TextInjector {
     return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA';
   }
 
+  private static isInputElement(el: HTMLElement): el is HTMLInputElement {
+    return el.tagName.toUpperCase() === 'INPUT' || el instanceof HTMLInputElement;
+  }
+
   private static injectIntoInput(
     el: HTMLInputElement | HTMLTextAreaElement,
     shortcut: string,
@@ -131,7 +135,12 @@ export class TextInjector {
     cursorOffset: number | null
   ): { shortcutStart: number; injectedLength: number } | null {
     // Strip HTML if we are injecting into plain text field
-    const plainText = this.stripHtml(text);
+    let plainText = this.stripHtml(text);
+
+    // Any <input> element (text, search, email, url, tel, etc.) sanitizes away \r and \n per WHATWG HTML
+    if (this.isInputElement(el)) {
+      plainText = plainText.replace(/[\r\n]+/g, '');
+    }
 
     // Same restriction as TextMonitor's own read of these — only
     // "text-based" <input> types (plus textarea) support selection at
@@ -188,7 +197,14 @@ export class TextInjector {
     expansionText: string,
     shortcutStart?: number
   ): boolean {
-    const plainText = this.stripHtml(expansionText);
+    let plainText = this.stripHtml(expansionText);
+
+    // WHATWG HTML sanitization algorithm for any <input> control strips all \r and \n characters.
+    // We normalize plainText so multi-line templates/repeats match the actual DOM value.
+    if (this.isInputElement(el)) {
+      plainText = plainText.replace(/[\r\n]+/g, '');
+    }
+
     const currentValue = el.value;
 
     let pos = typeof shortcutStart === 'number' ? shortcutStart : -1;
@@ -197,8 +213,8 @@ export class TextInjector {
     }
 
     if (pos === -1) {
-      const normCurrent = currentValue.replace(/\u00a0/g, ' ');
-      const normPlain = plainText.replace(/\u00a0/g, ' ');
+      const normCurrent = currentValue.replace(/\u00a0/g, ' ').replace(/\r\n/g, '\n');
+      const normPlain = plainText.replace(/\u00a0/g, ' ').replace(/\r\n/g, '\n');
       if (typeof shortcutStart === 'number' && normCurrent.substring(shortcutStart, shortcutStart + normPlain.length) === normPlain) {
         pos = shortcutStart;
       } else {

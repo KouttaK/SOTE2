@@ -250,8 +250,13 @@ export default class CountersPage implements Page {
     // Check if counter is used by any flow
     const flowsUsing = this.getFlowsUsingCounter(counter.id);
     if (flowsUsing.length > 0) {
-      const flowNames = flowsUsing.map((f) => f.name || f.shortcut || f.id).join(', ');
-      alert(t('counters.delete_blocked_msg', { flows: flowNames }));
+      const flowNames = flowsUsing.map((f) => f.title || f.trigger?.shortcut || f.id).join(', ');
+      ConfirmModal.show({
+        title: t('counters.delete_blocked_title'),
+        message: t('counters.delete_blocked_msg', { flows: flowNames }),
+        confirmLabel: t('common.close'),
+        onConfirm: () => {},
+      });
       return;
     }
 
@@ -380,7 +385,18 @@ export default class CountersPage implements Page {
 
     document.body.appendChild(overlay);
 
-    const close = () => overlay.remove();
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+    };
+    const close = () => {
+      document.removeEventListener('keydown', handleEsc);
+      overlay.remove();
+    };
+
+    document.addEventListener('keydown', handleEsc);
+    overlay.addEventListener('mousedown', (e) => {
+      if (e.target === overlay) close();
+    });
     overlay.querySelector('#modal-close-btn')?.addEventListener('click', close);
     overlay.querySelector('#modal-cancel-btn')?.addEventListener('click', close);
 

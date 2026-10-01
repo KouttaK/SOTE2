@@ -30,6 +30,10 @@ import { resolveFlowActionBlock } from './ConditionResolver.js';
 import { resolveActionBlockContent } from './ActionContentResolver.js';
 import { resetCounterState } from './tokenExpander.js';
 import { TokenPill } from '../../dashboard/components/tokens/TokenPill.js';
+import { UndoManager } from './UndoManager.js';
+import { TextInjector } from './TextInjector.js';
+import { TextMonitor } from './TextMonitor.js';
+import { sendMessage } from '../../shared/messaging/client.js';
 import type { Flow, Token, RepeatBlock } from '../../shared/types/index.js';
 
 vi.mock('wxt/browser', () => ({
@@ -41,6 +45,11 @@ vi.mock('wxt/browser', () => ({
       local: { get: vi.fn(), set: vi.fn() }
     }
   }
+}));
+
+vi.mock('../../shared/messaging/client.js', () => ({
+  sendMessage: vi.fn().mockResolvedValue({ success: true }),
+  onMessage: vi.fn(),
 }));
 describe('Regressão RepeatBlock: Bugs A e B', () => {
   beforeEach(() => {
@@ -312,6 +321,133 @@ describe('Regressão RepeatBlock: Bugs A e B', () => {
     expect(result?.content).toContain('1 - 27 - Texto Padrão');
     expect(result?.content).toContain('2 - 27 - Texto Padrão');
     expect(result?.content).not.toContain('blocos');
+  });
+
+  it('Bug E: RepeatBlock(3) com separador \\n em <input type="text"> desfaz perfeitamente via Ctrl+Z e devolve reservas', async () => {
+    let counterVal = 1;
+    vi.mocked(browser.runtime.sendMessage).mockImplementation(async (msg: any) => {
+      if (msg.type === 'RESERVE_COUNTER') {
+        const reservedValue = counterVal;
+        counterVal += 1;
+        return {
+          reservedValue,
+          counter: { format: '{contador}', padLength: 0, step: 1, currentValue: counterVal },
+        };
+      }
+      return null;
+    });
+
+    const counterToken: Token = {
+      id: 'tok-counter-undo',
+      type: 'counter',
+      config: { counterId: 'cnt_rep_undo' },
+    };
+    const pillHtml = TokenPill.createHTML(counterToken);
+
+    const repeatBlock: RepeatBlock = {
+      type: 'repeat',
+      count: 3,
+      separator: '\n',
+      target: {
+        format: 'richtext',
+        content: `<p>${pillHtml}</p>`,
+        tokens: [counterToken],
+      },
+    };
+
+    const flow: Flow = {
+      id: 'flow-rep-undo-e',
+      title: 'Rep Undo E',
+      trigger: {
+        type: 'shortcut',
+        shortcut: '/rep',
+        enabled: true,
+      },
+      blocks: [
+        {
+          id: 'action-rep-e',
+          type: 'action',
+          data: repeatBlock as any,
+        },
+      ],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = '/rep';
+    input.setSelectionRange(4, 4);
+    document.body.appendChild(input);
+
+    const actionBlock = resolveFlowActionBlock(flow, input, '/rep');
+    const context = { tabUrl: '', tabTitle: '', clipboardHistory: [], counterReservations: [] };
+
+    const resolved = await resolveActionBlockContent(actionBlock!, input, {
+      choicePopup: dummyChoicePopup,
+      variables: [],
+      context,
+      flows: [flow],
+      shortcutTyped: '/rep',
+    });
+
+    expect(resolved).not.toBeNull();
+
+    // Injeção no input
+    const injectMeta = TextInjector.inject(input, '/rep', resolved!.content, true, null);
+    // WHATWG HTML sanitiza e descarta \n no input -> DOM value fica "123"
+    expect(input.value).toBe('123');
+
+    const settings = {
+      triggerMode: 'exact_match' as const,
+      triggerKeys: ['Space'],
+      exactMatchChar: '/',
+      undoEnabled: true,
+      undoWindowSeconds: 5,
+      undoTrigger: 'both' as const,
+      globalEnabled: true,
+      searchTrigger: { enabled: false, includeFlows: false, domainPrefix: '', globalPrefix: '' },
+    };
+
+    const undoManager = new UndoManager(() => settings);
+    const monitor = new TextMonitor(() => settings, () => {}, () => {});
+    monitor.start();
+
+    undoManager.recordExpansion({
+      element: input,
+      shortcutTyped: '/rep',
+      expandedContent: resolved!.content,
+      isRichText: true,
+      cursorOffset: null,
+      shortcutStartPos: injectMeta?.shortcutStart,
+      counterReservations: context.counterReservations,
+    });
+
+    expect(undoManager.hasPending()).toBe(true);
+    expect(context.counterReservations).toHaveLength(3);
+
+    // Usuário pressiona Ctrl+Z
+    const ctrlZ = new KeyboardEvent('keydown', { key: 'z', code: 'KeyZ', ctrlKey: true, bubbles: true, cancelable: true });
+    const undone = monitor.suppressDuring(() => undoManager.handleKeyDown(ctrlZ));
+
+    expect(undone).toBe(true);
+    expect(ctrlZ.defaultPrevented).toBe(true);
+    expect(input.value).toBe('/rep');
+    expect(undoManager.hasPending()).toBe(false);
+
+    expect(sendMessage).toHaveBeenCalledWith({
+      type: 'RELEASE_COUNTERS',
+      payload: {
+        reservations: [
+          { counterId: 'cnt_rep_undo', reservedValue: 1 },
+          { counterId: 'cnt_rep_undo', reservedValue: 2 },
+          { counterId: 'cnt_rep_undo', reservedValue: 3 },
+        ],
+      },
+    });
+
+    monitor.stop();
+    input.remove();
   });
 });
 

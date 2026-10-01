@@ -265,6 +265,7 @@ export class CounterModal extends BaseModal {
     this.stepInputNew.addEventListener('input', () => this.updateNewPreview());
     this.padInputNew.addEventListener('input', () => this.updateNewPreview());
     this.formatInputNew.addEventListener('input', () => this.updateNewPreview());
+    this.resetSelectNew.addEventListener('change', () => this.updateNewPreview());
     this.updateNewPreview();
   }
 
@@ -275,7 +276,8 @@ export class CounterModal extends BaseModal {
     if (!counter) return;
 
     const stepStr = counter.step >= 0 ? `+${counter.step}` : `${counter.step}`;
-    this.previewExistingVal.textContent = `${formatCounterPreview(counter)} (${t('counters.col_current')}: ${counter.currentValue} · ${t('counters.col_step')}: ${stepStr})`;
+    const resetStr = t(`counters.reset_${counter.resetRule || 'never'}`);
+    this.previewExistingVal.textContent = `${formatCounterPreview(counter)} (${t('counters.col_current')}: ${counter.currentValue} · ${t('counters.col_step')}: ${stepStr} · ${t('counters.col_reset')}: ${resetStr})`;
   }
 
   private updateNewPreview(): void {
@@ -285,13 +287,15 @@ export class CounterModal extends BaseModal {
     const stepStr = step >= 0 ? `+${step}` : `${step}`;
     const pad = parseInt(this.padInputNew.value, 10) || 0;
     const fmt = this.formatInputNew.value || '{contador}';
+    const reset = this.resetSelectNew?.value || 'never';
+    const resetStr = t(`counters.reset_${reset}`);
 
     const formatted = formatCounterPreview({
       currentValue: start,
       padLength: pad,
       format: fmt,
     });
-    this.previewNewVal.textContent = `${formatted} (${t('token.counter.start_short')}: ${start} · ${t('token.counter.step_short')}: ${stepStr})`;
+    this.previewNewVal.textContent = `${formatted} (${t('token.counter.start_short')}: ${start} · ${t('token.counter.step_short')}: ${stepStr} · ${t('counters.col_reset')}: ${resetStr})`;
   }
 
   protected async onSave(): Promise<void> {
