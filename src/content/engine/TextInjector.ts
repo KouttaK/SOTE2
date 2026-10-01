@@ -114,7 +114,7 @@ export class TextInjector {
   ): boolean {
     if (this.isInputOrTextarea(element)) {
       return this.undoInput(element as HTMLInputElement | HTMLTextAreaElement, shortcutTyped, expansionHtml, shortcutStartPos);
-    } else if (element.isContentEditable) {
+    } else if (element.isContentEditable || element.getAttribute('contenteditable') === 'true' || (element as any).contentEditable === 'true') {
       return this.undoContentEditable(element, shortcutTyped, expansionHtml, isRichText);
     }
     return false;
@@ -197,6 +197,16 @@ export class TextInjector {
     }
 
     if (pos === -1) {
+      const normCurrent = currentValue.replace(/\u00a0/g, ' ');
+      const normPlain = plainText.replace(/\u00a0/g, ' ');
+      if (typeof shortcutStart === 'number' && normCurrent.substring(shortcutStart, shortcutStart + normPlain.length) === normPlain) {
+        pos = shortcutStart;
+      } else {
+        pos = normCurrent.lastIndexOf(normPlain);
+      }
+    }
+
+    if (pos === -1) {
       return false;
     }
 
@@ -213,44 +223,114 @@ export class TextInjector {
     return true;
   }
 
+  private static findTextRange(root: HTMLElement, text: string): Range | null {
+    if (!text) return null;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes: { node: Text; start: number; end: number }[] = [];
+    let fullText = '';
+    let curr: Text | null;
+
+    while ((curr = walker.nextNode() as Text | null)) {
+      const len = curr.data.length;
+      nodes.push({ node: curr, start: fullText.length, end: fullText.length + len });
+      fullText += curr.data;
+    }
+
+    let idx = fullText.lastIndexOf(text);
+    if (idx === -1) {
+      const normFull = fullText.replace(/\u00a0/g, ' ');
+      const normText = text.replace(/\u00a0/g, ' ');
+      idx = normFull.lastIndexOf(normText);
+    }
+    if (idx === -1) return null;
+
+    const endIdx = idx + text.length;
+
+    let startNode: Text | null = null;
+    let startOffset = 0;
+    let endNode: Text | null = null;
+    let endOffset = 0;
+
+    for (const item of nodes) {
+      if (!startNode && idx >= item.start && idx <= item.end) {
+        startNode = item.node;
+        startOffset = idx - item.start;
+      }
+      if (endIdx >= item.start && endIdx <= item.end) {
+        endNode = item.node;
+        endOffset = endIdx - item.start;
+        break;
+      }
+    }
+
+    if (startNode && endNode) {
+      const range = document.createRange();
+      range.setStart(startNode, startOffset);
+      range.setEnd(endNode, endOffset);
+      return range;
+    }
+
+    return null;
+  }
+
   private static undoContentEditable(
     el: HTMLElement,
     shortcut: string,
     expandedText: string,
     isRichText: boolean
   ): boolean {
-    el.focus();
+    try {
+      el.focus();
+    } catch {}
     const plainText = this.stripHtml(expandedText);
+    const range = this.findTextRange(el, plainText);
 
-    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-    let node: Text | null;
-    let found = false;
-
-    while ((node = walker.nextNode() as Text | null)) {
-      const idx = node.data.lastIndexOf(plainText);
-      if (idx !== -1) {
-        const range = document.createRange();
-        range.setStart(node, idx);
-        range.setEnd(node, idx + plainText.length);
+    if (range) {
+      try {
         const sel = window.getSelection();
         if (sel) {
           sel.removeAllRanges();
           sel.addRange(range);
-          document.execCommand('insertText', false, shortcut);
-          found = true;
-          break;
         }
-      }
+      } catch {}
+
+      try {
+        const inserted = document.execCommand('insertText', false, shortcut);
+        if (inserted) {
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          return true;
+        }
+      } catch {}
+
+      // Fallback: direct Range DOM replacement
+      try {
+        range.deleteContents();
+        const textNode = document.createTextNode(shortcut);
+        range.insertNode(textNode);
+        try {
+          const sel = window.getSelection();
+          if (sel) {
+            const afterRange = document.createRange();
+            afterRange.setStartAfter(textNode);
+            afterRange.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(afterRange);
+          }
+        } catch {}
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        return true;
+      } catch {}
     }
 
-    if (!found) {
-      try {
-        return document.execCommand('undo', false);
-      } catch {
-        return false;
+    try {
+      const res = document.execCommand('undo', false);
+      if (res) {
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        return res;
       }
-    }
-    return true;
+    } catch {}
+
+    return false;
   }
 
   private static injectIntoContentEditable(el: HTMLElement, shortcut: string, html: string, isRichText: boolean, cursorOffset: number | null) {
@@ -401,6 +481,6 @@ export class TextInjector {
   private static stripHtml(html: string): string {
     const tmp = document.createElement('div');
     tmp.innerHTML = sanitizeHtml(html);
-    return tmp.textContent || tmp.innerText || '';
+    return (tmp.textContent || tmp.innerText || '').replace(/\u00a0/g, ' ');
   }
 }

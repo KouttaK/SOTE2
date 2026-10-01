@@ -43,9 +43,17 @@ export class TokenPill {
       const flowLabel = token.config?.flowLabel as string | undefined;
       label = flowLabel ? `${label}: ${escapeHtmlAttr(flowLabel)}` : `${label} (${t('token.flow_ref.unset')})`;
     } else if (token.type === 'counter') {
+      const counterName = token.config?.counterName as string | undefined;
       const start = token.config?.start ?? 1;
       const step = token.config?.step ?? 1;
-      label = `${label} (${start}, +${step})`;
+      const stepStr = step >= 0 ? `+${step}` : `${step}`;
+      if (counterName) {
+        label = `${label}: ${escapeHtmlAttr(counterName)}`;
+      } else {
+        const startLabel = t('token.counter.start_short') || 'Início';
+        const stepLabel = t('token.counter.step_short') || 'Passo';
+        label = `${label} [${startLabel}: ${start} · ${stepLabel}: ${stepStr}]`;
+      }
     } else if (token.type === 'math' && token.config?.expression) {
       label = `${label} (${escapeHtmlAttr(String(token.config.expression))})`;
     }

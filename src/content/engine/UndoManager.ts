@@ -11,6 +11,7 @@
 
 import { sendMessage } from '../../shared/messaging/client.js';
 import type { Settings } from '../../shared/types/index.js';
+import { isProtected } from './SensitiveFieldGuard.js';
 import { TextInjector } from './TextInjector.js';
 
 export interface PendingExpansion {
@@ -32,6 +33,7 @@ export interface PendingExpansion {
 export class UndoManager {
   private pending: PendingExpansion | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  private recordTimestamp: number = 0;
   private getSettings: () => Settings;
 
   constructor(getSettings: () => Settings) {
@@ -72,9 +74,10 @@ export class UndoManager {
     }
 
     const durationMs = windowSeconds * 1000;
+    this.recordTimestamp = Date.now();
     this.pending = {
       ...params,
-      expiresAt: Date.now() + durationMs,
+      expiresAt: this.recordTimestamp + durationMs,
     };
 
     this.timer = setTimeout(() => {
@@ -146,6 +149,12 @@ export class UndoManager {
 
     if (!this.pending) return false;
 
+    // Check if element became protected between expansion and undo
+    if (isProtected(this.pending.element)) {
+      this.commitPending();
+      return false;
+    }
+
     // Check expiry
     if (Date.now() > this.pending.expiresAt) {
       this.commitPending();
@@ -164,18 +173,24 @@ export class UndoManager {
       pending.shortcutStartPos
     );
 
-    // 2. Release counter reservations (CounterService will check if last emitted)
-    if (pending.counterReservations && pending.counterReservations.length > 0) {
-      sendMessage({
-        type: 'RELEASE_COUNTERS',
-        payload: { reservations: pending.counterReservations },
-      }).catch(() => {});
+    if (restored) {
+      // 2. Release counter reservations (CounterService will check if last emitted)
+      if (pending.counterReservations && pending.counterReservations.length > 0) {
+        sendMessage({
+          type: 'RELEASE_COUNTERS',
+          payload: { reservations: pending.counterReservations },
+        }).catch(() => {});
+      }
+
+      // 3. Stats are intentionally DISCARDED (not sent).
+      // 4. SessionStore remains intact (independent by product design).
+      return true;
+    } else {
+      // If restoration failed (e.g. text was altered by another script or DOM node removed),
+      // flush stats and confirm counters so reservations are not left in limbo
+      this.flushExpansion(pending);
+      return false;
     }
-
-    // 3. Stats are intentionally DISCARDED (not sent).
-    // 4. SessionStore remains intact (independent by product design).
-
-    return restored;
   }
 
   /**
@@ -201,7 +216,10 @@ export class UndoManager {
 
     const trigger = settings.undoTrigger ?? 'both';
     const isBackspace = e.key === 'Backspace' && !e.ctrlKey && !e.metaKey && !e.altKey;
-    const isCtrlZ = (e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey) && !e.altKey;
+    const isCtrlZ =
+      ((e.key === 'z' || e.key === 'Z' || e.key === '\x1a') || e.code === 'KeyZ') &&
+      (e.ctrlKey || e.metaKey) &&
+      !e.altKey;
 
     const isMatch =
       (trigger === 'both' && (isBackspace || isCtrlZ)) ||
@@ -209,13 +227,22 @@ export class UndoManager {
       (trigger === 'ctrl_z' && isCtrlZ);
 
     if (isMatch) {
-      e.preventDefault();
-      e.stopPropagation();
-      return this.undo();
+      const restored = this.undo();
+      if (restored) {
+        e.preventDefault();
+        e.stopPropagation();
+        return true;
+      }
+      return false;
     }
 
-    // If user pressed a modifier key (Shift, Ctrl, Alt, Meta), keep window open
-    if (['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) {
+    // Ignore trailing keydown events that fired in the same event loop tick / immediate window as the expansion
+    if (Date.now() - this.recordTimestamp < 50) {
+      return false;
+    }
+
+    // If user pressed a modifier key (Shift, Ctrl, Alt, Meta, AltGraph), keep window open
+    if (['Shift', 'Control', 'Alt', 'Meta', 'AltGraph'].includes(e.key)) {
       return false;
     }
 

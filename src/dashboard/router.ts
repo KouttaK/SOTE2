@@ -28,10 +28,11 @@ type RouteChangeCallback = (route: ResolvedRoute) => void;
 // Registered route patterns (order matters — first match wins)
 // ---------------------------------------------------------------------------
 
-const ROUTE_PATTERNS: string[] = [
+export const ROUTE_PATTERNS: string[] = [
   '/flows',
   '/editor/:id',
   '/variables',
+  '/counters',
   '/formularios',
   '/settings',
   '/analytics',
@@ -83,7 +84,7 @@ function matchPattern(pattern: string, path: string): RouteParams | null {
  * Resolves the current path against all registered patterns.
  * Falls back to /flows if nothing matches.
  */
-function resolve(path: string): ResolvedRoute {
+export function resolve(path: string): ResolvedRoute {
   for (const pattern of ROUTE_PATTERNS) {
     const params = matchPattern(pattern, path);
     if (params !== null) {

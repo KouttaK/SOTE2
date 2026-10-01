@@ -551,11 +551,11 @@ export class ActionBlock {
     this.renderTokensPreview();
     this.onChange();
 
-    // Unlike other tokens, an unconfigured flow_ref pill resolves to
-    // nothing at all — prompt for which flow to include right away
+    // Unlike other tokens, an unconfigured flow_ref or counter pill resolves to
+    // nothing at all without configuration — prompt right away
     // instead of leaving a silently-empty pill for the user to notice
     // and click into later.
-    if (type === 'flow_ref') {
+    if (type === 'flow_ref' || type === 'counter') {
       pill.click();
     }
   }
@@ -731,10 +731,17 @@ export class ActionBlock {
         return flowLabel ? escapeHtml(flowLabel) : `<em>${t('action.block.tokens_preview.no_flow_selected')}</em>`;
       }
       case 'counter': {
+        const counterName = cfg.counterName as string | undefined;
+        if (counterName) {
+          return escapeHtml(counterName);
+        }
         const start = cfg.start ?? 1;
         const step = cfg.step ?? 1;
+        const stepStr = (step as number) >= 0 ? `+${step}` : `${step}`;
         const pad = cfg.padLength ? `, pad: ${cfg.padLength}` : '';
-        return `${start} (+${step}${pad})`;
+        const startLabel = t('token.counter.start_short') || 'Início';
+        const stepLabel = t('token.counter.step_short') || 'Passo';
+        return `[${startLabel}: ${start} · ${stepLabel}: ${stepStr}${pad}]`;
       }
       case 'math':
         return escapeHtml((cfg.expression as string) || '');

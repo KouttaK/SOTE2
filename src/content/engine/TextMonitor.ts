@@ -26,6 +26,7 @@ export class TextMonitor {
 
   private isFieldProtected: boolean = false;
   private lastReportedProtectionStatus: boolean | null = null;
+  private isSuppressed: boolean = false;
 
   constructor(
     getSettings: () => Settings,
@@ -80,6 +81,18 @@ export class TextMonitor {
     this.buffer = '';
   }
 
+  /**
+   * Temporarily suppresses input and keydown event processing during programmatic DOM mutations (e.g. undo).
+   */
+  public suppressDuring<T>(fn: () => T): T {
+    this.isSuppressed = true;
+    try {
+      return fn();
+    } finally {
+      this.isSuppressed = false;
+    }
+  }
+
   private updateProtectionStatus(status: boolean) {
     if (this.lastReportedProtectionStatus !== status) {
       this.lastReportedProtectionStatus = status;
@@ -127,6 +140,7 @@ export class TextMonitor {
   }
 
   private handleInputEvent(event: Event): void {
+    if (this.isSuppressed) return;
     if (!isExtensionActive(this.getSettings(), window.location.hostname)) return;
 
     // Use getTargetFromEvent to support open Shadow DOM
@@ -179,6 +193,7 @@ export class TextMonitor {
   }
 
   private handleKeydown(e: KeyboardEvent) {
+    if (this.isSuppressed) return;
     if (!isExtensionActive(this.getSettings(), window.location.hostname)) return;
 
     const target = getTargetFromEvent(e) as HTMLElement;

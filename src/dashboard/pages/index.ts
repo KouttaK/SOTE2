@@ -64,6 +64,8 @@ export async function loadPage(pattern: string): Promise<Page> {
       module = await import('./editor.js'); break;
     case '/variables':
       module = await import('./variables.js'); break;
+    case '/counters':
+      module = await import('./counters.js'); break;
     case '/formularios':
       module = await import('./forms.js'); break;
     case '/settings':

@@ -482,6 +482,8 @@ export default defineContentScript({
         const match = detector.detectTriggerMode(buffer, element);
         if (match) {
           e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
           handleTrigger(match.flow, match.shortcutTyped, element).catch((err) => {
             console.debug('[SOTE] Trigger mode execution failed gracefully:', err);
           });
@@ -606,7 +608,10 @@ export default defineContentScript({
 
     const handleUndoKeydown = (e: KeyboardEvent) => {
       if (undoManager.hasPending()) {
-        undoManager.handleKeyDown(e);
+        const undone = monitor ? monitor.suppressDuring(() => undoManager.handleKeyDown(e)) : undoManager.handleKeyDown(e);
+        if (undone && monitor) {
+          monitor.clearBuffer();
+        }
       }
     };
     document.addEventListener('keydown', handleUndoKeydown, true);

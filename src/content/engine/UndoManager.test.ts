@@ -143,27 +143,73 @@ describe('UndoManager (Desfazer Expansão - Etapa 2.4)', () => {
 
     const counterService = CounterService.getInstance();
 
-    // Tab A reserves number 11
+    // Tab A reserves initial value (starts at 10, advances storage to 11)
     const resA = await counterService.reserveCounter('c_num', 'always', 'visible');
-    expect(resA.reservedValue).toBe(11);
+    expect(resA.reservedValue).toBe(10);
     expect(storageState.counters[0].currentValue).toBe(11);
 
     // Scenario 3a: Tab A undoes before anyone else uses it -> reverts back to 10
-    await counterService.releaseCounters([{ counterId: 'c_num', reservedValue: 11 }]);
+    await counterService.releaseCounters([{ counterId: 'c_num', reservedValue: 10 }]);
     expect(storageState.counters[0].currentValue).toBe(10);
 
-    // Scenario 3b: Tab A reserves 11 again
+    // Scenario 3b: Tab A reserves 10 again
     const resA2 = await counterService.reserveCounter('c_num', 'always', 'visible');
-    expect(resA2.reservedValue).toBe(11);
+    expect(resA2.reservedValue).toBe(10);
+    expect(storageState.counters[0].currentValue).toBe(11);
 
-    // In the meantime, Tab B reserves 12
+    // In the meantime, Tab B reserves 11
     const resB = await counterService.reserveCounter('c_num', 'always', 'visible');
-    expect(resB.reservedValue).toBe(12);
+    expect(resB.reservedValue).toBe(11);
     expect(storageState.counters[0].currentValue).toBe(12);
 
-    // Tab A now undoes 11: since currentValue is 12 (not 11), it MUST NOT revert!
-    await counterService.releaseCounters([{ counterId: 'c_num', reservedValue: 11 }]);
+    // Tab A now undoes 10: since currentValue is 12 (not 10 + 1), it MUST NOT revert!
+    await counterService.releaseCounters([{ counterId: 'c_num', reservedValue: 10 }]);
     expect(storageState.counters[0].currentValue).toBe(12); // Permanent gap preserved!
+  });
+
+  it('3b. CounterService: RepeatBlock(3) com liberação LIFO de contadores reverte todas as reservas em ordem decrescente', async () => {
+    const counter: Counter = {
+      id: 'c_rep',
+      name: 'Protocolo Repetido',
+      format: '{contador}',
+      resetRule: 'never',
+      startValue: 1,
+      currentValue: 1,
+      scope: 'global',
+      step: 1,
+      padLength: 0,
+    };
+
+    let storageState: { counters: Counter[] } = { counters: [{ ...counter }] };
+    vi.mocked(browser.storage.local.get).mockImplementation(async () => storageState);
+    vi.mocked(browser.storage.local.set).mockImplementation(async (data: any) => {
+      storageState = { ...storageState, ...data };
+    });
+
+    const counterService = CounterService.getInstance();
+
+    // RepeatBlock(3) generates 3 reservations sequentially: 1, 2, 3
+    const res1 = await counterService.reserveCounter('c_rep', 'always', 'visible');
+    const res2 = await counterService.reserveCounter('c_rep', 'always', 'visible');
+    const res3 = await counterService.reserveCounter('c_rep', 'always', 'visible');
+
+    expect(res1.reservedValue).toBe(1);
+    expect(res2.reservedValue).toBe(2);
+    expect(res3.reservedValue).toBe(3);
+    expect(storageState.counters[0].currentValue).toBe(4);
+
+    // On undo, all 3 reservations are released together in reservations array
+    await counterService.releaseCounters([
+      { counterId: 'c_rep', reservedValue: res1.reservedValue! },
+      { counterId: 'c_rep', reservedValue: res2.reservedValue! },
+      { counterId: 'c_rep', reservedValue: res3.reservedValue! },
+    ]);
+
+    // LIFO rollback ensures:
+    // 1. res3 (3): currentValue 4 === 3 + 1 -> reverts to 3
+    // 2. res2 (2): currentValue 3 === 2 + 1 -> reverts to 2
+    // 3. res1 (1): currentValue 2 === 1 + 1 -> reverts to 1
+    expect(storageState.counters[0].currentValue).toBe(1);
   });
 
   it('4. Desfazer com estatísticas pendentes: cancela o envio diferido de FLOW_USED e VARIABLES_USED', async () => {

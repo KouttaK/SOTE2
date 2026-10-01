@@ -103,7 +103,10 @@ export async function expandToken(token: Token, context: ExpansionContext): Prom
       const counterId = cfg.counterId;
 
       if (!counterId) {
-        return '';
+        if (displayMode === 'silent' || !cfg.format) return '';
+        const { formatCounter } = await import('../../shared/utils/counterFormat.js');
+        const fallbackVal = typeof cfg.current === 'number' ? cfg.current : (typeof cfg.start === 'number' ? cfg.start : 1);
+        return formatCounter(cfg.format, fallbackVal, cfg.padLength);
       }
 
       const res = await browser.runtime.sendMessage({

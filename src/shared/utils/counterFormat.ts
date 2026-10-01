@@ -1,4 +1,4 @@
-export function formatCounter(formatStr: string, value: number, padLength: number): string {
+export function formatCounter(formatStr: string = '{contador}', value: number = 0, padLength: number = 0): string {
   const now = new Date();
 
   // Helper for letter sequences (1=A, 26=Z, 27=AA)
@@ -22,7 +22,7 @@ export function formatCounter(formatStr: string, value: number, padLength: numbe
   }
 
   // Replacements
-  let result = formatStr;
+  let result = formatStr || '{contador}';
   result = result.replace(/\{contador\}/g, valStr);
   result = result.replace(/\{ano\}/g, String(now.getFullYear()));
   result = result.replace(/\{mês\}/gi, String(now.getMonth() + 1).padStart(2, '0'));

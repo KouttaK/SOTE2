@@ -738,7 +738,9 @@ export default class SettingsPage implements Page {
     // Export Data
     this.el.querySelector('#btn-export')?.addEventListener('click', async () => {
       const data: StorageSchema = {
+        schemaVersion: 2,
         flows: await storage.getFlows(),
+        counters: await storage.getCounters(),
         variables: await storage.getVariables(),
         folders: await storage.getFolders(),
         forms: await storage.getForms(),

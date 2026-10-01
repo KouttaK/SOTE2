@@ -10,7 +10,9 @@ vi.mock('../../../shared/i18n/index.js', () => ({
 
 vi.mock('../../../shared/storage/StorageService.js', () => ({
   storage: {
-    getVariables: vi.fn().mockResolvedValue([])
+    getVariables: vi.fn().mockResolvedValue([]),
+    getCounters: vi.fn().mockResolvedValue([]),
+    saveCounter: vi.fn().mockResolvedValue(undefined),
   }
 }));
 

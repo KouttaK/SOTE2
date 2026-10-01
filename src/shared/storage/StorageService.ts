@@ -15,6 +15,7 @@ import { localDateKey } from '../utils/localDate.js';
 import type {
   Flow,
   Variable,
+  Counter,
   Folder,
   Form,
   Settings,
@@ -40,6 +41,7 @@ type StorageArea = typeof browser.storage.local;
 /** Keys used in the storage area. */
 const KEYS = {
   flows: 'flows',
+  counters: 'counters',
   variables: 'variables',
   folders: 'folders',
   forms: 'forms',
@@ -499,6 +501,38 @@ class StorageService {
   }
 
   // -------------------------------------------------------------------------
+  // Counters
+  // -------------------------------------------------------------------------
+
+  async getCounters(): Promise<Counter[]> {
+    return this.readList<Counter>(KEYS.counters);
+  }
+
+  async getCounter(id: string): Promise<Counter | null> {
+    const counters = await this.getCounters();
+    return counters.find((c) => c.id === id) || null;
+  }
+
+  async saveCounter(counter: Counter): Promise<void> {
+    const counters = await this.getCounters();
+    const idx = counters.findIndex((c) => c.id === counter.id);
+    if (idx >= 0) {
+      counters[idx] = counter;
+    } else {
+      counters.push(counter);
+    }
+    await this.writeList(KEYS.counters, counters);
+  }
+
+  async deleteCounter(id: string): Promise<void> {
+    const counters = await this.getCounters();
+    await this.writeList(
+      KEYS.counters,
+      counters.filter((c) => c.id !== id),
+    );
+  }
+
+  // -------------------------------------------------------------------------
   // Folders
   // -------------------------------------------------------------------------
 
@@ -815,12 +849,14 @@ class StorageService {
           }
         }
         if (data.flows) await this.writeList(KEYS.flows, data.flows);
+        if (data.counters) await this.writeList(KEYS.counters, data.counters);
         if (data.variables) await this.writeList(KEYS.variables, data.variables);
         if (data.folders) await this.writeList(KEYS.folders, data.folders);
         if (data.forms) await this.writeList(KEYS.forms, data.forms);
         if (data.settings) await this.saveSettings(data.settings);
       } else {
         for (const flow of data.flows || []) await this.saveFlow(flow);
+        for (const c of data.counters || []) await this.saveCounter(c);
         for (const v of data.variables || []) await this.saveVariable(v);
         for (const f of data.folders || []) await this.saveFolder(f);
         for (const form of data.forms || []) await this.saveForm(form);

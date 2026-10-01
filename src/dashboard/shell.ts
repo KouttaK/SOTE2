@@ -76,6 +76,7 @@ const ICONS = {
   sortDesc: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" aria-hidden="true" fill="currentColor"><path d="M151.6 42.4C145.5 35.8 137 32 128 32s-17.5 3.8-23.6 10.4l-88 96c-11.9 13-11.1 33.3 2 45.2s33.3 11.1 45.2-2L96 146.3V448c0 17.7 14.3 32 32 32s32-14.3 32-32V146.3l32.4 35.4c11.9 13 32.2 13.9 45.2 2s13.9-32.2 2-45.2l-88-96zM320 480h32c17.7 0 32-14.3 32-32s-14.3-32-32-32H320c-17.7 0-32 14.3-32 32s14.3 32 32 32zm0-128h96c17.7 0 32-14.3 32-32s-14.3-32-32-32H320c-17.7 0-32 14.3-32 32s14.3 32 32 32zm0-128H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H320c-17.7 0-32 14.3-32 32s14.3 32 32 32zm0-128H544c17.7 0 32-14.3 32-32s-14.3-32-32-32H320c-17.7 0-32 14.3-32 32s14.3 32 32 32z"/></svg>`,
   chevronDown: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true" fill="currentColor"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg>`,
   clipboardList: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" aria-hidden="true" fill="currentColor"><path d="M192 0c-41.8 0-77.4 26.7-90.5 64H64C28.7 64 0 92.7 0 128V448c0 35.3 28.7 64 64 64H320c35.3 0 64-28.7 64-64V128c0-35.3-28.7-64-64-64H282.5C269.4 26.7 233.8 0 192 0zm0 64a32 32 0 1 1 0 64 32 32 0 1 1 0-64zM72 272a24 24 0 1 1 48 0 24 24 0 1 1 -48 0zm104-16H304c8.8 0 16 7.2 16 16s-7.2 16-16 16H176c-8.8 0-16-7.2-16-16s7.2-16 16-16zM72 368a24 24 0 1 1 48 0 24 24 0 1 1 -48 0zm104-16H304c8.8 0 16 7.2 16 16s-7.2 16-16 16H176c-8.8 0-16-7.2-16-16s7.2-16 16-16z"/></svg>`,
+  counter: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M8 12h8"/></svg>`,
 };
 
 // ---------------------------------------------------------------------------
@@ -93,6 +94,7 @@ interface NavItem {
 const PRIMARY_NAV: NavItem[] = [
   { label: 'sidebar.flows',     path: '/flows',      pattern: '/flows',      icon: ICONS.squaresFour },
   { label: 'sidebar.variables', path: '/variables',  pattern: '/variables',  icon: ICONS.sliders },
+  { label: 'sidebar.counters',  path: '/counters',   pattern: '/counters',   icon: ICONS.counter },
 ];
 
 const WORKSPACE_NAV: NavItem[] = [
@@ -108,6 +110,7 @@ const WORKSPACE_NAV: NavItem[] = [
 const HEADER_NAV: NavItem[] = [
   { label: 'sidebar.flows',     path: '/flows',     pattern: '/flows' },
   { label: 'sidebar.variables', path: '/variables', pattern: '/variables' },
+  { label: 'sidebar.counters',  path: '/counters',  pattern: '/counters' },
   { label: 'sidebar.analytics', path: '/analytics', pattern: '/analytics' },
   { label: 'sidebar.settings',  path: '/settings',  pattern: '/settings' },
 ];

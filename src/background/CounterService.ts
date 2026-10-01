@@ -68,11 +68,11 @@ export class CounterService {
           // If a reset rule applies, we restart from the defined startValue
           reservedValue = counter.startValue;
         } else {
-          reservedValue = counter.currentValue + counter.step;
+          reservedValue = counter.currentValue;
         }
 
-        // Apply reservation to storage immediately
-        counter.currentValue = reservedValue;
+        // Apply reservation to storage immediately: advance currentValue by step for subsequent reservations
+        counter.currentValue = reservedValue + counter.step;
         counter.lastUsedAt = now.getTime();
         
         await browser.storage.local.set({ [this.storageKey]: counters });
@@ -125,11 +125,14 @@ export class CounterService {
       const counters: Counter[] = data[this.storageKey] || [];
       let changed = false;
 
-      for (const res of reservations) {
+      // Sort reservations in descending order (LIFO) so newest is processed first
+      const sortedReservations = [...reservations].sort((a, b) => b.reservedValue - a.reservedValue);
+
+      for (const res of sortedReservations) {
         const counter = counters.find((c) => c.id === res.counterId);
-        if (counter && counter.currentValue === res.reservedValue) {
-          // Revert by one step because nobody else used it yet
-          counter.currentValue = counter.currentValue - counter.step;
+        if (counter && counter.currentValue === res.reservedValue + counter.step) {
+          // Revert because nobody else used it yet in the meantime
+          counter.currentValue = res.reservedValue;
           changed = true;
         }
       }

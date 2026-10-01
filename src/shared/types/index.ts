@@ -23,8 +23,10 @@ export interface FlowRefTokenConfig {
 }
 
 export interface CounterConfig {
-  start: number;
-  step: number;
+  counterId?: string;
+  counterName?: string;
+  start?: number;
+  step?: number;
   padLength?: number;
   current?: number;
   counterGroupId?: string;
