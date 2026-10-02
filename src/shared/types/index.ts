@@ -374,6 +374,24 @@ export interface Counter {
   lastUsedAt?: number;
 }
 
+export type SessionScope = 'tab' | 'url' | 'title' | 'global';
+
+export interface SessionVariableEntry {
+  value: string;
+  savedAt: number;
+  ttlHours?: number;
+}
+
+export interface InputTokenConfig {
+  label: string;
+  placeholder?: string;
+  rememberValue?: boolean;
+  sessionVarName?: string;
+  scope?: SessionScope;
+  ttlHours?: number;
+  autoApply?: boolean;
+}
+
 export type SessionData = Record<string, unknown>;
 
 export interface StorageSchema {

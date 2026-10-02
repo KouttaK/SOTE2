@@ -34,5 +34,9 @@ export type Message =
   | { type: 'GET_SESSION_DATA'; payload?: { tabId?: number } }
   | { type: 'SET_SESSION_DATA'; payload: { key: string; value: unknown; tabId?: number } }
   | { type: 'REMOVE_SESSION_DATA'; payload: { key: string; tabId?: number } }
-  | { type: 'CLEAR_SESSION_DATA'; payload?: { tabId?: number } };
+  | { type: 'CLEAR_SESSION_DATA'; payload?: { tabId?: number } }
+  | { type: 'GET_GLOBAL_SESSION_VAR'; payload: { key: string } }
+  | { type: 'SET_GLOBAL_SESSION_VAR'; payload: { key: string; value: unknown } }
+  | { type: 'REMOVE_GLOBAL_SESSION_VAR'; payload: { key: string } }
+  | { type: 'CLEAR_GLOBAL_SESSION' };
 

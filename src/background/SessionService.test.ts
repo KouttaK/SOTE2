@@ -82,4 +82,42 @@ describe('SessionService (Background Multi-tab Ephemeral Storage)', () => {
     expect(sessionService.hasSession(600)).toBe(true);
     expect(sessionService.getSession(600)).toEqual({ draft: 'Another draft' });
   });
+
+  it('manages global session variables across all tabs until cleared or reset', () => {
+    sessionService.setGlobalValue('global_var:empresa', { value: 'TechCorp', savedAt: Date.now() });
+
+    const val = sessionService.getGlobalValue<{ value: string }>('global_var:empresa');
+    expect(val?.value).toBe('TechCorp');
+
+    sessionService.removeGlobalValue('global_var:empresa');
+    expect(sessionService.getGlobalValue('global_var:empresa')).toBeUndefined();
+  });
+
+  it('lazily expires session variables when ttlHours has elapsed', () => {
+    const twoHoursAgo = Date.now() - 2 * 3600 * 1000 - 1000;
+    
+    // Tab session expired
+    sessionService.setSessionValue(10, 'expired_key', {
+      value: 'Old data',
+      savedAt: twoHoursAgo,
+      ttlHours: 1, // expired 1 hour ago
+    });
+    sessionService.setSessionValue(10, 'valid_key', {
+      value: 'Fresh data',
+      savedAt: Date.now(),
+      ttlHours: 1, // valid
+    });
+
+    const session = sessionService.getSession(10);
+    expect(session.expired_key).toBeUndefined();
+    expect((session.valid_key as any).value).toBe('Fresh data');
+
+    // Global session expired
+    sessionService.setGlobalValue('global_expired', {
+      value: 'Old global',
+      savedAt: twoHoursAgo,
+      ttlHours: 1,
+    });
+    expect(sessionService.getGlobalValue('global_expired')).toBeUndefined();
+  });
 });

@@ -92,4 +92,67 @@ describe('SessionStore (Content Script Primary In-Memory Layer)', () => {
     expect(store.get('restoredField')).toBe('Hello from previous page load');
     expect(store.get('activeOrderId')).toBe(8841);
   });
+
+  describe('Reusable Input Session Variables', () => {
+    it('builds canonical namespaced keys for each scope', () => {
+      expect(SessionStore.buildKey('client_name', 'tab')).toBe('session_var:client_name');
+      expect(SessionStore.buildKey('client_name', 'global')).toBe('global_var:client_name');
+      expect(SessionStore.buildKey('order_id', 'url', { url: 'https://site.com/dash?page=1#top' })).toBe('url_var:https://site.com/dash:order_id');
+      expect(SessionStore.buildKey('page_user', 'title', { title: 'User Profile - Admin' })).toBe('title_var:User Profile - Admin:page_user');
+    });
+
+    it('stores and retrieves session variables for tab, url and title scopes in memory', async () => {
+      await store.setSessionVariable('cliente', 'João Silva', 'tab');
+      expect(await store.getSessionVariable('cliente', 'tab')).toBe('João Silva');
+
+      await store.setSessionVariable('url_token', 'SEC123', 'url', { url: 'https://test.com/app' });
+      expect(await store.getSessionVariable('url_token', 'url', { url: 'https://test.com/app' })).toBe('SEC123');
+      expect(await store.getSessionVariable('url_token', 'url', { url: 'https://test.com/other' })).toBeUndefined();
+
+      await store.setSessionVariable('ctx', 'Admin', 'title', { title: 'Dashboard' });
+      expect(await store.getSessionVariable('ctx', 'title', { title: 'Dashboard' })).toBe('Admin');
+      expect(await store.getSessionVariable('ctx', 'title', { title: 'Settings' })).toBeUndefined();
+    });
+
+    it('coordinates with background for global scope variables', async () => {
+      vi.mocked(browser.runtime.sendMessage).mockResolvedValueOnce({ success: true });
+      await store.setSessionVariable('global_company', 'Acme Corp', 'global');
+
+      expect(browser.runtime.sendMessage).toHaveBeenCalledWith({
+        type: 'SET_GLOBAL_SESSION_VAR',
+        payload: {
+          key: 'global_var:global_company',
+          value: expect.objectContaining({ value: 'Acme Corp' }),
+        },
+      });
+
+      vi.mocked(browser.runtime.sendMessage).mockResolvedValueOnce({
+        entry: { value: 'Acme Corp', savedAt: Date.now() },
+      });
+      const res = await store.getSessionVariable('global_company', 'global');
+      expect(res).toBe('Acme Corp');
+    });
+
+    it('lazily expires session variables when TTL has passed', async () => {
+      const twoHoursAgo = Date.now() - 2 * 3600 * 1000 - 1000;
+      // Inject expired entry directly into memory
+      (store as any).memory['session_var:expired_item'] = {
+        value: 'Old',
+        savedAt: twoHoursAgo,
+        ttlHours: 1,
+      };
+
+      const val = await store.getSessionVariable('expired_item', 'tab');
+      expect(val).toBeUndefined();
+      expect(store.has('session_var:expired_item')).toBe(false);
+    });
+
+    it('removes session variables correctly', async () => {
+      await store.setSessionVariable('temp', 'to_delete', 'tab');
+      expect(await store.getSessionVariable('temp', 'tab')).toBe('to_delete');
+
+      await store.removeSessionVariable('temp', 'tab');
+      expect(await store.getSessionVariable('temp', 'tab')).toBeUndefined();
+    });
+  });
 });

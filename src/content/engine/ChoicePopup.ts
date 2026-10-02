@@ -124,7 +124,12 @@ export class ChoicePopup {
     this.shadow.appendChild(style);
   }
 
-  public showForToken(token: Token, targetElement: HTMLElement, variables: Variable[] = []): Promise<string | null> {
+  public showForToken(
+    token: Token,
+    targetElement: HTMLElement,
+    variables: Variable[] = [],
+    prefillValue?: string
+  ): Promise<string | null> {
     if (targetElement && isProtected(targetElement)) {
       return Promise.resolve(null);
     }
@@ -256,6 +261,9 @@ export class ChoicePopup {
         input.type = 'text';
         input.className = 'input-field';
         input.placeholder = resolveVariablesInText((token.config?.placeholder as string) || '', false, variables);
+        if (prefillValue !== undefined) {
+          input.value = prefillValue;
+        }
         container.appendChild(input);
 
         const btn = document.createElement('button');
@@ -300,8 +308,13 @@ export class ChoicePopup {
         };
         document.addEventListener('keydown', onKeyDown, true);
         
-        // Auto focus
-        setTimeout(() => input.focus(), 10);
+        // Auto focus and select for instant Enter confirmation or effortless replacement
+        setTimeout(() => {
+          input.focus();
+          if (prefillValue !== undefined) {
+            input.select();
+          }
+        }, 10);
       }
 
       this.shadow.appendChild(container);

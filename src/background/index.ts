@@ -313,6 +313,26 @@ async function handleMessage(message: Message, sender: any): Promise<any> {
       return { success: true };
     }
 
+    case 'GET_GLOBAL_SESSION_VAR': {
+      const entry = sessionService.getGlobalValue(message.payload.key);
+      return { entry };
+    }
+
+    case 'SET_GLOBAL_SESSION_VAR': {
+      sessionService.setGlobalValue(message.payload.key, message.payload.value);
+      return { success: true };
+    }
+
+    case 'REMOVE_GLOBAL_SESSION_VAR': {
+      sessionService.removeGlobalValue(message.payload.key);
+      return { success: true };
+    }
+
+    case 'CLEAR_GLOBAL_SESSION': {
+      sessionService.clearGlobalSession();
+      return { success: true };
+    }
+
     default:
       console.warn('[SOTE] Unknown message type:', message);
       return null;

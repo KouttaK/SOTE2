@@ -154,13 +154,13 @@ export async function simulateBranchContent(
   resetCounterState();
   const dummyEl = document.createElement('div');
   const dummyChoicePopup = {
-    showForToken: async (token: Token) => {
+    showForToken: async (token: Token, _el?: any, _vars?: any, prefillValue?: string) => {
       if (token.type === 'choice') {
         const opts = (token.config?.options as string[]) || [];
         return opts[0] || '[Opção]';
       }
       if (token.type === 'input') {
-        return (token.config?.placeholder as string) || (token.config?.label as string) || '[Entrada]';
+        return prefillValue || (token.config?.placeholder as string) || (token.config?.label as string) || '[Entrada]';
       }
       return '';
     },

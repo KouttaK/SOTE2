@@ -13,9 +13,10 @@
  * today is resolved") can reuse it verbatim instead of re-implementing —
  * one engine, two places that feed it a different ActionBlock.
  */
-import type { ActionBlock, Token, Variable, Flow, FlowRefTokenConfig } from '../../shared/types/index.js';
+import type { ActionBlock, Token, Variable, Flow, FlowRefTokenConfig, SessionScope } from '../../shared/types/index.js';
 import { ChoicePopup } from './ChoicePopup.js';
 import { expandToken, ExpansionContext } from './tokenExpander.js';
+import { SessionStore } from './SessionStore.js';
 import { TextInjector } from './TextInjector.js';
 import { resolveVariablesInText } from '../../shared/utils/variableResolver.js';
 import { sanitizeHtml } from '../../shared/utils/sanitizeHtml.js';
@@ -176,6 +177,7 @@ export async function resolveActionBlockContent(
 
   let cursorMarkerPlaced = false;
   let anchorPlaced = false;
+  const sessionCollected = new Map<string, string>();
 
   for (const pillEl of pillEls) {
     const token = resolveTokenForPill(pillEl, actionBlock.tokens || []);
@@ -215,20 +217,65 @@ export async function resolveActionBlockContent(
     let expandedValue = await expandToken(token, deps.context);
 
     if (expandedValue === null) {
-      // About to hand focus off to the ChoicePopup for a while — some
-      // sites' custom rich-text editors (TipTap/ProseMirror, Slate,
-      // Draft.js...) don't reliably restore the caret to where it was once
-      // `element` regains focus, so drop an invisible anchor at the *real*
-      // current position first (only once — the first popup is the only
-      // point where `element` still definitely has the right caret).
-      if (!anchorPlaced) {
-        anchorPlaced = TextInjector.placeContentEditableAnchor(element);
-      }
+      if (token.type === 'input') {
+        const cfg = (token.config || {}) as any;
+        const remember = Boolean(cfg.rememberValue);
+        const varName = typeof cfg.sessionVarName === 'string' ? cfg.sessionVarName.trim() : '';
+        const scope: SessionScope = cfg.scope || 'tab';
+        const autoApply = Boolean(cfg.autoApply);
+        const ttlHours = typeof cfg.ttlHours === 'number' && cfg.ttlHours > 0 ? cfg.ttlHours : undefined;
 
-      expandedValue = await deps.choicePopup.showForToken(token, element, deps.variables);
-      if (expandedValue === null) {
-        if (anchorPlaced) TextInjector.removeContentEditableAnchor(element);
-        return null; // user cancelled
+        let sessionValue: string | undefined;
+        if (remember && varName) {
+          if (sessionCollected.has(varName)) {
+            sessionValue = sessionCollected.get(varName);
+          } else {
+            sessionValue = await SessionStore.getInstance().getSessionVariable(varName, scope, {
+              url: typeof window !== 'undefined' ? window.location?.href : '',
+              title: typeof document !== 'undefined' ? document.title : '',
+            });
+          }
+        }
+
+        // Auto-reuse directly if autoApply is enabled OR if already confirmed in this same expansion run
+        const canAutoReuse = sessionValue !== undefined && (autoApply || (remember && varName && sessionCollected.has(varName)));
+
+        if (canAutoReuse) {
+          expandedValue = sessionValue!;
+        } else {
+          if (!anchorPlaced) {
+            anchorPlaced = TextInjector.placeContentEditableAnchor(element);
+          }
+          const userVal = await deps.choicePopup.showForToken(token, element, deps.variables, sessionValue);
+          if (userVal === null) {
+            if (anchorPlaced) TextInjector.removeContentEditableAnchor(element);
+            return null; // user cancelled
+          }
+          expandedValue = userVal;
+          if (remember && varName) {
+            sessionCollected.set(varName, userVal);
+            await SessionStore.getInstance().setSessionVariable(varName, userVal, scope, {
+              url: typeof window !== 'undefined' ? window.location?.href : '',
+              title: typeof document !== 'undefined' ? document.title : '',
+            }, ttlHours);
+          }
+        }
+      } else {
+        // About to hand focus off to the ChoicePopup for a while — some
+        // sites' custom rich-text editors (TipTap/ProseMirror, Slate,
+        // Draft.js...) don't reliably restore the caret to where it was once
+        // `element` regains focus, so drop an invisible anchor at the *real*
+        // current position first (only once — the first popup is the only
+        // point where `element` still definitely has the right caret).
+        if (!anchorPlaced) {
+          anchorPlaced = TextInjector.placeContentEditableAnchor(element);
+        }
+
+        expandedValue = await deps.choicePopup.showForToken(token, element, deps.variables);
+        if (expandedValue === null) {
+          if (anchorPlaced) TextInjector.removeContentEditableAnchor(element);
+          return null; // user cancelled
+        }
       }
     }
 

@@ -34,7 +34,10 @@ export class TokenPill {
     } else if (token.type === 'date' && token.config?.format) {
       label = `${label} (${escapeHtmlAttr(String(token.config.format))})`;
     } else if (token.type === 'input' && token.config?.label) {
-      label = `${label} (${escapeHtmlAttr(String(token.config.label))})`;
+      const varSuffix = token.config?.rememberValue && token.config?.sessionVarName
+        ? ` [⚡${escapeHtmlAttr(String(token.config.sessionVarName))}]`
+        : '';
+      label = `${label} (${escapeHtmlAttr(String(token.config.label))})${varSuffix}`;
     } else if (token.type === 'choice' && token.config?.options) {
       label = `${label} (${(token.config.options as string[]).length})`;
     } else if (token.type === 'random' && token.config?.options) {

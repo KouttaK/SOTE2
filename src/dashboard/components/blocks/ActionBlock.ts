@@ -712,9 +712,12 @@ export class ActionBlock {
         const label = escapeHtml((cfg.label as string) || '');
         const placeholder = cfg.placeholder ? escapeHtml(cfg.placeholder as string) : '';
         if (!label) return `<em>${t('action.block.tokens_preview.no_label')}</em>`;
+        const sessionInfo = cfg.rememberValue && cfg.sessionVarName
+          ? ` <span class="tokens-preview-sep">·</span> [⚡ ${escapeHtml(String(cfg.sessionVarName))}]`
+          : '';
         return placeholder
-          ? `${label} <span class="tokens-preview-sep">·</span> ${t('token.input.placeholder_field')}: ${placeholder}`
-          : label;
+          ? `${label}${sessionInfo} <span class="tokens-preview-sep">·</span> ${t('token.input.placeholder_field')}: ${placeholder}`
+          : `${label}${sessionInfo}`;
       }
       case 'date':
         return escapeHtml((cfg.format as string) || 'DD/MM/YYYY');
