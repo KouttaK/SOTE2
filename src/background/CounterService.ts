@@ -7,6 +7,62 @@ interface CounterReservation {
   reservedValue: number;
 }
 
+export function isSameCivilDay(d1: Date, d2: Date): boolean {
+  return (
+    d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate()
+  );
+}
+
+export function isSameCivilMonth(d1: Date, d2: Date): boolean {
+  return (
+    d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth()
+  );
+}
+
+export function isSameCivilYear(d1: Date, d2: Date): boolean {
+  return d1.getFullYear() === d2.getFullYear();
+}
+
+/**
+ * Checks if a counter needs to be reset based on its resetRule and lastUsedAt timestamp.
+ * Resets occur when the current date has advanced to a new civil period (day, month, or year)
+ * in the local timezone compared to the last used date.
+ * If the clock was moved backwards in time (now < lastUsed), it does NOT trigger a reset,
+ * preventing unexpected resets when returning to an already-used civil period.
+ */
+export function checkCounterNeedsReset(
+  resetRule: 'never' | 'day' | 'month' | 'year',
+  lastUsedAt?: number,
+  now: Date = new Date()
+): boolean {
+  if (resetRule === 'never' || !lastUsedAt) {
+    return false;
+  }
+
+  const lastUsed = new Date(lastUsedAt);
+
+  // Se o relógio do sistema retrocedeu no tempo (now < lastUsed),
+  // não reseta (protege contra reversão de teste de data, ajuste de fuso ou NTP).
+  if (now.getTime() < lastUsed.getTime()) {
+    return false;
+  }
+
+  if (resetRule === 'day') {
+    return !isSameCivilDay(now, lastUsed);
+  }
+  if (resetRule === 'month') {
+    return !isSameCivilMonth(now, lastUsed);
+  }
+  if (resetRule === 'year') {
+    return !isSameCivilYear(now, lastUsed);
+  }
+
+  return false;
+}
+
 export class CounterService {
   private static instance: CounterService;
   private storageKey = 'counters';
@@ -51,18 +107,7 @@ export class CounterService {
       if (shouldIncrement) {
         // Evaluate the reset rule before incrementing
         const now = new Date();
-        const lastUsed = counter.lastUsedAt ? new Date(counter.lastUsedAt) : null;
-        let needsReset = false;
-
-        if (counter.resetRule !== 'never' && lastUsed) {
-          if (counter.resetRule === 'day') {
-            needsReset = now.toDateString() !== lastUsed.toDateString();
-          } else if (counter.resetRule === 'month') {
-            needsReset = now.getMonth() !== lastUsed.getMonth() || now.getFullYear() !== lastUsed.getFullYear();
-          } else if (counter.resetRule === 'year') {
-            needsReset = now.getFullYear() !== lastUsed.getFullYear();
-          }
-        }
+        const needsReset = checkCounterNeedsReset(counter.resetRule, counter.lastUsedAt, now);
 
         if (needsReset) {
           // If a reset rule applies, we restart from the defined startValue
