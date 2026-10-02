@@ -347,6 +347,7 @@ export class CounterModal extends BaseModal {
         scope,
         step,
         padLength: pad,
+        lastUsedAt: Date.now(),
       };
 
       await storage.saveCounter(newCounter);

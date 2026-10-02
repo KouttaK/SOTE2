@@ -309,74 +309,101 @@ export default class CountersPage implements Page {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = /* html */ `
-      <div class="modal-card" style="max-width: 520px; width: 100%;">
-        <div class="modal-header">
-          <h2 class="modal-title">${isEdit ? t('counters.modal_edit_title') : t('counters.modal_new_title')}</h2>
+      <div class="modal-card counter-modal-card" style="max-width: 540px; width: 100%; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;">
+        <div class="modal-header counter-modal-header" style="flex-shrink: 0; padding: 1.125rem 1.25rem; border-bottom: 1px solid var(--color-border); display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <h2 class="modal-title" style="margin: 0; font-size: var(--font-size-lg); font-weight: 600;">${isEdit ? t('counters.modal_edit_title') : t('counters.modal_new_title')}</h2>
+            <p style="margin: 2px 0 0 0; font-size: var(--font-size-xs); color: var(--color-mute);">
+              ${isEdit ? 'Atualize as configurações e regras do contador' : 'Configure os parâmetros e regra de reinício'}
+            </p>
+          </div>
           <button type="button" class="modal-close" id="modal-close-btn">&times;</button>
         </div>
-        <div class="modal-body" style="padding: 1.25rem;">
-          <div class="counter-form-row">
-            <label>${t('counters.modal_field_name')}</label>
-            <input type="text" class="counter-form-input" id="cnt-name" value="${escapeHtml(initialName)}">
-          </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-            <div class="counter-form-row">
-              <label>${t('counters.modal_field_start')}</label>
-              <input type="number" class="counter-form-input" id="cnt-start" value="${initialStart}">
+        <div class="modal-body counter-modal-body" style="padding: 1.25rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.875rem;">
+          <!-- Seção 1: Identificação & Regras -->
+          <div class="counter-modal-section">
+            <div class="counter-modal-section-title">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor" style="width: 0.8125rem; height: 0.8125rem;"><path d="M495.9 166.6c3.2 8.7 .5 18.4-6.4 24.6l-43.3 39.4c1.1 8.3 1.7 16.8 1.7 25.4s-.6 17.1-1.7 25.4l43.3 39.4c6.9 6.2 9.6 15.9 6.4 24.6c-4.4 11.9-9.7 23.3-15.8 34.3l-4.7 8.1c-6.6 11-14 21.4-22.1 31.2c-5.9 7.2-15.7 9.6-24.5 6.8l-55.7-17.7c-13.4 10.3-28.2 18.9-44 25.4l-12.5 57.1c-2 9.1-9 16.3-18.2 17.8c-13.8 2.3-28 3.5-42.5 3.5s-28.7-1.2-42.5-3.5c-9.2-1.5-16.2-8.7-18.2-17.8l-12.5-57.1c-15.8-6.5-30.6-15.1-44-25.4L83.1 425.9c-8.8 2.8-18.6 .3-24.5-6.8c-8.1-9.8-15.5-20.2-22.1-31.2l-4.7-8.1c-6.1-11-11.4-22.4-15.8-34.3c-3.2-8.7-.5-18.4 6.4-24.6l43.3-39.4C64.6 273.1 64 264.6 64 256s.6-17.1 1.7-25.4L22.4 191.2c-6.9-6.2-9.6-15.9-6.4-24.6c4.4-11.9 9.7-23.3 15.8-34.3l4.7-8.1c6.6-11 14-21.4 22.1-31.2c5.9-7.2 15.7-9.6 24.5-6.8l55.7 17.7c13.4-10.3 28.2-18.9 44-25.4l12.5-57.1c2-9.1 9-16.3 18.2-17.8C227.3 1.2 241.5 0 256 0s28.7 1.2 42.5 3.5c9.2 1.5 16.2 8.7 18.2 17.8l12.5 57.1c15.8 6.5 30.6 15.1 44 25.4l55.7-17.7c8.8-2.8 18.6-.3 24.5 6.8c8.1 9.8 15.5 20.2 22.1 31.2l4.7 8.1c6.1 11 11.4 22.4 15.8 34.3zM256 336a80 80 0 1 0 0-160 80 80 0 1 0 0 160z"/></svg>
+              <span>Identificação & Reinício</span>
             </div>
-            ${
-              isEdit
-                ? /* html */ `
+            <div class="counter-form-row">
+              <label>${t('counters.modal_field_name')}</label>
+              <input type="text" class="counter-form-input" id="cnt-name" value="${escapeHtml(initialName)}">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
               <div class="counter-form-row">
-                <label>${t('counters.modal_field_current')}</label>
-                <input type="number" class="counter-form-input" id="cnt-current" value="${initialCurrent}">
+                <label style="color: var(--color-cyan, #06b6d4); font-weight: 600;">${t('counters.modal_field_reset')}</label>
+                <select class="counter-form-select" id="cnt-reset" style="border-color: rgba(6, 182, 212, 0.4);">
+                  <option value="never" ${initialReset === 'never' ? 'selected' : ''}>${t('counters.reset_never')}</option>
+                  <option value="day" ${initialReset === 'day' ? 'selected' : ''}>${t('counters.reset_day')}</option>
+                  <option value="month" ${initialReset === 'month' ? 'selected' : ''}>${t('counters.reset_month')}</option>
+                  <option value="year" ${initialReset === 'year' ? 'selected' : ''}>${t('counters.reset_year')}</option>
+                </select>
               </div>
-            `
-                : ''
-            }
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-            <div class="counter-form-row">
-              <label>${t('counters.modal_field_step')}</label>
-              <input type="number" class="counter-form-input" id="cnt-step" value="${initialStep}" min="1">
-            </div>
-            <div class="counter-form-row">
-              <label>${t('counters.modal_field_pad')}</label>
-              <input type="number" class="counter-form-input" id="cnt-pad" value="${initialPad}" min="0" max="10">
+              <div class="counter-form-row">
+                <label>${t('counters.modal_field_scope')}</label>
+                <select class="counter-form-select" id="cnt-scope">
+                  <option value="global" ${initialScope === 'global' ? 'selected' : ''}>${t('counters.scope_global')}</option>
+                  <option value="site" ${initialScope === 'site' ? 'selected' : ''}>${t('counters.scope_site')}</option>
+                </select>
+              </div>
             </div>
           </div>
 
-          <div class="counter-form-row">
-            <label>${t('counters.modal_field_format')}</label>
-            <input type="text" class="counter-form-input" id="cnt-format" value="${escapeHtml(initialFormat)}">
-            <p class="counter-form-hint">${t('counters.modal_field_format_hint')}</p>
-            <div class="counter-preview-box" id="cnt-preview-box">
-              Exemplo: <span id="cnt-preview-val"></span>
+          <!-- Seção 2: Sequência & Valores -->
+          <div class="counter-modal-section">
+            <div class="counter-modal-section-title">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" style="width: 0.8125rem; height: 0.8125rem;"><path d="M0 32C0 14.3 14.3 0 32 0H352c17.7 0 32 14.3 32 32s-14.3 32-32 32V448c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32V64C14.3 64 0 49.7 0 32zm96 80v64h64V112H96zm128 0v64h64V112H224zm-128 128v64h64V240H96zm128 0v64h64V240H224zm-128 128v64h64V368H96zm128 0v64h64V368H224z"/></svg>
+              <span>Valores da Sequência</span>
+            </div>
+            <div style="display: grid; grid-template-columns: ${isEdit ? '1fr 1fr 1fr' : '1fr 1fr'}; gap: 0.75rem;">
+              <div class="counter-form-row">
+                <label>${t('counters.modal_field_start')}</label>
+                <input type="number" class="counter-form-input" id="cnt-start" value="${initialStart}">
+              </div>
+              ${
+                isEdit
+                  ? /* html */ `
+                <div class="counter-form-row">
+                  <label>${t('counters.modal_field_current')}</label>
+                  <input type="number" class="counter-form-input" id="cnt-current" value="${initialCurrent}">
+                </div>
+              `
+                  : ''
+              }
+              <div class="counter-form-row">
+                <label>${t('counters.modal_field_step')}</label>
+                <input type="number" class="counter-form-input" id="cnt-step" value="${initialStep}" min="1">
+              </div>
             </div>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-            <div class="counter-form-row">
-              <label>${t('counters.modal_field_reset')}</label>
-              <select class="counter-form-select" id="cnt-reset">
-                <option value="never" ${initialReset === 'never' ? 'selected' : ''}>${t('counters.reset_never')}</option>
-                <option value="day" ${initialReset === 'day' ? 'selected' : ''}>${t('counters.reset_day')}</option>
-                <option value="month" ${initialReset === 'month' ? 'selected' : ''}>${t('counters.reset_month')}</option>
-                <option value="year" ${initialReset === 'year' ? 'selected' : ''}>${t('counters.reset_year')}</option>
-              </select>
+          <!-- Seção 3: Formatação & Pré-visualização -->
+          <div class="counter-modal-section">
+            <div class="counter-modal-section-title">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor" style="width: 0.8125rem; height: 0.8125rem;"><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM144 256a144 144 0 1 1 288 0 144 144 0 1 1 -288 0zm144-64c0 35.3-28.7 64-64 64c-7.1 0-13.9-1.2-20.3-3.3c-5.5-1.8-11.9 1.6-11.7 7.4c.3 6.9 1.3 13.8 3.2 20.6c13.7 48.7 63.7 77.3 112.4 63.6s77.3-63.7 63.6-112.4c-8.9-31.7-33.1-55.9-64.8-64.8c-6.8-1.9-13.7-2.9-20.6-3.2c-5.8-.2-9.2 6.2-7.4 11.7c2.1 6.4 3.3 13.2 3.3 20.3z"/></svg>
+              <span>Formatação & Pré-visualização</span>
             </div>
-            <div class="counter-form-row">
-              <label>${t('counters.modal_field_scope')}</label>
-              <select class="counter-form-select" id="cnt-scope">
-                <option value="global" ${initialScope === 'global' ? 'selected' : ''}>${t('counters.scope_global')}</option>
-                <option value="site" ${initialScope === 'site' ? 'selected' : ''}>${t('counters.scope_site')}</option>
-              </select>
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 0.75rem;">
+              <div class="counter-form-row">
+                <label>${t('counters.modal_field_format')}</label>
+                <input type="text" class="counter-form-input" id="cnt-format" value="${escapeHtml(initialFormat)}">
+              </div>
+              <div class="counter-form-row">
+                <label>${t('counters.modal_field_pad')}</label>
+                <input type="number" class="counter-form-input" id="cnt-pad" value="${initialPad}" min="0" max="10">
+              </div>
+            </div>
+            <p class="counter-form-hint" style="margin-top: -0.25rem;">${t('counters.modal_field_format_hint')}</p>
+            <div class="counter-preview-box" id="cnt-preview-box" style="margin-top: 0.25rem; padding: 0.5rem 0.875rem; display: flex; align-items: center; justify-content: space-between;">
+              <span style="font-size: var(--font-size-xs); color: var(--color-mute); font-family: inherit;">Exemplo formatado:</span>
+              <span id="cnt-preview-val" style="font-weight: 700; font-family: var(--font-family-mono); color: var(--color-cyan, #06b6d4);"></span>
             </div>
           </div>
         </div>
-        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.75rem; padding: 1rem 1.25rem; border-top: 1px solid var(--color-border);">
+
+        <div class="modal-footer counter-modal-footer" style="flex-shrink: 0; display: flex; justify-content: flex-end; gap: 0.75rem; padding: 0.875rem 1.25rem; border-top: 1px solid var(--color-border); background: rgba(255, 255, 255, 0.01);">
           <button type="button" class="btn-secondary" id="modal-cancel-btn">${t('common.cancel')}</button>
           <button type="button" class="counters-btn-new" id="modal-save-btn">${t('counters.btn_save')}</button>
         </div>
@@ -454,6 +481,8 @@ export default class CountersPage implements Page {
         scope,
         step,
         padLength: pad,
+        lastUsedAt: existing?.lastUsedAt ?? Date.now(),
+        history: existing?.history,
       };
 
       await storage.saveCounter(counter);

@@ -184,10 +184,12 @@ describe('CountersPage (src/dashboard/pages/counters.ts)', () => {
 
     const overlay = document.querySelector('.modal-overlay') as HTMLElement;
     expect(overlay).not.toBeNull();
+    expect(overlay.querySelectorAll('.counter-modal-section').length).toBe(3);
 
     const nameInput = overlay.querySelector('#cnt-name') as HTMLInputElement;
-    const resetSelect = overlay.querySelector('#cnt-reset') as HTMLSelectElement;
+    const resetSelect = overlay.querySelector('.counter-modal-section:first-child #cnt-reset') as HTMLSelectElement;
     expect(nameInput.value).toBe('Contador 1');
+    expect(resetSelect).not.toBeNull();
     expect(resetSelect.value).toBe('day'); // c1 tinha resetRule: 'day'
 
     nameInput.value = 'Contador Editado';
