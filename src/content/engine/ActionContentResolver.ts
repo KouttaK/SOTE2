@@ -219,14 +219,14 @@ export async function resolveActionBlockContent(
     if (expandedValue === null) {
       if (token.type === 'input') {
         const cfg = (token.config || {}) as any;
-        const remember = Boolean(cfg.rememberValue);
+        const remember = cfg.rememberValue !== false;
         const varName = typeof cfg.sessionVarName === 'string' ? cfg.sessionVarName.trim() : '';
         const scope: SessionScope = cfg.scope || 'tab';
         const autoApply = Boolean(cfg.autoApply);
         const ttlHours = typeof cfg.ttlHours === 'number' && cfg.ttlHours > 0 ? cfg.ttlHours : undefined;
 
         let sessionValue: string | undefined;
-        if (remember && varName) {
+        if (varName) {
           if (sessionCollected.has(varName)) {
             sessionValue = sessionCollected.get(varName);
           } else {
@@ -238,7 +238,7 @@ export async function resolveActionBlockContent(
         }
 
         // Auto-reuse directly if autoApply is enabled OR if already confirmed in this same expansion run
-        const canAutoReuse = sessionValue !== undefined && (autoApply || (remember && varName && sessionCollected.has(varName)));
+        const canAutoReuse = sessionValue !== undefined && (autoApply || (varName && sessionCollected.has(varName)));
 
         if (canAutoReuse) {
           expandedValue = sessionValue!;
@@ -252,7 +252,7 @@ export async function resolveActionBlockContent(
             return null; // user cancelled
           }
           expandedValue = userVal;
-          if (remember && varName) {
+          if (varName && (remember || Boolean(cfg.rememberValue))) {
             sessionCollected.set(varName, userVal);
             await SessionStore.getInstance().setSessionVariable(varName, userVal, scope, {
               url: typeof window !== 'undefined' ? window.location?.href : '',

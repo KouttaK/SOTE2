@@ -346,4 +346,77 @@ describe('Subtarefa 3.1: Reusable Input Tokens (Session Variables) Integration T
     // Nada foi gravado no SessionStore
     expect(await store.getSessionVariable('senha_temp', 'tab')).toBeUndefined();
   });
+
+  it('Cenário 9 (Regressão Bug 2): Fluxo A (autoApply false) salva valor -> Fluxo B (autoApply true, mesma variável, usado pela PRIMEIRA vez) aplica direto sem popup na primeira chamada', async () => {
+    const choicePopupMock = {
+      showForToken: vi.fn(),
+    } as any;
+
+    // 1. Fluxo A: autoApply false, solicita ao usuário e salva "12345/2026" na variável "num_proc"
+    const tokenA: Token = {
+      id: 'tok_flow_a',
+      type: 'input',
+      config: {
+        label: 'Número do Processo',
+        rememberValue: true,
+        sessionVarName: 'num_proc',
+        scope: 'tab',
+        autoApply: false,
+      },
+    };
+
+    const actionA: ActionBlock = {
+      format: 'plain',
+      content: `Autos nº ${TokenPill.createHTML(tokenA)}`,
+      tokens: [tokenA],
+    };
+
+    choicePopupMock.showForToken.mockResolvedValueOnce('12345/2026');
+
+    const resultA = await resolveActionBlockContent(actionA, dummyElement, {
+      choicePopup: choicePopupMock,
+      variables: [],
+      context: { tabUrl: 'https://tribunal.jus.br/processo', tabTitle: 'Consulta Processual' },
+    });
+
+    expect(resultA).not.toBeNull();
+    expect(resultA!.content).toBe('Autos nº 12345/2026');
+    expect(choicePopupMock.showForToken).toHaveBeenCalledTimes(1);
+
+    // Confirma que a variável está no SessionStore
+    const saved = await store.getSessionVariable('num_proc', 'tab');
+    expect(saved).toBe('12345/2026');
+
+    // 2. Fluxo B: autoApply true, MESMA variável "num_proc", usado pela PRIMEIRA vez
+    const tokenB: Token = {
+      id: 'tok_flow_b',
+      type: 'input',
+      config: {
+        label: 'Processo',
+        rememberValue: true,
+        sessionVarName: 'num_proc',
+        scope: 'tab',
+        autoApply: true,
+      },
+    };
+
+    const actionB: ActionBlock = {
+      format: 'plain',
+      content: `Intimação referente ao processo ${TokenPill.createHTML(tokenB)}.`,
+      tokens: [tokenB],
+    };
+
+    // Executa Fluxo B pela primeira vez na mesma aba
+    const resultB = await resolveActionBlockContent(actionB, dummyElement, {
+      choicePopup: choicePopupMock,
+      variables: [],
+      context: { tabUrl: 'https://tribunal.jus.br/processo', tabTitle: 'Consulta Processual' },
+    });
+
+    expect(resultB).not.toBeNull();
+    expect(resultB!.content).toBe('Intimação referente ao processo 12345/2026.');
+    // ZERO novas chamadas ao popup — aplicou direto já na PRIMEIRA chamada de Fluxo B!
+    expect(choicePopupMock.showForToken).toHaveBeenCalledTimes(1);
+  });
 });
+

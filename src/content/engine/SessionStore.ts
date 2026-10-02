@@ -187,7 +187,21 @@ export class SessionStore {
       }
     }
 
-    const raw = this.memory[key];
+    let raw = this.memory[key];
+    if (raw === undefined) {
+      try {
+        const response = await browser.runtime.sendMessage({
+          type: 'GET_SESSION_DATA',
+        });
+        if (response && typeof response === 'object' && !('__error' in response)) {
+          this.memory = { ...this.memory, ...(response as SessionData) };
+          raw = this.memory[key];
+        }
+      } catch {
+        // Background communication unavailable or in unit tests without full mocks
+      }
+    }
+
     if (raw === undefined) return undefined;
     if (SessionStore.isExpired(raw)) {
       this.remove(key);
