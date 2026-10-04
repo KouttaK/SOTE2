@@ -9,6 +9,22 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 ## [1.0.19] - Não publicado (em desenvolvimento acumulado)
 
 ### Adicionado
+- **Fase 3.1 — Input Reutilizável com Variáveis de Sessão e Escopos:**
+  - Suporte completo a variáveis de sessão em tokens de entrada de texto (`InputToken`), permitindo salvar e reutilizar respostas fornecidas pelo usuário em múltiplos fluxos ou em chamadas subsequentes.
+  - Granularidade de escopo por variável de sessão:
+    - `tab`: Isolado na aba atual (padrão, limpo ao fechar a guia).
+    - `url`: Isolado por URL / endereço da página atual.
+    - `title`: Isolado por título da aba atual.
+    - `global`: Compartilhado em todas as abas abertas durante a sessão do navegador (mantido em memória no Background Script até fechar o navegador).
+  - Expiração temporizada preguiçosa (Lazy TTL): configuração opcional de tempo de vida em horas (`ttlHours`), avaliada sob demanda no momento da consulta sem temporizadores ativos consumindo recursos em segundo plano.
+  - Opção de auto-aplicação (`autoApply`): quando ativada, caso a variável já possua valor válido e não expirado na sessão, injeta o valor diretamente sem exibir popup ou pausar a digitação.
+  - Experiência do usuário (UX) aprimorada no popup de entrada (`ChoicePopup`):
+    - Banner informativo âmbar destacando visualmente quando um valor foi reaproveitado de uso anterior na sessão.
+    - Botão de ação explícito "Limpar e digitar novo" ao lado de Confirmar, permitindo substituir rapidamente o valor preservado sem atrito.
+    - Dica educativa para contextos de atendimento e CRM no `InputModal` sobre uso de TTL para evitar reaproveitamento acidental entre clientes em uma mesma guia.
+  - Alerta preventivo contra divergência de escopo no Dashboard:
+    - Verificação em tempo real no `InputModal` ao configurar variáveis de sessão com busca cruzada em todos os fluxos da extensão.
+    - Alerta discreto notificando se outro campo já utiliza o mesmo nome com escopo divergente (ex.: `tab` vs `global`), prevenindo desencontros de escopo.
 - **Fase 2.4 — Desfazer Expansão (Undo) e Envio Diferido de Estatísticas:**
   - Desfazer expansão inteligente acionado via tecla `Backspace` ou atalho `Ctrl+Z` dentro de uma janela temporizada configurável (padrão de 5s, ajustável de 0 a 10s).
   - Restauração precisa do atalho original digitado no elemento focado (`input`, `textarea` e `contenteditable`), removendo o texto injetado.
@@ -46,6 +62,7 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 - **Fase 1A — Sinalização de Estado por Frame e Indicador no Popup:** Comunicação entre frames e background (`FRAME_PROTECTED_STATUS_CHANGED`) e exibição de alerta discreto no popup ("Campo protegido") notificando que a injeção está desativada por segurança no campo focado.
 
 ### Corrigido
+- **Desacoplamento de Leitura e Gravação de Sessão no `ActionContentResolver` (Fase 3.1):** Ajustada a busca de valor salvo no `SessionStore` para não depender de `rememberValue === true` na consulta, assegurando que tokens com `autoApply: true` recuperem valores previamente estabelecidos por outros fluxos na mesma sessão logo em sua primeira execução.
 - **Integração Real e Navegação de Contadores no Dashboard (Fase 2):** Registro da rota `#/counters` no roteador do Dashboard (`Router.ts`), inclusão no menu de navegação do Shell (`shell.ts`) com ícone dedicado e controle de visibilidade da página `CountersPage`.
 - **Fluxo do Editor e Associação de Contadores (Fase 2):** Criação e seleção de contadores no `CounterModal` com fluxo em abas ("Usar contador existente" e "Criar novo contador"), garantindo que o token inserido no editor vincule o `counterId` persistido correto no bloco de ação.
 - **Migração Auto-curável de Contadores Órfãos e Schema v1 para v2 (Fase 2):** Varredura recursiva em blocos aninhados (`walkFlowActionBlocks`), auto-recuperação de tokens com contadores órfãos e suporte preventivo a bases já marcadas com schema 2 sem contadores extraídos (`hasUnmigratedCounters`).
