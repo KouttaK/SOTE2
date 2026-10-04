@@ -252,6 +252,27 @@ describe('i18n popup keys validation', () => {
       expect(pt[key]).not.toBe(key);
     }
   });
+
+  it('should validate Phase 3.2 form popup and group inputs keys', () => {
+    const phase32Keys = [
+      'trigger.block.group_inputs_title',
+      'trigger.block.group_inputs_desc',
+      'token.form.title',
+      'token.form.submit_btn',
+      'token.form.cancel_btn',
+      'token.form.prefill_badge',
+    ];
+
+    const en = translations.en as Record<string, string>;
+    const pt = translations['pt-BR'] as Record<string, string>;
+
+    for (const key of phase32Keys) {
+      expect(en[key], `Key ${key} missing in English`).toBeDefined();
+      expect(pt[key], `Key ${key} missing in Portuguese`).toBeDefined();
+      expect(en[key]).not.toBe(key);
+      expect(pt[key]).not.toBe(key);
+    }
+  });
 });
 
 

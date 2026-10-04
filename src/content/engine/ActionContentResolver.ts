@@ -13,7 +13,7 @@
  * today is resolved") can reuse it verbatim instead of re-implementing —
  * one engine, two places that feed it a different ActionBlock.
  */
-import type { ActionBlock, Token, Variable, Flow, FlowRefTokenConfig, SessionScope } from '../../shared/types/index.js';
+import type { ActionBlock, Token, Variable, Flow, FlowRefTokenConfig, SessionScope, FormField, Block } from '../../shared/types/index.js';
 import { ChoicePopup } from './ChoicePopup.js';
 import { expandToken, ExpansionContext } from './tokenExpander.js';
 import { SessionStore } from './SessionStore.js';
@@ -106,7 +106,7 @@ function resolveTokenForPill(pillEl: Element, tokens: Token[]): Token | null {
 async function resolveFlowRefToken(
   token: Token,
   element: HTMLElement,
-  deps: { choicePopup: ChoicePopup; variables: Variable[]; context: ExpansionContext; flows?: Flow[]; shortcutTyped?: string },
+  deps: { choicePopup: ChoicePopup; variables: Variable[]; context: ExpansionContext; flows?: Flow[]; shortcutTyped?: string; flow?: Flow },
   visitedFlowIds: Set<string>,
 ): Promise<{ content: string; isRichText: boolean } | null> {
   const config = (token.config || {}) as unknown as FlowRefTokenConfig;
@@ -139,7 +139,7 @@ async function resolveFlowRefToken(
   const nextVisited = new Set(visitedFlowIds);
   nextVisited.add(flowId);
 
-  const resolved = await resolveActionBlockContent(nestedActionBlock, element, deps, nextVisited);
+  const resolved = await resolveActionBlockContent(nestedActionBlock, element, { ...deps, flow: targetFlow }, nextVisited);
   if (resolved === null) return null; // user cancelled a nested choice/input popup
 
   return { content: resolved.content, isRichText: nestedActionBlock.format === 'richtext' };
@@ -160,7 +160,7 @@ async function resolveFlowRefToken(
 export async function resolveActionBlockContent(
   actionBlock: ActionBlock,
   element: HTMLElement,
-  deps: { choicePopup: ChoicePopup; variables: Variable[]; context: ExpansionContext; flows?: Flow[]; shortcutTyped?: string },
+  deps: { choicePopup: ChoicePopup; variables: Variable[]; context: ExpansionContext; flows?: Flow[]; shortcutTyped?: string; flow?: Flow },
   visitedFlowIds: Set<string> = new Set(),
 ): Promise<ResolvedActionContent | null> {
   const isRichText = actionBlock.format === 'richtext';
@@ -178,6 +178,110 @@ export async function resolveActionBlockContent(
   let cursorMarkerPlaced = false;
   let anchorPlaced = false;
   const sessionCollected = new Map<string, string>();
+  const formValues = new Map<string, string>();
+
+  const triggerBlock = deps.flow?.blocks?.find((b: Block) => b.type === 'trigger')?.data as any;
+  const isGroupInputsEnabled = Boolean(deps.flow?.groupInputs || triggerBlock?.groupInputs);
+
+  if (isGroupInputsEnabled) {
+    interface CandidateInput {
+      token: Token;
+      config: any;
+      sessionVarName: string;
+      key: string;
+      sessionValue?: string;
+    }
+    const inputCandidates: CandidateInput[] = [];
+
+    for (const pillEl of pillEls) {
+      const token = resolveTokenForPill(pillEl, actionBlock.tokens || []);
+      if (!token || token.type !== 'input') continue;
+
+      const cfg = (token.config || {}) as any;
+      const varName = typeof cfg.sessionVarName === 'string' ? cfg.sessionVarName.trim() : '';
+      const scope: SessionScope = cfg.scope || 'tab';
+      const autoApply = Boolean(cfg.autoApply);
+
+      let sessionValue: string | undefined;
+      if (varName) {
+        if (sessionCollected.has(varName)) {
+          sessionValue = sessionCollected.get(varName);
+        } else {
+          sessionValue = await SessionStore.getInstance().getSessionVariable(varName, scope, {
+            url: typeof window !== 'undefined' ? window.location?.href : '',
+            title: typeof document !== 'undefined' ? document.title : '',
+          });
+        }
+      }
+
+      // Auto-apply without popup if already answered
+      if (sessionValue !== undefined && autoApply) {
+        formValues.set(varName, sessionValue);
+        sessionCollected.set(varName, sessionValue);
+        continue;
+      }
+
+      const key = varName || token.id;
+      inputCandidates.push({
+        token,
+        config: cfg,
+        sessionVarName: varName,
+        key,
+        sessionValue,
+      });
+    }
+
+    // Deduplicate candidate fields by key (sessionVarName or token.id)
+    const fieldsToPrompt: FormField[] = [];
+    const seenKeys = new Set<string>();
+
+    for (const cand of inputCandidates) {
+      if (seenKeys.has(cand.key)) continue;
+      seenKeys.add(cand.key);
+
+      if (formValues.has(cand.key)) continue;
+
+      const prefilled = cand.sessionValue !== undefined && cand.sessionValue.trim() !== '';
+      fieldsToPrompt.push({
+        key: cand.key,
+        label: cand.config.label || cand.key,
+        placeholder: cand.config.placeholder || '',
+        value: prefilled ? cand.sessionValue : '',
+        prefilled,
+      });
+    }
+
+    if (fieldsToPrompt.length > 0) {
+      if (!anchorPlaced) {
+        anchorPlaced = TextInjector.placeContentEditableAnchor(element);
+      }
+
+      const formResult = await deps.choicePopup.showForm(fieldsToPrompt, element, deps.variables);
+      if (formResult === null) {
+        if (anchorPlaced) TextInjector.removeContentEditableAnchor(element);
+        return null; // user cancelled form
+      }
+
+      for (const cand of inputCandidates) {
+        const userVal = formResult[cand.key];
+        if (userVal !== undefined) {
+          formValues.set(cand.key, userVal);
+          if (cand.sessionVarName) {
+            sessionCollected.set(cand.sessionVarName, userVal);
+            const remember = cand.config.rememberValue !== false;
+            if (remember || Boolean(cand.config.rememberValue)) {
+              const scope: SessionScope = cand.config.scope || 'tab';
+              const ttlHours = typeof cand.config.ttlHours === 'number' && cand.config.ttlHours > 0 ? cand.config.ttlHours : undefined;
+              await SessionStore.getInstance().setSessionVariable(cand.sessionVarName, userVal, scope, {
+                url: typeof window !== 'undefined' ? window.location?.href : '',
+                title: typeof document !== 'undefined' ? document.title : '',
+              }, ttlHours);
+            }
+          }
+        }
+      }
+    }
+  }
 
   for (const pillEl of pillEls) {
     const token = resolveTokenForPill(pillEl, actionBlock.tokens || []);
@@ -224,40 +328,45 @@ export async function resolveActionBlockContent(
         const scope: SessionScope = cfg.scope || 'tab';
         const autoApply = Boolean(cfg.autoApply);
         const ttlHours = typeof cfg.ttlHours === 'number' && cfg.ttlHours > 0 ? cfg.ttlHours : undefined;
+        const key = varName || token.id;
 
-        let sessionValue: string | undefined;
-        if (varName) {
-          if (sessionCollected.has(varName)) {
-            sessionValue = sessionCollected.get(varName);
-          } else {
-            sessionValue = await SessionStore.getInstance().getSessionVariable(varName, scope, {
-              url: typeof window !== 'undefined' ? window.location?.href : '',
-              title: typeof document !== 'undefined' ? document.title : '',
-            });
-          }
-        }
-
-        // Auto-reuse directly if autoApply is enabled OR if already confirmed in this same expansion run
-        const canAutoReuse = sessionValue !== undefined && (autoApply || (varName && sessionCollected.has(varName)));
-
-        if (canAutoReuse) {
-          expandedValue = sessionValue!;
+        if (isGroupInputsEnabled && formValues.has(key)) {
+          expandedValue = formValues.get(key)!;
         } else {
-          if (!anchorPlaced) {
-            anchorPlaced = TextInjector.placeContentEditableAnchor(element);
+          let sessionValue: string | undefined;
+          if (varName) {
+            if (sessionCollected.has(varName)) {
+              sessionValue = sessionCollected.get(varName);
+            } else {
+              sessionValue = await SessionStore.getInstance().getSessionVariable(varName, scope, {
+                url: typeof window !== 'undefined' ? window.location?.href : '',
+                title: typeof document !== 'undefined' ? document.title : '',
+              });
+            }
           }
-          const userVal = await deps.choicePopup.showForToken(token, element, deps.variables, sessionValue);
-          if (userVal === null) {
-            if (anchorPlaced) TextInjector.removeContentEditableAnchor(element);
-            return null; // user cancelled
-          }
-          expandedValue = userVal;
-          if (varName && (remember || Boolean(cfg.rememberValue))) {
-            sessionCollected.set(varName, userVal);
-            await SessionStore.getInstance().setSessionVariable(varName, userVal, scope, {
-              url: typeof window !== 'undefined' ? window.location?.href : '',
-              title: typeof document !== 'undefined' ? document.title : '',
-            }, ttlHours);
+
+          // Auto-reuse directly if autoApply is enabled OR if already confirmed in this same expansion run
+          const canAutoReuse = sessionValue !== undefined && (autoApply || (varName && sessionCollected.has(varName)));
+
+          if (canAutoReuse) {
+            expandedValue = sessionValue!;
+          } else {
+            if (!anchorPlaced) {
+              anchorPlaced = TextInjector.placeContentEditableAnchor(element);
+            }
+            const userVal = await deps.choicePopup.showForToken(token, element, deps.variables, sessionValue);
+            if (userVal === null) {
+              if (anchorPlaced) TextInjector.removeContentEditableAnchor(element);
+              return null; // user cancelled
+            }
+            expandedValue = userVal;
+            if (varName && (remember || Boolean(cfg.rememberValue))) {
+              sessionCollected.set(varName, userVal);
+              await SessionStore.getInstance().setSessionVariable(varName, userVal, scope, {
+                url: typeof window !== 'undefined' ? window.location?.href : '',
+                title: typeof document !== 'undefined' ? document.title : '',
+              }, ttlHours);
+            }
           }
         }
       } else {

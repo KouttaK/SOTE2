@@ -226,6 +226,7 @@ export default defineContentScript({
           context,
           flows,
           shortcutTyped,
+          flow,
         }, new Set([flow.id]));
 
         if (resolved === null) {

@@ -73,6 +73,8 @@ export interface TriggerBlock {
   forceCapitalize: boolean;
   /** When true (or omitted if defaulting to true), prevents expansion inside words (e.g. typing "subdata" won't trigger "data"). */
   wordBoundary?: boolean;
+  /** When true, groups multiple input tokens in this flow into a single unified form popup. */
+  groupInputs?: boolean;
 }
 
 export interface ConditionBlock {
@@ -224,6 +226,7 @@ export interface Flow {
   tags: string[];
   folderId?: string;
   enabled: boolean;
+  groupInputs?: boolean;
   createdAt: number;
   updatedAt: number;
   stats: FlowStats;
@@ -390,6 +393,14 @@ export interface InputTokenConfig {
   scope?: SessionScope;
   ttlHours?: number;
   autoApply?: boolean;
+}
+
+export interface FormField {
+  key: string;
+  label: string;
+  placeholder?: string;
+  value?: string;
+  prefilled?: boolean;
 }
 
 export type SessionData = Record<string, unknown>;

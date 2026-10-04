@@ -582,6 +582,7 @@ export default class FlowEditorPage implements Page {
 
     // Name is just the shortcut
     this.currentFlow.name = `/${triggerData.shortcut}`;
+    this.currentFlow.groupInputs = Boolean(triggerData.groupInputs);
     
     // Folder
     const folderSelect = this.headerEl.querySelector('#flow-folder') as HTMLSelectElement;
