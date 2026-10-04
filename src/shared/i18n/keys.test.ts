@@ -273,6 +273,43 @@ describe('i18n popup keys validation', () => {
       expect(pt[key]).not.toBe(key);
     }
   });
+
+  it('should validate Phase 3.3 switch condition keys', () => {
+    const phase33Keys = [
+      'condition.mode.classic',
+      'condition.mode.switch',
+      'condition.switch.ineligible_tooltip',
+      'condition.switch.evaluating_target',
+      'condition.switch.target.variable',
+      'condition.switch.target.domain',
+      'condition.switch.target.field_type',
+      'condition.switch.target.field_content',
+      'condition.switch.target.clipboard_content',
+      'condition.switch.target.date',
+      'condition.tag.case',
+      'condition.tag.default',
+      'condition.switch.case_placeholder',
+      'condition.switch.add_case',
+      'condition.switch.add_default',
+      'condition.switch.default_body',
+      'condition.switch.hint',
+      'condition.switch.case_count',
+      'confirm_modal.remove_case_title',
+      'condition.confirm.remove_case',
+      'confirm_modal.remove_default_title',
+      'condition.confirm.remove_default',
+    ];
+
+    const en = translations.en as Record<string, string>;
+    const pt = translations['pt-BR'] as Record<string, string>;
+
+    for (const key of phase33Keys) {
+      expect(en[key], `Key ${key} missing in English`).toBeDefined();
+      expect(pt[key], `Key ${key} missing in Portuguese`).toBeDefined();
+      expect(en[key]).not.toBe(key);
+      expect(pt[key]).not.toBe(key);
+    }
+  });
 });
 
 
