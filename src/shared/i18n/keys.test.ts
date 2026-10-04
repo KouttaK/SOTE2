@@ -212,6 +212,45 @@ describe('i18n popup keys validation', () => {
       expect(pt[key]).not.toBe(key);
     }
   });
+
+  it('should validate Phase 3.1 reusable input and prefill UX keys', () => {
+    const phase3Keys = [
+      'token.input.remember_value',
+      'token.input.remember_hint',
+      'token.input.session_var_name',
+      'token.input.session_var_name_placeholder',
+      'token.input.session_var_hint',
+      'token.input.scope_label',
+      'token.input.scope_tab',
+      'token.input.scope_tab_hint',
+      'token.input.scope_url',
+      'token.input.scope_url_hint',
+      'token.input.scope_title',
+      'token.input.scope_title_hint',
+      'token.input.scope_global',
+      'token.input.scope_global_hint',
+      'token.input.ttl_label',
+      'token.input.ttl_placeholder',
+      'token.input.ttl_hint',
+      'token.input.auto_apply_label',
+      'token.input.auto_apply_hint',
+      'token.input.var_name_required',
+      'token.input.prefill_banner',
+      'token.input.clear_btn',
+      'token.input.confirm_btn',
+      'token.input.crm_warning_hint',
+    ];
+
+    const en = translations.en as Record<string, string>;
+    const pt = translations['pt-BR'] as Record<string, string>;
+
+    for (const key of phase3Keys) {
+      expect(en[key], `Key ${key} missing in English`).toBeDefined();
+      expect(pt[key], `Key ${key} missing in Portuguese`).toBeDefined();
+      expect(en[key]).not.toBe(key);
+      expect(pt[key]).not.toBe(key);
+    }
+  });
 });
 
 

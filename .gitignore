@@ -7,3 +7,4 @@ dist/
 .env.submit
 scripts/
 ref_pages/
+GEMINI.md

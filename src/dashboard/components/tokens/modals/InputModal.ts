@@ -96,6 +96,14 @@ export class InputModal extends BaseModal {
               </label>
               <p class="field-hint" style="margin-top: 0.25rem; margin-left: 1.5rem;">${t('token.input.auto_apply_hint')}</p>
             </div>
+
+            <!-- Dica Educativa CRM / Atendimento Multi-Cliente -->
+            <div class="field-hint-card" style="margin-top: 0.5rem; padding: 0.625rem 0.75rem; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 0.375rem; display: flex; gap: 0.5rem; align-items: flex-start;">
+              <span style="color: #60a5fa; font-size: 0.875rem; line-height: 1.2; flex-shrink: 0;">ℹ️</span>
+              <p style="margin: 0; font-size: 0.75rem; line-height: 1.4; color: var(--text-secondary, #a3a3a3);">
+                ${t('token.input.crm_warning_hint')}
+              </p>
+            </div>
           </div>
         </div>
       </div>

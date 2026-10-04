@@ -173,4 +173,26 @@ describe('InputModal (src/dashboard/components/tokens/modals/InputModal.ts)', ()
       autoApply: true,
     });
   });
+
+  it('renders educational CRM tip card inside session options panel', () => {
+    const token: Token = {
+      id: 'tok_input_6',
+      type: 'input',
+      config: {
+        label: 'Nome',
+        rememberValue: true,
+        sessionVarName: 'nome',
+      },
+    };
+
+    const modal = new InputModal(token, vi.fn());
+    modal.open();
+
+    const sessionPanel = document.querySelector('#session-options-panel') as HTMLElement;
+    const crmCard = sessionPanel.querySelector('.field-hint-card') as HTMLElement;
+
+    expect(crmCard).not.toBeNull();
+    expect(crmCard.textContent).toContain('Dica para CRM/Atendimento');
+  });
 });
+

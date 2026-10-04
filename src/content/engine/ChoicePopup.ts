@@ -5,6 +5,7 @@
 import type { Token, Variable } from '../../shared/types/index.js';
 import { resolveVariablesInText } from '../../shared/utils/variableResolver.js';
 import { isProtected } from './SensitiveFieldGuard.js';
+import { t } from '../../shared/i18n/index.js';
 
 export class ChoicePopup {
   private host!: HTMLDivElement;
@@ -106,16 +107,57 @@ export class ChoicePopup {
         outline: none;
         border-color: #3b82f6;
       }
-      .btn-submit {
+      .prefill-banner {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        background: rgba(245, 158, 11, 0.12);
+        border: 1px solid rgba(245, 158, 11, 0.3);
+        border-radius: 0.25rem;
+        padding: 0.35rem 0.5rem;
+        margin-bottom: 0.5rem;
+        color: #fbbf24;
+        font-size: 0.75rem;
+        line-height: 1.25;
+      }
+      .prefill-banner svg {
+        flex-shrink: 0;
+        width: 0.875rem;
+        height: 0.875rem;
+      }
+      .btn-row {
+        display: flex;
+        gap: 0.5rem;
         width: 100%;
+      }
+      .btn-clear {
+        background: #262626;
+        color: #d4d4d4;
+        border: 1px solid #404040;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        white-space: nowrap;
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
+        flex: 1;
+      }
+      .btn-clear:hover {
+        background: #383838;
+        border-color: #525252;
+        color: #fff;
+      }
+      .btn-submit {
         background: #3b82f6;
         color: #fff;
         border: none;
         padding: 0.5rem;
         border-radius: 0.25rem;
         cursor: pointer;
-        font-size: 0.875rem;
+        font-size: 0.8125rem;
         font-weight: 500;
+        flex: 1;
       }
       .btn-submit:hover {
         background: #2563eb;
@@ -257,6 +299,26 @@ export class ChoicePopup {
         title.textContent = resolveVariablesInText((token.config?.label as string) || 'Enter value', false, variables);
         container.appendChild(title);
 
+        let prefillBanner: HTMLDivElement | null = null;
+        if (prefillValue !== undefined && prefillValue.trim() !== '') {
+          prefillBanner = document.createElement('div');
+          prefillBanner.className = 'prefill-banner';
+
+          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          svg.setAttribute('viewBox', '0 0 512 512');
+          svg.setAttribute('fill', 'currentColor');
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          path.setAttribute('d', 'M463.5 224H472c13.3 0 24-10.7 24-24V72c0-9.7-5.8-18.5-14.8-22.2s-19.3-1.7-26.2 5.2L413.4 96.6c-87.6-86.5-228.7-86.2-315.8 1c-87.5 87.5-87.5 229.3 0 316.8s229.3 87.5 316.8 0c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0c-62.5 62.5-163.8 62.5-226.3 0s-62.5-163.8 0-226.3c62.2-62.2 162.7-62.5 225.3-1L327 182.6c-6.9 6.9-8.9 17.2-5.2 26.2s12.5 14.8 22.2 14.8H463.5z');
+          svg.appendChild(path);
+
+          const span = document.createElement('span');
+          span.textContent = t('token.input.prefill_banner');
+
+          prefillBanner.appendChild(svg);
+          prefillBanner.appendChild(span);
+          container.appendChild(prefillBanner);
+        }
+
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'input-field';
@@ -266,9 +328,36 @@ export class ChoicePopup {
         }
         container.appendChild(input);
 
+        const btnRow = document.createElement('div');
+        btnRow.className = 'btn-row';
+
+        let clearBtn: HTMLButtonElement | null = null;
+        if (prefillValue !== undefined && prefillValue.trim() !== '') {
+          clearBtn = document.createElement('button');
+          clearBtn.type = 'button';
+          clearBtn.className = 'btn-clear';
+          clearBtn.textContent = t('token.input.clear_btn');
+          clearBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            input.value = '';
+            if (prefillBanner) {
+              prefillBanner.remove();
+              prefillBanner = null;
+            }
+            if (clearBtn) {
+              clearBtn.remove();
+              clearBtn = null;
+            }
+            input.focus();
+          });
+          btnRow.appendChild(clearBtn);
+        }
+
         const btn = document.createElement('button');
+        btn.type = 'button';
         btn.className = 'btn-submit';
-        btn.textContent = 'Confirm';
+        btn.textContent = t('token.input.confirm_btn') || 'Confirm';
 
         // Focus guard: reclaims focus when a site script steals it (e.g.
         // sites that listen for keydown and force-focus their own input).
@@ -288,7 +377,8 @@ export class ChoicePopup {
           this.close();
           resolve(input.value);
         });
-        container.appendChild(btn);
+        btnRow.appendChild(btn);
+        container.appendChild(btnRow);
 
         const onKeyDown = (e: KeyboardEvent) => {
           e.stopPropagation(); // prevent site scripts from intercepting the keystroke
