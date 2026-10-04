@@ -9,6 +9,19 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 ## [1.0.19] - Não publicado (em desenvolvimento acumulado)
 
 ### Adicionado
+- **Fase 3.2 — Formulário de Entrada (Agrupamento de Múltiplos Inputs em Popup Único):**
+  - Opção configurável por fluxo (`groupInputs`) no bloco Disparador (`TriggerBlock`), permitindo reunir múltiplos campos de preenchimento (`InputToken`) em um único formulário popup coeso.
+  - Navegação ágil por teclado no popup:
+    - Teclas `Tab` / `Shift+Tab` para transitar entre os campos e botões de ação.
+    - Tecla `Enter` em campos intermediários avança o foco e seleciona o texto do próximo campo automaticamente.
+    - Tecla `Enter` no último campo (ou `Ctrl+Enter` / `Cmd+Enter` em qualquer campo) confirma e insere o texto completo de uma só vez.
+    - Tecla `Esc` (ou clique fora) fecha o popup e cancela a expansão sem alterar o campo original.
+    - Foco inicial automático inteligente no primeiro campo vazio (ou no primeiro campo geral se todos estiverem pré-preenchidos).
+  - Deduplicação inteligente de campos por variável de sessão: múltiplos tokens que compartilham o mesmo `sessionVarName` geram um único campo no formulário, propagando o valor preenchido para todas as referências no texto gerado.
+  - Integração profunda com valores de sessão:
+    - Campos com valor existente na sessão e `autoApply: false` surgem pré-preenchidos acompanhados do badge informativo "Valor da sessão".
+    - Tokens com valor existente na sessão e `autoApply: true` são resolvidos diretamente em segundo plano sem inclusão desnecessária no formulário.
+    - Persistência automática dos novos valores digitados no `SessionStore` respeitando os escopos e limites de tempo (TTL) configurados.
 - **Fase 3.1 — Input Reutilizável com Variáveis de Sessão e Escopos:**
   - Suporte completo a variáveis de sessão em tokens de entrada de texto (`InputToken`), permitindo salvar e reutilizar respostas fornecidas pelo usuário em múltiplos fluxos ou em chamadas subsequentes.
   - Granularidade de escopo por variável de sessão:
