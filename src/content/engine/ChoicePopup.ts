@@ -2,7 +2,7 @@
  * src/content/engine/ChoicePopup.ts
  */
 
-import type { Token, Variable } from '../../shared/types/index.js';
+import type { Token, Variable, FormField } from '../../shared/types/index.js';
 import { resolveVariablesInText } from '../../shared/utils/variableResolver.js';
 import { isProtected } from './SensitiveFieldGuard.js';
 import { t } from '../../shared/i18n/index.js';
@@ -161,6 +161,54 @@ export class ChoicePopup {
       }
       .btn-submit:hover {
         background: #2563eb;
+      }
+      /* Form popup styles */
+      .form-popup-container {
+        min-width: 260px;
+        max-width: 380px;
+        max-height: 80vh;
+        overflow-y: auto;
+      }
+      .form-fields-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.625rem;
+        margin-bottom: 0.75rem;
+      }
+      .form-field-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+      .form-label-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+      }
+      .form-field-label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: #d4d4d4;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+      }
+      .form-prefill-badge {
+        font-size: 0.6875rem;
+        font-weight: 500;
+        color: #fbbf24;
+        background: rgba(245, 158, 11, 0.15);
+        border: 1px solid rgba(245, 158, 11, 0.3);
+        border-radius: 0.2rem;
+        padding: 0.1rem 0.35rem;
+        line-height: 1;
+      }
+      .form-input-item {
+        margin-bottom: 0;
+      }
+      .form-btn-row {
+        margin-top: 0.25rem;
       }
     `;
     this.shadow.appendChild(style);
@@ -406,6 +454,191 @@ export class ChoicePopup {
           }
         }, 10);
       }
+
+      this.shadow.appendChild(container);
+      this.positionPopup(targetElement);
+    });
+  }
+
+  public showForm(
+    fields: FormField[],
+    targetElement: HTMLElement,
+    variables: Variable[] = []
+  ): Promise<Record<string, string> | null> {
+    if (targetElement && isProtected(targetElement)) {
+      return Promise.resolve(null);
+    }
+    if (!fields || fields.length === 0) {
+      return Promise.resolve({});
+    }
+
+    return new Promise((resolve) => {
+      document.body.appendChild(this.host);
+
+      const container = document.createElement('div');
+      container.className = 'popup-container form-popup-container';
+
+      const title = document.createElement('p');
+      title.className = 'popup-title';
+      title.textContent = t('token.form.title');
+      container.appendChild(title);
+
+      const formList = document.createElement('div');
+      formList.className = 'form-fields-list';
+
+      const inputElements: Array<{ field: FormField; input: HTMLInputElement }> = [];
+
+      for (const field of fields) {
+        const group = document.createElement('div');
+        group.className = 'form-field-group';
+
+        const labelRow = document.createElement('div');
+        labelRow.className = 'form-label-row';
+
+        const label = document.createElement('label');
+        label.className = 'form-field-label';
+        label.textContent = resolveVariablesInText(field.label, false, variables);
+        labelRow.appendChild(label);
+
+        if (field.prefilled && field.value) {
+          const badge = document.createElement('span');
+          badge.className = 'form-prefill-badge';
+          badge.textContent = t('token.form.prefill_badge');
+          labelRow.appendChild(badge);
+        }
+        group.appendChild(labelRow);
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'input-field form-input-item';
+        input.placeholder = resolveVariablesInText(field.placeholder || '', false, variables);
+        if (field.value !== undefined) {
+          input.value = field.value;
+        }
+        group.appendChild(input);
+
+        formList.appendChild(group);
+        inputElements.push({ field, input });
+      }
+
+      container.appendChild(formList);
+
+      const btnRow = document.createElement('div');
+      btnRow.className = 'btn-row form-btn-row';
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'btn-clear';
+      cancelBtn.textContent = t('token.form.cancel_btn');
+
+      const submitBtn = document.createElement('button');
+      submitBtn.type = 'button';
+      submitBtn.className = 'btn-submit';
+      submitBtn.textContent = t('token.form.submit_btn');
+
+      btnRow.appendChild(cancelBtn);
+      btnRow.appendChild(submitBtn);
+      container.appendChild(btnRow);
+
+      let settled = false;
+      let focusGuardActive = true;
+
+      const finish = (result: Record<string, string> | null) => {
+        if (settled) return;
+        settled = true;
+        focusGuardActive = false;
+        document.removeEventListener('keydown', onKeyDown, true);
+        document.removeEventListener('mousedown', onDocMouseDown, true);
+        this.close();
+        resolve(result);
+      };
+
+      const collectValues = (): Record<string, string> => {
+        const res: Record<string, string> = {};
+        for (const item of inputElements) {
+          res[item.field.key] = item.input.value;
+        }
+        return res;
+      };
+
+      cancelBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        finish(null);
+      });
+
+      submitBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        finish(collectValues());
+      });
+
+      const onKeyDown = (e: KeyboardEvent) => {
+        e.stopPropagation();
+
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          finish(null);
+          return;
+        }
+
+        if (e.key === 'Enter') {
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            finish(collectValues());
+            return;
+          }
+
+          const target = e.target as HTMLElement;
+          const currentIndex = inputElements.findIndex(item => item.input === target);
+          if (currentIndex >= 0) {
+            e.preventDefault();
+            if (currentIndex === inputElements.length - 1) {
+              finish(collectValues());
+            } else {
+              inputElements[currentIndex + 1].input.focus();
+              inputElements[currentIndex + 1].input.select();
+            }
+          } else if (target === submitBtn) {
+            e.preventDefault();
+            finish(collectValues());
+          }
+        }
+      };
+
+      document.addEventListener('keydown', onKeyDown, true);
+
+      const onDocMouseDown = (e: MouseEvent) => {
+        const path = e.composedPath ? e.composedPath() : [];
+        if (path.includes(this.host)) return;
+        finish(null);
+      };
+
+      setTimeout(() => {
+        document.addEventListener('mousedown', onDocMouseDown, true);
+      }, 0);
+
+      inputElements.forEach(item => {
+        item.input.addEventListener('blur', () => {
+          if (!focusGuardActive) return;
+          requestAnimationFrame(() => {
+            if (!document.body.contains(this.host)) return;
+            const active = this.shadow.activeElement;
+            if (!active) {
+              item.input.focus();
+            }
+          });
+        });
+      });
+
+      setTimeout(() => {
+        const firstEmpty = inputElements.find(item => !item.input.value);
+        const targetToFocus = firstEmpty || inputElements[0];
+        if (targetToFocus) {
+          targetToFocus.input.focus();
+          if (targetToFocus.input.value) {
+            targetToFocus.input.select();
+          }
+        }
+      }, 10);
 
       this.shadow.appendChild(container);
       this.positionPopup(targetElement);

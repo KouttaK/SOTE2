@@ -24,9 +24,13 @@ export class TriggerBlock {
       smartCase: true,
       forceCapitalize: false,
       wordBoundary: settings?.wordBoundaryDefault !== false,
+      groupInputs: false,
     };
     if (this.data.wordBoundary === undefined) {
       this.data.wordBoundary = settings?.wordBoundaryDefault !== false;
+    }
+    if (this.data.groupInputs === undefined) {
+      this.data.groupInputs = false;
     }
     this.settings = settings;
     this.onChange = onChange;
@@ -98,6 +102,15 @@ export class TriggerBlock {
           </div>
         </div>
         <p class="trigger-node-hint">${ICONS.info} ${t('trigger.block.wordboundary_desc')}</p>
+
+        <div class="trigger-toggle-row">
+          <span class="trigger-toggle-label">${t('trigger.block.group_inputs_title')}</span>
+          <div class="trigger-toggle-right">
+            <span class="trigger-toggle-state ${this.data.groupInputs ? 'is-on' : ''}" id="trigger-groupinputs-state">${this.data.groupInputs ? t('editor.status.active') : t('editor.status.inactive')}</span>
+            <div class="switch ${this.data.groupInputs ? 'is-on' : ''}" id="trigger-groupinputs"></div>
+          </div>
+        </div>
+        <p class="trigger-node-hint">${ICONS.info} ${t('trigger.block.group_inputs_desc')}</p>
       </div>
     `;
 
@@ -140,6 +153,16 @@ export class TriggerBlock {
       wordBoundarySwitch.classList.toggle('is-on', this.data.wordBoundary);
       wordBoundaryState.classList.toggle('is-on', this.data.wordBoundary);
       wordBoundaryState.textContent = this.data.wordBoundary ? t('editor.status.active') : t('editor.status.inactive');
+      this.onChange();
+    });
+
+    const groupInputsState = this.el.querySelector<HTMLElement>('#trigger-groupinputs-state')!;
+    const groupInputsSwitch = this.el.querySelector<HTMLElement>('#trigger-groupinputs')!;
+    groupInputsSwitch.addEventListener('click', () => {
+      this.data.groupInputs = !this.data.groupInputs;
+      groupInputsSwitch.classList.toggle('is-on', this.data.groupInputs);
+      groupInputsState.classList.toggle('is-on', this.data.groupInputs);
+      groupInputsState.textContent = this.data.groupInputs ? t('editor.status.active') : t('editor.status.inactive');
       this.onChange();
     });
   }

@@ -231,6 +231,8 @@ export const translations = {
     'trigger.block.capitalize_desc': 'Always capitalize the first letter of the output',
     'trigger.block.wordboundary_title': 'Word Boundary Only',
     'trigger.block.wordboundary_desc': 'Only expand when typing a separate word (prevents expansion inside words)',
+    'trigger.block.group_inputs_title': 'Form Popup',
+    'trigger.block.group_inputs_desc': 'Groups multiple text input fields into a single popup with Tab navigation',
     'trigger.block.reserved_prefix_warning': 'Starts with "{prefix}", the Gatilho de Busca prefix — this shortcut will never trigger while typed after that prefix.',
 
     // === CONFLICTS CENTER ===
@@ -401,6 +403,10 @@ export const translations = {
     'token.input.confirm_btn': 'Confirm',
     'token.input.crm_warning_hint': 'Support/CRM Tip: If you serve multiple contacts in the same tab without changing pages, set an expiration time (TTL) to avoid accidentally reusing data from a previous customer.',
     'token.input.scope_mismatch_warning': 'Warning: another field already uses the variable "{name}" with a different scope ({scope}). They will not share the same value unless they use the same scope.',
+    'token.form.title': 'Fill in the fields',
+    'token.form.submit_btn': 'Confirm All',
+    'token.form.cancel_btn': 'Cancel',
+    'token.form.prefill_badge': 'Session',
     'token.clipboard.index_hint': '1 = Most recent item, 2 = Second most recent, etc. History size is configurable in Settings (default 10, max 50).',
     'token.clipboard.invalid_alert': 'Please enter a valid positive number.',
     'token.clipboard.global_setting_label': 'Global setting: {max}',
@@ -1307,6 +1313,8 @@ export const translations = {
     'trigger.block.capitalize_desc': 'Sempre inicia o resultado com a primeira letra maiúscula',
     'trigger.block.wordboundary_title': 'Apenas Limite de Palavra',
     'trigger.block.wordboundary_desc': 'Só expande ao digitar como palavra separada (evita disparar no meio de palavras)',
+    'trigger.block.group_inputs_title': 'Formulário de Entrada',
+    'trigger.block.group_inputs_desc': 'Agrupa múltiplos campos de texto em um único popup com navegação por Tab',
     'trigger.block.reserved_prefix_warning': 'Começa com "{prefix}", o prefixo do Gatilho de Busca — este atalho nunca vai disparar quando digitado logo após esse prefixo.',
 
     // === CENTRAL DE CONFLITOS ===
@@ -1477,6 +1485,10 @@ export const translations = {
     'token.input.confirm_btn': 'Confirmar',
     'token.input.crm_warning_hint': 'Dica para CRM/Atendimento: Se você atende múltiplos contatos na mesma aba sem trocar de página, utilize expiração por tempo (TTL) para evitar reaproveitar dados do cliente anterior por engano.',
     'token.input.scope_mismatch_warning': 'Atenção: já existe outro campo usando a variável "{name}" com escopo diferente ({scope}). Eles não vão compartilhar o mesmo valor a menos que usem o mesmo escopo.',
+    'token.form.title': 'Preencha os campos',
+    'token.form.submit_btn': 'Confirmar Tudo',
+    'token.form.cancel_btn': 'Cancelar',
+    'token.form.prefill_badge': 'Sessão',
     'token.clipboard.index_hint': '1 = item mais recente, 2 = penúltimo, e assim por diante. O tamanho do histórico é configurável em Configurações (padrão 10, máx 50).',
     'token.clipboard.invalid_alert': 'Digite um número positivo válido.',
     'token.clipboard.global_setting_label': 'Configuração global: {max}',
