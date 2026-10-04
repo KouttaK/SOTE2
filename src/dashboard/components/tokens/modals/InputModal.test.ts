@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { InputModal } from './InputModal.js';
 import { setLanguage } from '../../../../shared/i18n/index.js';
-import type { Token } from '../../../../shared/types/index.js';
+import type { Token, Flow } from '../../../../shared/types/index.js';
 import { showToast } from '../../../../shared/components/Toast.js';
 
 vi.mock('wxt/browser', () => ({
@@ -193,6 +193,178 @@ describe('InputModal (src/dashboard/components/tokens/modals/InputModal.ts)', ()
 
     expect(crmCard).not.toBeNull();
     expect(crmCard.textContent).toContain('Dica para CRM/Atendimento');
+  });
+
+  it('displays discrete warning when another flow uses same variable name with different scope', () => {
+    const existingFlows: Flow[] = [
+      {
+        id: 'flow_1',
+        name: 'Fluxo A',
+        folderId: null,
+        blocks: [
+          {
+            id: 'b1',
+            type: 'action',
+            data: {
+              content: 'Processo: {{var}}',
+              tokens: [
+                {
+                  id: 'tok_other',
+                  type: 'input',
+                  config: {
+                    label: 'Processo',
+                    rememberValue: true,
+                    sessionVarName: 'num_proc',
+                    scope: 'global',
+                  },
+                },
+              ],
+            },
+          },
+        ],
+        createdAt: 1,
+        updatedAt: 1,
+      },
+    ];
+
+    const currentToken: Token = {
+      id: 'tok_curr',
+      type: 'input',
+      config: {
+        label: 'Processo Atual',
+        rememberValue: true,
+        sessionVarName: 'num_proc',
+        scope: 'tab',
+      },
+    };
+
+    const modal = new InputModal(currentToken, vi.fn(), existingFlows);
+    modal.open();
+
+    const warningCard = document.querySelector('#scope-mismatch-warning') as HTMLElement;
+    const warningText = document.querySelector('#scope-mismatch-text') as HTMLElement;
+
+    expect(warningCard.style.display).toBe('flex');
+    expect(warningText.textContent).toContain('num_proc');
+    expect(warningText.textContent).toMatch(/global/i);
+  });
+
+  it('hides warning when user changes scope to match the other token or uses different variable name', () => {
+    const existingFlows: Flow[] = [
+      {
+        id: 'flow_1',
+        name: 'Fluxo A',
+        folderId: null,
+        blocks: [
+          {
+            id: 'b1',
+            type: 'action',
+            data: {
+              content: 'Processo: {{var}}',
+              tokens: [
+                {
+                  id: 'tok_other',
+                  type: 'input',
+                  config: {
+                    label: 'Processo',
+                    rememberValue: true,
+                    sessionVarName: 'num_proc',
+                    scope: 'global',
+                  },
+                },
+              ],
+            },
+          },
+        ],
+        createdAt: 1,
+        updatedAt: 1,
+      },
+    ];
+
+    const currentToken: Token = {
+      id: 'tok_curr',
+      type: 'input',
+      config: {
+        label: 'Processo Atual',
+        rememberValue: true,
+        sessionVarName: 'num_proc',
+        scope: 'tab',
+      },
+    };
+
+    const modal = new InputModal(currentToken, vi.fn(), existingFlows);
+    modal.open();
+
+    const warningCard = document.querySelector('#scope-mismatch-warning') as HTMLElement;
+    const scopeSelect = document.querySelector('#input-scope') as HTMLSelectElement;
+    const nameInput = document.querySelector('#input-session-name') as HTMLInputElement;
+
+    expect(warningCard.style.display).toBe('flex');
+
+    // Change scope to 'global' -> matches existing flow's scope -> warning disappears
+    scopeSelect.value = 'global';
+    scopeSelect.dispatchEvent(new Event('change'));
+    expect(warningCard.style.display).toBe('none');
+
+    // Change scope back to 'tab' -> warning reappears
+    scopeSelect.value = 'tab';
+    scopeSelect.dispatchEvent(new Event('change'));
+    expect(warningCard.style.display).toBe('flex');
+
+    // Change name to a different variable name -> warning disappears
+    nameInput.value = 'outro_proc';
+    nameInput.dispatchEvent(new Event('input'));
+    expect(warningCard.style.display).toBe('none');
+  });
+
+  it('does not display warning when tokens share the same variable name and same scope', () => {
+    const existingFlows: Flow[] = [
+      {
+        id: 'flow_1',
+        name: 'Fluxo A',
+        folderId: null,
+        blocks: [
+          {
+            id: 'b1',
+            type: 'action',
+            data: {
+              content: 'Processo: {{var}}',
+              tokens: [
+                {
+                  id: 'tok_other',
+                  type: 'input',
+                  config: {
+                    label: 'Processo',
+                    rememberValue: true,
+                    sessionVarName: 'num_proc',
+                    scope: 'tab',
+                  },
+                },
+              ],
+            },
+          },
+        ],
+        createdAt: 1,
+        updatedAt: 1,
+      },
+    ];
+
+    const currentToken: Token = {
+      id: 'tok_curr',
+      type: 'input',
+      config: {
+        label: 'Processo Atual',
+        rememberValue: true,
+        sessionVarName: 'num_proc',
+        scope: 'tab',
+      },
+    };
+
+    const modal = new InputModal(currentToken, vi.fn(), existingFlows);
+    modal.open();
+
+    const warningCard = document.querySelector('#scope-mismatch-warning') as HTMLElement;
+    expect(warningCard.style.display).toBe('none');
   });
 });
 

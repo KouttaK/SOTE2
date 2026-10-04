@@ -1,8 +1,10 @@
 import { BaseModal } from './BaseModal.js';
-import type { Token, InputTokenConfig, SessionScope } from '../../../../shared/types/index.js';
+import type { Token, InputTokenConfig, SessionScope, Flow } from '../../../../shared/types/index.js';
 import { t } from '../../../../shared/i18n/index.js';
 import { escapeHtml } from '../../../../shared/utils/dom.js';
 import { showToast } from '../../../../shared/components/Toast.js';
+import { findSessionScopeMismatch } from '../../../../shared/utils/flowVariableScanner.js';
+import { storage } from '../../../../shared/storage/StorageService.js';
 
 export class InputModal extends BaseModal {
   private onSaveCallback: (newConfig: InputTokenConfig) => void;
@@ -15,10 +17,23 @@ export class InputModal extends BaseModal {
   private scopeHint!: HTMLElement;
   private ttlInput!: HTMLInputElement;
   private autoApplyCheckbox!: HTMLInputElement;
+  private scopeMismatchWarning!: HTMLElement;
+  private scopeMismatchText!: HTMLElement;
+  private flows: Flow[] = [];
+  private currentTokenId: string;
 
-  constructor(token: Token, onSave: (newConfig: InputTokenConfig) => void) {
+  constructor(token: Token, onSave: (newConfig: InputTokenConfig) => void, existingFlows?: Flow[]) {
     super(t('token.modal.configure_input'));
     this.onSaveCallback = onSave;
+    this.currentTokenId = token.id || '';
+    if (existingFlows) {
+      this.flows = existingFlows;
+    } else {
+      storage.getFlows().then((flows) => {
+        this.flows = flows || [];
+        this.checkScopeMismatch();
+      }).catch(() => {});
+    }
     
     const config = (token.config || {}) as Partial<InputTokenConfig>;
     const label = config.label || '';
@@ -104,6 +119,12 @@ export class InputModal extends BaseModal {
                 ${t('token.input.crm_warning_hint')}
               </p>
             </div>
+
+            <!-- Aviso Preventivo de Divergência de Escopo -->
+            <div id="scope-mismatch-warning" class="field-hint-card" style="display: none; margin-top: 0.5rem; padding: 0.625rem 0.75rem; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 0.375rem; gap: 0.5rem; align-items: flex-start;">
+              <span style="color: #f59e0b; font-size: 0.875rem; line-height: 1.2; flex-shrink: 0;">⚠️</span>
+              <p id="scope-mismatch-text" style="margin: 0; font-size: 0.75rem; line-height: 1.4; color: #f59e0b;"></p>
+            </div>
           </div>
         </div>
       </div>
@@ -118,9 +139,12 @@ export class InputModal extends BaseModal {
     this.scopeHint = this.body.querySelector('#scope-hint') as HTMLElement;
     this.ttlInput = this.body.querySelector('#input-ttl') as HTMLInputElement;
     this.autoApplyCheckbox = this.body.querySelector('#input-auto-apply') as HTMLInputElement;
+    this.scopeMismatchWarning = this.body.querySelector('#scope-mismatch-warning') as HTMLElement;
+    this.scopeMismatchText = this.body.querySelector('#scope-mismatch-text') as HTMLElement;
 
     this.updateScopeHint();
     this.attachEventListeners();
+    this.checkScopeMismatch();
   }
 
   private updateScopeHint(): void {
@@ -151,11 +175,59 @@ export class InputModal extends BaseModal {
         const suggested = this.labelInput.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
         if (suggested) this.sessionNameInput.value = suggested;
       }
+      this.checkScopeMismatch();
+    });
+
+    this.sessionNameInput.addEventListener('input', () => {
+      this.checkScopeMismatch();
     });
 
     this.scopeSelect.addEventListener('change', () => {
       this.updateScopeHint();
+      this.checkScopeMismatch();
     });
+  }
+
+  private checkScopeMismatch(): void {
+    if (!this.scopeMismatchWarning || !this.scopeMismatchText) return;
+
+    if (!this.rememberCheckbox.checked) {
+      this.scopeMismatchWarning.style.display = 'none';
+      return;
+    }
+
+    const varName = this.sessionNameInput.value.trim();
+    const currentScope = this.scopeSelect.value as SessionScope;
+    if (!varName) {
+      this.scopeMismatchWarning.style.display = 'none';
+      return;
+    }
+
+    const mismatch = findSessionScopeMismatch(this.flows, this.currentTokenId, varName, currentScope);
+    if (mismatch) {
+      let scopeLabel = mismatch.otherScope;
+      switch (mismatch.otherScope) {
+        case 'tab':
+          scopeLabel = t('token.input.scope_tab');
+          break;
+        case 'url':
+          scopeLabel = t('token.input.scope_url');
+          break;
+        case 'title':
+          scopeLabel = t('token.input.scope_title');
+          break;
+        case 'global':
+          scopeLabel = t('token.input.scope_global');
+          break;
+      }
+      this.scopeMismatchText.textContent = t('token.input.scope_mismatch_warning', {
+        name: mismatch.varName,
+        scope: scopeLabel,
+      });
+      this.scopeMismatchWarning.style.display = 'flex';
+    } else {
+      this.scopeMismatchWarning.style.display = 'none';
+    }
   }
 
   protected onSave(): void {

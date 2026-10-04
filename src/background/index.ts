@@ -290,7 +290,7 @@ async function handleMessage(message: Message, sender: any): Promise<any> {
     }
 
     case 'SET_SESSION_DATA': {
-      const tabId = message.payload.tabId ?? sender.tab?.id;
+      const tabId = message.payload?.tabId ?? sender.tab?.id;
       if (tabId !== undefined) {
         sessionService.setSessionValue(tabId, message.payload.key, message.payload.value);
       }

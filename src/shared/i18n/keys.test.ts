@@ -239,6 +239,7 @@ describe('i18n popup keys validation', () => {
       'token.input.clear_btn',
       'token.input.confirm_btn',
       'token.input.crm_warning_hint',
+      'token.input.scope_mismatch_warning',
     ];
 
     const en = translations.en as Record<string, string>;
