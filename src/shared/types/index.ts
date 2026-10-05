@@ -80,6 +80,8 @@ export interface TriggerBlock {
 export interface ConditionBlock {
   rules: ConditionRule[];
   elseBranch?: BranchTarget;
+  /** UI display mode: 'classic' (Se / Senão Se) or 'switch' (Casos / Padrão). Purely visual, no runtime execution difference. */
+  displayMode?: 'classic' | 'switch';
 }
 
 export interface ConditionRule {

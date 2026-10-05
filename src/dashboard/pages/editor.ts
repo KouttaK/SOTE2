@@ -13,7 +13,7 @@ import { router } from '../router.js';
 import { setHeaderOverride } from '../shell.js';
 import { t } from '../../shared/i18n/index.js';
 import { TriggerBlock } from '../components/blocks/TriggerBlock.js';
-import { ConditionRuleBlock, describeConditionRule } from '../components/blocks/ConditionBlock.js';
+import { ConditionRuleBlock, describeConditionRule, checkSwitchEligibility, getSwitchTargetLabel, SwitchCaseRow, extractVariableVal } from '../components/blocks/ConditionBlock.js';
 import { ActionBlock } from '../components/blocks/ActionBlock.js';
 import { BlockDock, DOCK_DRAG_MIME } from '../components/blocks/BlockDock.js';
 import type { BlockDockItemType } from '../components/blocks/BlockDock.js';
@@ -403,10 +403,12 @@ export default class FlowEditorPage implements Page {
 
   private markDirty() {
     this._isDirty = true;
-    const dot = this.headerEl.querySelector<HTMLElement>('#editor-unsaved-dot');
-    if (dot) dot.style.display = '';
-    const btn = this.headerEl.querySelector('#btn-save-flow')!;
-    btn.classList.add('dirty');
+    if (this.headerEl) {
+      const dot = this.headerEl.querySelector<HTMLElement>('#editor-unsaved-dot');
+      if (dot) dot.style.display = '';
+      const btn = this.headerEl.querySelector('#btn-save-flow');
+      if (btn) btn.classList.add('dirty');
+    }
   }
 
   private clearDirty() {
@@ -799,10 +801,31 @@ export default class FlowEditorPage implements Page {
       condData.rules = [{ type: 'domain', operator: 'contains', value: '', action: { format: 'plaintext', content: '', tokens: [] } }];
     }
 
+    const switchEligibility = checkSwitchEligibility(condData);
+    const isSwitchMode = condData.displayMode === 'switch' && switchEligibility.eligible;
+
     const addSenaoSe = () => {
       condData.rules.push({ type: 'domain', operator: 'contains', value: '', action: { format: 'plaintext', content: '', tokens: [] } });
       rebuild();
     };
+
+    const addCase = () => {
+      const targetType = switchEligibility.targetType || 'domain';
+      let defaultValue = '';
+      if (targetType === 'variable_value') {
+        defaultValue = JSON.stringify({ key: switchEligibility.targetKey || '', val: '' });
+      } else if (targetType === 'field_type') {
+        defaultValue = 'email';
+      }
+      condData.rules.push({
+        type: targetType,
+        operator: 'equals',
+        value: defaultValue,
+        action: { format: 'plaintext', content: '', tokens: [] },
+      });
+      rebuild();
+    };
+
     const addElse = () => {
       condData.elseBranch = { format: 'plaintext', content: '', tokens: [] };
       rebuild();
@@ -812,23 +835,64 @@ export default class FlowEditorPage implements Page {
     const branchCount = condData.rules.length + (condData.elseBranch ? 1 : 0);
 
     const card = document.createElement('div');
-    card.className = 'block-card condition-card';
+    card.className = `block-card condition-card ${isSwitchMode ? 'is-switch-mode' : ''}`;
     card.innerHTML = /* html */ `
       <div class="block-header condition-card-header">
         <div class="block-type-icon condition-type-icon">${ICONS.branch}</div>
-        <span class="block-type-label condition-type-label">${t('condition.card.label')}</span>
-        <span class="block-type-meta">· ${t('condition.branch_count', { count: branchCount })}</span>
+        <span class="block-type-label condition-type-label">${isSwitchMode ? t('condition.mode.switch') : t('condition.card.label')}</span>
+        <span class="block-type-meta">· ${isSwitchMode ? t('condition.switch.case_count', { count: branchCount }) : t('condition.branch_count', { count: branchCount })}</span>
+        <div class="condition-mode-toggle">
+          <button type="button" class="cond-mode-btn ${!isSwitchMode ? 'active' : ''}" data-mode="classic" title="${escapeHtml(t('condition.mode.classic'))}">
+            ${t('condition.mode.classic')}
+          </button>
+          <button type="button" class="cond-mode-btn ${isSwitchMode ? 'active' : ''} ${!switchEligibility.eligible ? 'is-disabled' : ''}" data-mode="switch" title="${escapeHtml(!switchEligibility.eligible ? t('condition.switch.ineligible_tooltip') : t('condition.mode.switch'))}">
+            ${t('condition.mode.switch')}
+          </button>
+        </div>
         <div class="block-header-actions">
           <button type="button" class="icon-btn danger" id="condition-card-remove" title="${t('editor.condition.remove_rule')}">${ICONS.trash}</button>
         </div>
       </div>
       <div class="condition-body">
-        <div class="condition-evaluation-hint">
-          ${t('condition.evaluation_hint', { defaultValue: 'A primeira regra verdadeira (de cima para baixo) será executada.' })}
-        </div>
+        ${isSwitchMode ? `
+          <div class="switch-target-header">
+            <span class="switch-target-badge">${t('condition.switch.evaluating_target', { target: getSwitchTargetLabel(switchEligibility.targetType!, switchEligibility.targetKey) })}</span>
+          </div>
+          <div class="condition-evaluation-hint">
+            ${t('condition.switch.hint')}
+          </div>
+        ` : `
+          <div class="condition-evaluation-hint">
+            ${t('condition.evaluation_hint', { defaultValue: 'A primeira regra verdadeira (de cima para baixo) será executada.' })}
+          </div>
+        `}
         <div class="condition-branches"></div>
       </div>
     `;
+
+    const classicBtn = card.querySelector('.cond-mode-btn[data-mode="classic"]') as HTMLButtonElement;
+    const switchBtn = card.querySelector('.cond-mode-btn[data-mode="switch"]') as HTMLButtonElement;
+
+    classicBtn.addEventListener('click', () => {
+      if (condData.displayMode !== 'classic') {
+        condData.displayMode = 'classic';
+        this.markDirty();
+        rebuild();
+      }
+    });
+
+    switchBtn.addEventListener('click', () => {
+      if (!switchEligibility.eligible) {
+        showToast(t('condition.switch.ineligible_tooltip'), 'warning');
+        return;
+      }
+      if (condData.displayMode !== 'switch') {
+        condData.displayMode = 'switch';
+        this.markDirty();
+        rebuild();
+      }
+    });
+
     card.querySelector('#condition-card-remove')!.addEventListener('click', () => {
       ConfirmModal.show({
         title: t('confirm_modal.remove_condition_title'),
@@ -856,8 +920,15 @@ export default class FlowEditorPage implements Page {
 
       const rail = document.createElement('div');
       rail.className = 'branch-rail';
+      const tagLabel = isSwitchMode
+        ? t('condition.tag.case')
+        : (displayIndex === 0 ? t('condition.tag.if') : t('condition.tag.elseif'));
+      const tagClass = isSwitchMode
+        ? 'case'
+        : (displayIndex === 0 ? 'if' : 'elseif');
+
       rail.innerHTML = /* html */ `
-        <div class="branch-tag ${displayIndex === 0 ? 'if' : 'elseif'}${sortedEntries.length > 1 ? ' is-draggable' : ''}" ${sortedEntries.length > 1 ? `draggable="true" title="${t('condition.drag.reorder_hint')}"` : ''}>${displayIndex === 0 ? t('condition.tag.if') : t('condition.tag.elseif')}</div>
+        <div class="branch-tag ${tagClass}${sortedEntries.length > 1 ? ' is-draggable' : ''}" ${sortedEntries.length > 1 ? `draggable="true" title="${t('condition.drag.reorder_hint')}"` : ''}>${tagLabel}</div>
         ${isLastRow ? '' : '<div class="branch-rail-line"></div>'}
       `;
 
@@ -893,25 +964,49 @@ export default class FlowEditorPage implements Page {
       content.className = 'branch-content';
 
       let refreshHeaderLabel = () => {}; // reatribuído logo abaixo, após renderDetachedBranchTarget existir
-      const ruleCard = new ConditionRuleBlock(rule, {
-        onChange: () => { this.markDirty(); refreshHeaderLabel(); },
-        onRemove: () => {
-          if (isOnlyBranch) onRemoveEntirely();
-          else { condData.rules.splice(arrayIndex, 1); rebuild(); }
-        },
-      });
-      content.appendChild(ruleCard.getElement());
+
+      if (isSwitchMode) {
+        const caseRow = new SwitchCaseRow(rule, {
+          targetType: switchEligibility.targetType!,
+          targetKey: switchEligibility.targetKey,
+          onChange: () => { this.markDirty(); refreshHeaderLabel(); },
+          onRemove: () => {
+            if (isOnlyBranch) onRemoveEntirely();
+            else { condData.rules.splice(arrayIndex, 1); rebuild(); }
+          },
+        });
+        content.appendChild(caseRow.getElement());
+      } else {
+        const ruleCard = new ConditionRuleBlock(rule, {
+          onChange: () => { this.markDirty(); refreshHeaderLabel(); },
+          onRemove: () => {
+            if (isOnlyBranch) onRemoveEntirely();
+            else { condData.rules.splice(arrayIndex, 1); rebuild(); }
+          },
+        });
+        content.appendChild(ruleCard.getElement());
+      }
 
       const actionWrap = document.createElement('div');
       actionWrap.className = 'branch-action';
       content.appendChild(actionWrap);
+
+      const getBranchLabel = () => {
+        if (isSwitchMode) {
+          const displayVal = switchEligibility.targetType === 'variable_value'
+            ? extractVariableVal(rule.value)
+            : rule.value;
+          return `${t('condition.tag.case')}: "${displayVal || '...'}"`;
+        }
+        return `${displayIndex === 0 ? t('condition.tag.if') : t('condition.tag.elseif')} ${describeConditionRule(rule)}`;
+      };
 
       refreshHeaderLabel = this.renderDetachedBranchTarget(
         actionWrap,
         () => rule.action,
         (target) => { rule.action = target; },
         rebuild,
-        () => `${displayIndex === 0 ? t('condition.tag.if') : t('condition.tag.elseif')} ${describeConditionRule(rule)}`,
+        getBranchLabel,
         displayIndex,
       );
 
@@ -926,19 +1021,19 @@ export default class FlowEditorPage implements Page {
 
       const rail = document.createElement('div');
       rail.className = 'branch-rail';
-      rail.innerHTML = /* html */ `<div class="branch-tag else">${t('condition.tag.else')}</div>`;
+      rail.innerHTML = /* html */ `<div class="branch-tag ${isSwitchMode ? 'default' : 'else'}">${isSwitchMode ? t('condition.tag.default') : t('condition.tag.else')}</div>`;
 
       const content = document.createElement('div');
       content.className = 'branch-content is-else';
       const removeElseBtn = document.createElement('button');
       removeElseBtn.type = 'button';
       removeElseBtn.className = 'icon-btn branch-else-remove';
-      removeElseBtn.title = t('condition.else.menu.remove');
+      removeElseBtn.title = isSwitchMode ? t('confirm_modal.remove_default_title') : t('condition.else.menu.remove');
       removeElseBtn.innerHTML = ICONS.xmark;
       removeElseBtn.addEventListener('click', () => {
         ConfirmModal.show({
-          title: t('confirm_modal.remove_else_title'),
-          message: t('condition.confirm.remove_else'),
+          title: isSwitchMode ? t('confirm_modal.remove_default_title') : t('confirm_modal.remove_else_title'),
+          message: isSwitchMode ? t('condition.confirm.remove_default') : t('condition.confirm.remove_else'),
           confirmLabel: t('common.remove'),
           onConfirm: () => {
             condData.elseBranch = undefined;
@@ -947,6 +1042,12 @@ export default class FlowEditorPage implements Page {
         });
       });
       content.appendChild(removeElseBtn);
+      if (isSwitchMode) {
+        const defaultDesc = document.createElement('span');
+        defaultDesc.className = 'switch-default-desc';
+        defaultDesc.textContent = t('condition.switch.default_body');
+        content.appendChild(defaultDesc);
+      }
       const actionWrap = document.createElement('div');
       actionWrap.className = 'branch-action';
       content.appendChild(actionWrap);
@@ -956,7 +1057,7 @@ export default class FlowEditorPage implements Page {
         () => condData.elseBranch!,
         (target) => { condData.elseBranch = target; },
         rebuild,
-        () => t('condition.tag.else'),
+        () => isSwitchMode ? t('condition.tag.default') : t('condition.tag.else'),
         condData.rules.length,
       );
 
@@ -970,14 +1071,18 @@ export default class FlowEditorPage implements Page {
     const addBtn = document.createElement('button');
     addBtn.type = 'button';
     addBtn.className = 'add-branch-btn';
-    addBtn.innerHTML = `${ICONS.plus} ${t('condition.menu.add_elseif')}`;
-    addBtn.addEventListener('click', addSenaoSe);
+    addBtn.innerHTML = isSwitchMode
+      ? `${ICONS.plus} ${t('condition.switch.add_case')}`
+      : `${ICONS.plus} ${t('condition.menu.add_elseif')}`;
+    addBtn.addEventListener('click', isSwitchMode ? addCase : addSenaoSe);
     footer.appendChild(addBtn);
     if (!condData.elseBranch) {
       const addElseBtn = document.createElement('button');
       addElseBtn.type = 'button';
       addElseBtn.className = 'add-branch-btn add-else-btn';
-      addElseBtn.innerHTML = `${ICONS.plus} ${t('editor.condition.add_else')}`;
+      addElseBtn.innerHTML = isSwitchMode
+        ? `${ICONS.plus} ${t('condition.switch.add_default')}`
+        : `${ICONS.plus} ${t('editor.condition.add_else')}`;
       addElseBtn.addEventListener('click', addElse);
       footer.appendChild(addElseBtn);
     }

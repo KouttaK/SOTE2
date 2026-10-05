@@ -859,3 +859,244 @@ export class ConditionRuleBlock {
     });
   }
 }
+
+/** Extracts the variable key from a variable_value criterion string (JSON or fallback colon-separated). */
+export function extractVariableKey(val: string): string {
+  try {
+    const p = JSON.parse(val || '{}');
+    return (p.key || '').trim();
+  } catch {
+    const parts = (val || '').split(':');
+    return (parts[0] || '').trim();
+  }
+}
+
+/** Extracts the variable value from a variable_value criterion string. */
+export function extractVariableVal(val: string): string {
+  try {
+    const p = JSON.parse(val || '{}');
+    return p.val ?? p.value ?? '';
+  } catch {
+    const parts = (val || '').split(':');
+    return parts.slice(1).join(':') || '';
+  }
+}
+
+export interface SwitchEligibility {
+  eligible: boolean;
+  targetType?: ConditionCriterion['type'];
+  targetKey?: string;
+  reason?: string;
+}
+
+/**
+ * Checks whether a ConditionBlock is eligible for the Switch display mode.
+ * A block is eligible if:
+ * 1. It has at least 1 rule.
+ * 2. Every rule has operator === 'equals'.
+ * 3. No rule has extra compound criteria (criteria is empty or absent).
+ * 4. All rules target the exact same criterion type (excluding time/weekday/time_since_last_expansion).
+ * 5. For 'variable_value', all rules test the exact same variable key.
+ */
+export function checkSwitchEligibility(condData: { rules: ConditionRule[]; elseBranch?: any }): SwitchEligibility {
+  if (!condData.rules || condData.rules.length === 0) {
+    return { eligible: false, reason: 'no_rules' };
+  }
+
+  const r0 = condData.rules[0];
+  const targetType = r0.type;
+
+  // Time, weekday, and time-since are dynamic/range-based checks, not single-value equality switch cases
+  if (targetType === 'time' || targetType === 'weekday' || targetType === 'time_since_last_expansion') {
+    return { eligible: false, reason: 'unsupported_type' };
+  }
+
+  let targetKey: string | undefined = undefined;
+  if (targetType === 'variable_value') {
+    targetKey = extractVariableKey(r0.value);
+    if (!targetKey) {
+      return { eligible: false, reason: 'missing_variable_key' };
+    }
+  }
+
+  for (let i = 0; i < condData.rules.length; i++) {
+    const r = condData.rules[i];
+    if (r.criteria && r.criteria.length > 0) {
+      return { eligible: false, reason: 'has_extra_criteria' };
+    }
+    if (r.operator !== 'equals') {
+      return { eligible: false, reason: 'operator_not_equals' };
+    }
+    if (r.type !== targetType) {
+      return { eligible: false, reason: 'mismatched_target_type' };
+    }
+    if (targetType === 'variable_value') {
+      const k = extractVariableKey(r.value);
+      if (k !== targetKey) {
+        return { eligible: false, reason: 'mismatched_variable_key' };
+      }
+    }
+  }
+
+  return { eligible: true, targetType, targetKey };
+}
+
+/** Returns the formatted label for the Switch target banner. */
+export function getSwitchTargetLabel(targetType: ConditionCriterion['type'], targetKey?: string): string {
+  switch (targetType) {
+    case 'variable_value':
+      return t('condition.switch.target.variable', { key: targetKey || '...' });
+    case 'domain':
+      return t('condition.switch.target.domain');
+    case 'field_type':
+      return t('condition.switch.target.field_type');
+    case 'field_content':
+      return t('condition.switch.target.field_content');
+    case 'clipboard_content':
+      return t('condition.switch.target.clipboard_content');
+    case 'date':
+      return t('condition.switch.target.date');
+    default:
+      return targetType;
+  }
+}
+
+export interface SwitchCaseRowOptions {
+  targetType: ConditionCriterion['type'];
+  targetKey?: string;
+  onChange: () => void;
+  onRemove: () => void;
+}
+
+/**
+ * A simplified rule row used in Switch display mode:
+ * Since the target and operator ('equals') are established globally in the Switch header,
+ * each case row only renders the expected value input and a delete button.
+ */
+export class SwitchCaseRow {
+  private el: HTMLElement;
+  public data: ConditionRule;
+  private opts: SwitchCaseRowOptions;
+
+  constructor(data: ConditionRule, opts: SwitchCaseRowOptions) {
+    this.data = data;
+    this.opts = opts;
+    this.el = document.createElement('div');
+    this.el.className = 'branch-rule-wrap switch-case-wrap';
+    this.render();
+  }
+
+  public getElement(): HTMLElement {
+    return this.el;
+  }
+
+  private render() {
+    const rule = this.data;
+    const { targetType, targetKey, onChange, onRemove } = this.opts;
+
+    this.el.innerHTML = /* html */ `
+      <div class="branch-rule-row switch-case-row">
+        <div class="switch-value-container condition-rule-row"></div>
+        <button type="button" class="branch-rule-remove-btn icon-btn" title="${t('confirm_modal.remove_case_title')}">${ICONS.xmark}</button>
+      </div>
+    `;
+
+    const valContainer = this.el.querySelector('.switch-value-container') as HTMLElement;
+
+    if (targetType === 'variable_value') {
+      const valWrap = document.createElement('div');
+      valWrap.className = 'pill-value pill-value--wide';
+      const curVal = extractVariableVal(rule.value);
+      valWrap.innerHTML = `
+        <input type="text" class="switch-val-input" value="${escapeHtml(curVal)}" placeholder="${t('condition.switch.case_placeholder')}" />
+      `;
+      valContainer.appendChild(valWrap);
+      valWrap.querySelector('.switch-val-input')!.addEventListener('input', (e) => {
+        const v = (e.target as HTMLInputElement).value;
+        rule.value = JSON.stringify({ key: targetKey || '', val: v });
+        onChange();
+      });
+    } else if (targetType === 'domain') {
+      const valWrap = document.createElement('div');
+      valWrap.className = 'pill-value';
+      valWrap.innerHTML = `
+        ${ICONS.globe}
+        <input type="text" class="rule-value" value="${escapeHtml(rule.value || '')}" placeholder="${t('condition.domain.placeholder')}" />
+      `;
+      valContainer.appendChild(valWrap);
+      valWrap.querySelector('.rule-value')!.addEventListener('input', (e) => {
+        rule.value = (e.target as HTMLInputElement).value;
+        onChange();
+      });
+    } else if (targetType === 'field_type') {
+      if (!rule.value) rule.value = 'email';
+      const valWrap = document.createElement('div');
+      valWrap.className = 'pill-select-wrap';
+      valWrap.innerHTML = `
+        <select class="pill-select field-type-value">
+          <option value="email"           ${rule.value === 'email'           ? 'selected' : ''}>${t('condition.field_type.email')}</option>
+          <option value="password"        ${rule.value === 'password'        ? 'selected' : ''}>${t('condition.field_type.password')}</option>
+          <option value="tel"             ${rule.value === 'tel'             ? 'selected' : ''}>${t('condition.field_type.tel')}</option>
+          <option value="number"          ${rule.value === 'number'          ? 'selected' : ''}>${t('condition.field_type.number')}</option>
+          <option value="url"             ${rule.value === 'url'             ? 'selected' : ''}>${t('condition.field_type.url')}</option>
+          <option value="search"          ${rule.value === 'search'          ? 'selected' : ''}>${t('condition.field_type.search')}</option>
+          <option value="textarea"        ${rule.value === 'textarea'        ? 'selected' : ''}>${t('condition.field_type.textarea')}</option>
+          <option value="contenteditable" ${rule.value === 'contenteditable' ? 'selected' : ''}>${t('condition.field_type.contenteditable')}</option>
+          <option value="text"            ${rule.value === 'text'            ? 'selected' : ''}>${t('condition.field_type.text')}</option>
+        </select>
+      `;
+      valContainer.appendChild(valWrap);
+      valWrap.querySelector('.field-type-value')!.addEventListener('change', (e) => {
+        rule.value = (e.target as HTMLSelectElement).value;
+        onChange();
+      });
+    } else if (targetType === 'field_content') {
+      const valWrap = document.createElement('div');
+      valWrap.className = 'pill-value pill-value--wide';
+      valWrap.innerHTML = `
+        ${ICONS.fieldContent}
+        <input type="text" class="rule-value" value="${escapeHtml(rule.value || '')}" placeholder="${t('condition.field_content.placeholder')}" />
+      `;
+      valContainer.appendChild(valWrap);
+      valWrap.querySelector('.rule-value')!.addEventListener('input', (e) => {
+        rule.value = (e.target as HTMLInputElement).value;
+        onChange();
+      });
+    } else if (targetType === 'clipboard_content') {
+      const valWrap = document.createElement('div');
+      valWrap.className = 'pill-value pill-value--wide';
+      valWrap.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" style="width:14px;height:14px"><path d="M280 64h40c35.3 0 64 28.7 64 64V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V128C0 92.7 28.7 64 64 64h40 9.6C121 27.5 153.3 0 192 0s71 27.5 78.4 64H280zM64 112c-8.8 0-16 7.2-16 16V448c0 8.8 7.2 16 16 16H320c8.8 0 16-7.2 16-16V128c0-8.8-7.2-16-16-16H304v24c0 13.3-10.7 24-24 24H104c-13.3 0-24-10.7-24-24V112H64zm128-8a24 24 0 1 0 0-48 24 24 0 1 0 0 48z"/></svg>
+        <input type="text" class="rule-value" value="${escapeHtml(rule.value || '')}" placeholder="${t('condition.clipboard_content.placeholder')}" />
+      `;
+      valContainer.appendChild(valWrap);
+      valWrap.querySelector('.rule-value')!.addEventListener('input', (e) => {
+        rule.value = (e.target as HTMLInputElement).value;
+        onChange();
+      });
+    } else if (targetType === 'date') {
+      const valWrap = document.createElement('div');
+      valWrap.className = 'pill-value';
+      valWrap.style.flex = '0 1 auto';
+      valWrap.style.minWidth = '10rem';
+      valWrap.innerHTML = `
+        <input type="date" class="rule-value" value="${escapeHtml(rule.value || '')}">
+      `;
+      valContainer.appendChild(valWrap);
+      valWrap.querySelector('.rule-value')!.addEventListener('change', (e) => {
+        rule.value = (e.target as HTMLInputElement).value;
+        onChange();
+      });
+    }
+
+    this.el.querySelector('.branch-rule-remove-btn')!.addEventListener('click', () => {
+      ConfirmModal.show({
+        title: t('confirm_modal.remove_case_title'),
+        message: t('condition.confirm.remove_case'),
+        confirmLabel: t('common.remove'),
+        onConfirm: () => onRemove(),
+      });
+    });
+  }
+}
+
