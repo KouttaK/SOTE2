@@ -9,6 +9,18 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 ## [1.0.19] - Não publicado (em desenvolvimento acumulado)
 
 ### Adicionado
+- **Fase 3.3 — Visualização em Switch no Bloco Condicional (`ConditionBlock`):**
+  - Modo alternativo de exibição "Switch" para blocos condicionais elegíveis, simplificando a visualização e edição de fluxos que comparam um mesmo alvo contra múltiplos valores discretos (casos).
+  - Regra de elegibilidade estrita (`checkSwitchEligibility`):
+    - Habilitado apenas quando o bloco possui ao menos 1 regra, todas as regras utilizam o operador "igual a" (`operator: 'equals'`), não possuem critérios compostos adicionais e avaliam exatamente o mesmo alvo (`domain`, `field_type`, `field_content`, `clipboard_content`, `date` ou `variable_value` com a mesma variável).
+    - Desabilitado automaticamente com tooltip explicativo quando o bloco não cumpre os requisitos ou utiliza operadores baseados em faixas/tempo.
+  - Interface compacta e intuitiva de casos (`SwitchCaseRow`):
+    - Cabeçalho de contexto unificado destacando o alvo sob avaliação ("Avaliar: [Alvo]").
+    - Linhas de regras simplificadas em formato "Caso [Valor]", eliminando a redundância de repetir o tipo de condição e o operador em cada linha.
+    - Seção padrão clara ("Padrão (se nenhum caso bater)") para o ramo alternativo (SENÃO / Otherwise).
+  - Alternância bidirecional in-memory sem perda de dados:
+    - Alternar entre "Clássico" e "Switch" preserva integralmente as regras, nós, ramos conectados e blocos filhos no editor.
+    - O modo de exibição é apenas visual (`displayMode?: 'classic' | 'switch'`), mantendo compatibilidade total com o motor de execução (`ConditionResolver`) e zero alterações no schema de persistência.
 - **Fase 3.2 — Formulário de Entrada (Agrupamento de Múltiplos Inputs em Popup Único):**
   - Opção configurável por fluxo (`groupInputs`) no bloco Disparador (`TriggerBlock`), permitindo reunir múltiplos campos de preenchimento (`InputToken`) em um único formulário popup coeso.
   - Navegação ágil por teclado no popup:
@@ -90,6 +102,7 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 - **Layout em Cards no Modal de Contadores (Fase 2 - Pós-Merge Bug 1):** Reestruturação visual do modal de criação e edição de contadores em `counters.ts` e `counters.css` em 3 cards compactos e semânticos ("Identificação & Reinício", "Valores da Sequência" e "Formatação & Pré-visualização"), garantindo que o dropdown de "Regra de Reinício" fique visível imediatamente na primeira seção sem exigir rolagem vertical da página, com cabeçalho e rodapé fixados (`flex-shrink: 0`) e pré-visualização inline em tempo real.
 - **Reinício Periódico por Componentes Civis de Data e Preservação de Estado (Fase 2 - Pós-Merge Bug 2):** Implementação de checagem precisa de transição de ciclo temporal (`isSameCivilDay`, `isSameCivilMonth`, `isSameCivilYear`) usando componentes locais do calendário (`getFullYear`, `getMonth`, `getDate`) em `CounterService.ts`. Adição de guarda direcional (`now < lastUsed`) para evitar resets espúrios caso o relógio retroceda no tempo. Inicialização e preservação corretas do campo `lastUsedAt` e histórico do contador tanto na criação quanto na edição via `counters.ts` e `CounterModal.ts`.
 - **Nota de Backlog — Horário de Verão / DST (Fase 2):** Registrado para acompanhamento o comportamento de contadores diários em mudanças de fuso/horário de verão onde o relógio local retrocede 1 hora; a guarda direcional `now < lastUsed` impede resets duplicados com segurança no mesmo dia civil.
+- **Nota de Backlog — Opção 'Senha' em `field_type` no `ConditionBlock` (Fase 3):** Registrado para avaliação futura a remoção ou desativação da opção "Senha" (`password`) no seletor de tipo de campo (`field_type`) do bloco condicional, ou adição de tooltip explicativo. Como o motor de segurança `SensitiveFieldGuard` bloqueia incondicionalmente qualquer monitoramento ou expansão em campos sensíveis/senhas antes de qualquer avaliação de fluxo, regras configuradas com esse critério nunca disparam na prática.
 - **Avaliação de Domínio na Expansão Real (Pós-Merge 1B):** Ranqueamento e avaliação normativa de especificidade de condições no `TriggerDetector` (`getFlowConditionMatchScore`), garantindo que fluxos com regras de domínio aplicáveis no site atual tenham precedência sobre fluxos genéricos irrestritos ou com condições que não batem no contexto.
 - **Intercepção de Pan/Arrasto no Editor (Pós-Merge 1B):** Correção do listener em fase de captura no canvas do editor para permitir arrastar nós flutuantes (`.floating-node`), reordenar ramos com `.branch-tag` / `[draggable="true"]`, clicar em conectores de saída/fluxo (`.connector`, `.connector-dot`) e conectar saídas (`.branch-leaf-anchor`) sem arrastar o canvas indevidamente.
 - **Preservação de Proteção em Senhas e Popups (Pós-Merge 1B):** Correção do `focusout` em campos protegidos quando a janela perde foco para a barra de ferramentas da extensão, e inclusão de guardas normativas em `ChoicePopup` e `SearchPopup` rejeitando abertura sobre campos sensíveis.
