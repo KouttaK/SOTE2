@@ -3,6 +3,14 @@
     "sote2@kouttak.github.io": {
       "updates": [
         {
+          "version": "1.0.19",
+          "update_link": "https://kouttak.github.io/SOTE2/releases/sote-1.0.19-firefox.xpi",
+          "update_hash": "sha256:ef8e5af42d7f10df8a54aa89e39da31fcbb0a5d393a1620c7aa219eeabae0d98",
+          "applications": {
+            "gecko": { "strict_min_version": "140.0" }
+          }
+        },
+        {
           "version": "1.0.18",
           "update_link": "https://kouttak.github.io/SOTE2/releases/sote-1.0.18-firefox.xpi",
           "update_hash": "sha256:f5c1c52c92c7214aa5acda24f2c779390594f943e6a75f34e05b2bb46a687e4e",
